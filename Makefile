@@ -1,8 +1,8 @@
 export
 
 DEVICE_FAMILY = STM32F4xx
-DEVICE_TYPE = STM32F407xx
-STARTUP_FILE = stm32f407xx
+STARTUP_FILE = stm32f4xx
+DEVICE_TYPE = STM32F411xE
 SYSTEM_FILE = stm32f4xx
 
 CMSIS = Drivers/CMSIS
@@ -13,7 +13,7 @@ CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 SYSTEM = arm-none-eabi
 
 #LDSCRIPT = STM32F407ZG_FLASH.ld
-LDSCRIPT = "Projects/TrueSTUDIO/e407-test1 Configuration/STM32F407ZG_FLASH.ld"
+LDSCRIPT = "TrueSTUDIO/devboard Configuration/STM32F411CE_FLASH.ld"
 
 SRCDIR := Src/
 INCDIR := Inc/
@@ -69,8 +69,8 @@ OBJCOPY = $(SYSTEM)-objcopy
 OBJDUMP	= $(SYSTEM)-objdump
 GDB		= $(SYSTEM)-gdb
 SIZE	= $(SYSTEM)-size
-OCD	= sudo ~/openocd-git/openocd/src/openocd \
-		-s ~/openocd-git/openocd/tcl/ \
+OCD	= sudo openocd \
+		-s /usr/local/share/openocd/scripts \
 		-f interface/stlink-v2.cfg \
 		-f target/stm32f4x_stlink.cfg
 
@@ -110,9 +110,17 @@ flash: $(BIN)
 	
 $(BIN): main.out
 	$(OBJCOPY) $(OBJCOPYFLAGS) main.out $(BIN)
+	$(OBJCOPY) -O ihex main.out main.hex
 	$(OBJDUMP) $(OBJDUMPFLAGS) main.out > main.list
 	$(SIZE) main.out
 	@echo Make finished
+
+# TARGET = main
+# 
+# $(BIN): $(OBJS)
+# 	$(CC) -o $(TARGET).elf $(LDFLAGS) $(OBJS)	$(LDLIBS)
+# 	$(OBJCOPY) -O ihex   $(TARGET).elf $(TARGET).hex
+# 	$(OBJCOPY) -O binary $(TARGET).elf $(TARGET).bin
 
 main.out: $(LIBS) $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
