@@ -67,6 +67,8 @@ static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN 0 */
 
+#define WHITE_LED_TOGGLE	(HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -103,6 +105,9 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+
+    WHITE_LED_TOGGLE;
+    HAL_Delay(100);
 
   }
   /* USER CODE END 3 */
