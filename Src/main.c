@@ -96,6 +96,9 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
+  printf("Hello, USART!");
+  fflush(stdout);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -276,27 +279,6 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-int _getpid(void) {
-  return 1;
-}
-
-void _kill(int pid) { while(1) ; }
-
-int _end;
-
-static char *end_of_data = (char *) &_end;
-
-/*
- * WARNING: No stack/heap colition check.
- * For check colition and stack growing overflow use SP register value
- * or RAM end limit depeding of processor architecture
- */
-char *_sbrk (int delta) {
-        char *ptr = end_of_data;
-        end_of_data += delta;
-        return ptr;
-}
 
 /* USER CODE END 4 */
 
