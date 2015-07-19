@@ -34,6 +34,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 
+extern DMA_HandleTypeDef hdma_spi2_rx;
+
+extern DMA_HandleTypeDef hdma_spi2_tx;
+
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
@@ -171,6 +175,42 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+    /* Peripheral DMA init*/
+  
+    hdma_spi2_rx.Instance = DMA1_Stream3;
+    hdma_spi2_rx.Init.Channel = DMA_CHANNEL_0;
+    hdma_spi2_rx.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_spi2_rx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_spi2_rx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_spi2_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_spi2_rx.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_spi2_rx.Init.Mode = DMA_NORMAL;
+    hdma_spi2_rx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
+    hdma_spi2_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    hdma_spi2_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+    hdma_spi2_rx.Init.MemBurst = DMA_MBURST_SINGLE;
+    hdma_spi2_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
+    HAL_DMA_Init(&hdma_spi2_rx);
+
+    __HAL_LINKDMA(hspi,hdmarx,hdma_spi2_rx);
+
+    hdma_spi2_tx.Instance = DMA1_Stream4;
+    hdma_spi2_tx.Init.Channel = DMA_CHANNEL_0;
+    hdma_spi2_tx.Init.Direction = DMA_MEMORY_TO_PERIPH;
+    hdma_spi2_tx.Init.PeriphInc = DMA_PINC_DISABLE;
+    hdma_spi2_tx.Init.MemInc = DMA_MINC_ENABLE;
+    hdma_spi2_tx.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+    hdma_spi2_tx.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+    hdma_spi2_tx.Init.Mode = DMA_NORMAL;
+    hdma_spi2_tx.Init.Priority = DMA_PRIORITY_VERY_HIGH;
+    hdma_spi2_tx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+    hdma_spi2_tx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+    hdma_spi2_tx.Init.MemBurst = DMA_MBURST_SINGLE;
+    hdma_spi2_tx.Init.PeriphBurst = DMA_PBURST_SINGLE;
+    HAL_DMA_Init(&hdma_spi2_tx);
+
+    __HAL_LINKDMA(hspi,hdmatx,hdma_spi2_tx);
+
   /* USER CODE BEGIN SPI2_MspInit 1 */
 
   /* USER CODE END SPI2_MspInit 1 */
@@ -197,6 +237,9 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
     */
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14|GPIO_PIN_15);
 
+    /* Peripheral DMA DeInit*/
+    HAL_DMA_DeInit(hspi->hdmarx);
+    HAL_DMA_DeInit(hspi->hdmatx);
   }
   /* USER CODE BEGIN SPI2_MspDeInit 1 */
 

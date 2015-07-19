@@ -44,6 +44,8 @@ CRC_HandleTypeDef hcrc;
 I2C_HandleTypeDef hi2c1;
 
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi2_rx;
+DMA_HandleTypeDef hdma_spi2_tx;
 
 UART_HandleTypeDef huart2;
 
@@ -55,6 +57,7 @@ UART_HandleTypeDef huart2;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_CRC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI2_Init(void);
@@ -88,6 +91,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_CRC_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
@@ -133,18 +137,18 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 23;
-  RCC_OscInitStruct.PLL.PLLN = 309;
+  RCC_OscInitStruct.PLL.PLLM = 30;
+  RCC_OscInitStruct.PLL.PLLN = 302;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 8;
+  RCC_OscInitStruct.PLL.PLLQ = 6;
   HAL_RCC_OscConfig(&RCC_OscInitStruct);
 
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3);
+  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
   HAL_RCC_EnableCSS();
 
@@ -187,10 +191,10 @@ void MX_SPI2_Init(void)
   hspi2.Instance = SPI2;
   hspi2.Init.Mode = SPI_MODE_MASTER;
   hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi2.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi2.Init.DataSize = SPI_DATASIZE_16BIT;
+  hspi2.Init.CLKPolarity = SPI_POLARITY_HIGH;
+  hspi2.Init.CLKPhase = SPI_PHASE_2EDGE;
+  hspi2.Init.NSS = SPI_NSS_SOFT;
   hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLED;
@@ -213,6 +217,41 @@ void MX_USART2_UART_Init(void)
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
   HAL_UART_Init(&huart2);
+
+}
+
+/** 
+  * Enable DMA controller clock
+  * Configure DMA for memory to memory transfers
+  *   hdma_memtomem_dma2_stream0
+  */
+void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __DMA1_CLK_ENABLE();
+  // __DMA2_CLK_ENABLE();
+
+  /* Configure DMA request hdma_memtomem_dma2_stream0 on DMA2_Stream0 */
+  // hdma_memtomem_dma2_stream0.Instance = DMA2_Stream0;
+  // hdma_memtomem_dma2_stream0.Init.Channel = DMA_CHANNEL_0;
+  // hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  // hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
+  // hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
+  // hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+  // hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+  // hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
+  // hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_MEDIUM;
+  // hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+  // hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+  // hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;
+  // hdma_memtomem_dma2_stream0.Init.PeriphBurst = DMA_PBURST_SINGLE;
+  // HAL_DMA_Init(&hdma_memtomem_dma2_stream0);
+
+  /* DMA interrupt init */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+  HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
 
 }
 
