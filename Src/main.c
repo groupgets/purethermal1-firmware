@@ -33,6 +33,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 #include "usb_device.h"
+#include "lepton.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -71,6 +72,8 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 #define WHITE_LED_TOGGLE	(HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
+extern volatile int restart_frame;
+#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
 
 /* USER CODE END 0 */
 
@@ -78,6 +81,9 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+  int frames = 0;
+  uint32_t last_tick = HAL_GetTick();
 
   /* USER CODE END 1 */
 
@@ -100,8 +106,13 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-  printf("Hello, USART!");
+  DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
+  lepton_init();
+  DEBUG_PRINTF("Initialized...\n\r");
+
+  // kick off the first transfer
+  lepton_transfer();
 
   /* USER CODE END 2 */
 
@@ -113,9 +124,29 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-    WHITE_LED_TOGGLE;
-    HAL_Delay(100);
+    while (!restart_frame)
+      HAL_Delay(1);
 
+    if (restart_frame == -1)
+    {
+      DEBUG_PRINTF("Synchronization lost\r\n");
+      HAL_Delay(200);
+    }
+
+    if ((frames % 30) == 0)
+    {
+      uint32_t curtick = HAL_GetTick();
+      uint32_t ticks = curtick - last_tick;
+      last_tick = curtick;
+      DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, restart_frame);
+    }
+
+    restart_frame = 0;
+    lepton_transfer();
+    frames++;
+    WHITE_LED_TOGGLE;
+
+    fflush(stdout);
   }
   /* USER CODE END 3 */
 
