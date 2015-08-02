@@ -12,8 +12,7 @@ OTHER_OPT = "-D__weak=__attribute__((weak))" "-D__packed=__attribute__((__packed
 CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=softfp -mfpu=fpv4-sp-d16
 SYSTEM = arm-none-eabi
 
-#LDSCRIPT = STM32F407ZG_FLASH.ld
-LDSCRIPT = "TrueSTUDIO/devboard Configuration/STM32F411CE_FLASH.ld"
+LDSCRIPT = Src/STM32f411CE_FLASH.ld
 
 SRCDIR := Src/
 INCDIR := Inc/
