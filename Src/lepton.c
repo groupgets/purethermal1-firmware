@@ -10,9 +10,6 @@
 
 #define LEPTON_USART_PORT (USART2)
 
-#define LEPTON_CS_HIGH    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_SET)
-#define LEPTON_CS_LOW    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, GPIO_PIN_RESET)
-
 #define LEPTON_RESET_L_HIGH	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET)
 #define LEPTON_RESET_L_LOW	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET)
 
@@ -101,8 +98,6 @@ int lepton_transfer(void)
 {
   HAL_StatusTypeDef status;
 
-  LEPTON_CS_LOW;
-
   do {
     if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)&raw_lepton_frame_packet, 82, 0)) != HAL_OK)
     {
@@ -135,8 +130,6 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
   // lepton frame complete
   int frame;
 
-  LEPTON_CS_HIGH;
-
   frame = raw_lepton_frame_packet[59 * 82] & 0xff;
 
   if (frame != 59)
@@ -152,7 +145,6 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 void lepton_init(void )
 {
 
-  LEPTON_CS_HIGH;
 	LEPTON_RESET_L_LOW;
   LEPTON_PW_DWN_LOW;
 
