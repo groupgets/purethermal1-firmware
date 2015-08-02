@@ -37,6 +37,7 @@
 /* USER CODE BEGIN Includes */
 
 #include "lepton.h"
+DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 /* USER CODE END Includes */
 
@@ -261,23 +262,23 @@ void MX_DMA_Init(void)
 {
   /* DMA controller clock enable */
   __DMA1_CLK_ENABLE();
-  // __DMA2_CLK_ENABLE();
+  __DMA2_CLK_ENABLE();
 
   /* Configure DMA request hdma_memtomem_dma2_stream0 on DMA2_Stream0 */
-  // hdma_memtomem_dma2_stream0.Instance = DMA2_Stream0;
-  // hdma_memtomem_dma2_stream0.Init.Channel = DMA_CHANNEL_0;
-  // hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
-  // hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
-  // hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
-  // hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-  // hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-  // hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
-  // hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_MEDIUM;
-  // hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
-  // hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
-  // hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;
-  // hdma_memtomem_dma2_stream0.Init.PeriphBurst = DMA_PBURST_SINGLE;
-  // HAL_DMA_Init(&hdma_memtomem_dma2_stream0);
+  hdma_memtomem_dma2_stream0.Instance = DMA2_Stream0;
+  hdma_memtomem_dma2_stream0.Init.Channel = DMA_CHANNEL_0;
+  hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+  hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_MEDIUM;
+  hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
+  hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+  hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;
+  hdma_memtomem_dma2_stream0.Init.PeriphBurst = DMA_PBURST_SINGLE;
+  HAL_DMA_Init(&hdma_memtomem_dma2_stream0);
 
   /* DMA interrupt init */
   HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
@@ -334,17 +335,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  // These control power, make sure they're high initially so we don't shut ourselves down on init
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
-
-  /*Configure GPIO pins : PB5 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
