@@ -18,28 +18,14 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-#define VOSPI_FRAME_SIZE (164)
-#define LEPTON_IMAGE_SIZE ((60*80)*2)
-uint16_t raw_lepton_frame_packet[VOSPI_FRAME_SIZE/2 * 60];
 uint16_t leptonpacket[LEPTON_IMAGE_SIZE];
 
-int lost_frame_counter = 0;
-int last_frame_number;
-int frame_complete = 0;
-int start_image = 0;
-int need_resync = 0;
-int current_crc;
-int last_crc;
-int new_frame = 0;
-int frame_counter = 0;
-
-volatile int restart_frame = 0;
-
+#define RING_SIZE (3)
+lepton_buffer lepton_buffers[RING_SIZE];
 
 int print_image_binary_state =-1;
 int print_image_binary_i = 0;
 int print_image_binary_j = 0;
-
 
 uint8_t binary_header[] = {0xde,0xad,0xbe,0xef};
 //uint8_t binary_header[] = {0xad,0xde,0xef,0xbe};
@@ -94,20 +80,36 @@ void print_image_binary_background(void)
   }
 }
 
-int lepton_transfer(void)
+lepton_buffer* get_next_lepton_buffer()
+{
+  static int buffer = 0;
+  lepton_buffer* packet = &lepton_buffers[buffer];
+  packet->status = LEPTON_STATUS_OK;
+  buffer = ((buffer + 1) % RING_SIZE);
+  return packet;
+}
+
+lepton_status complete_lepton_transfer(lepton_buffer* buffer)
+{
+  // TODO: additional synchronization desired?
+  return buffer->status;
+}
+
+lepton_buffer* lepton_transfer(void)
 {
   HAL_StatusTypeDef status;
+  lepton_buffer* buf = get_next_lepton_buffer();
 
   do {
-    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)&raw_lepton_frame_packet, 82, 0)) != HAL_OK)
+    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)buf->data, 82, 0)) != HAL_OK)
     {
       DEBUG_PRINTF("Error setting up SPI receive: %d\r\n", status);
       continue;
     }
 
-    if((raw_lepton_frame_packet[0] & 0x0f00) != 0x0f00)
+    if((buf->data[0] & 0x0f00) != 0x0f00)
     {
-      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&raw_lepton_frame_packet[82], 82 * 59);
+      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->data[82], 82 * 59);
       if (status)
       {
         DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);
@@ -117,7 +119,8 @@ int lepton_transfer(void)
 
   } while (1);
 
-	return 0;
+  buf->status = LEPTON_STATUS_TRANSFERRING;
+	return buf;
 }
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
@@ -128,22 +131,30 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   // lepton frame complete
+  uint8_t* data = hspi->pRxBuffPtr;
+  lepton_buffer* buffer = (lepton_buffer*)(data - VOSPI_FRAME_SIZE - 2);
   int frame;
 
-  frame = raw_lepton_frame_packet[59 * 82] & 0xff;
+  frame = buffer->data[59 * 82] & 0xff;
 
   if (frame != 59)
   {
-    restart_frame = -1;
+    buffer->status = LEPTON_STATUS_RESYNC;
   }
   else
   {
-    restart_frame = frame;
+    buffer->status = LEPTON_STATUS_OK;
   }
 }
 
 void lepton_init(void )
 {
+  int i;
+  for (i = 0; i < RING_SIZE; i++)
+  {
+    lepton_buffers[i].number = i;
+    lepton_buffers[i].status = LEPTON_STATUS_OK;
+  }
 
 	LEPTON_RESET_L_LOW;
   LEPTON_PW_DWN_LOW;
@@ -155,4 +166,3 @@ void lepton_init(void )
   LEPTON_RESET_L_HIGH;
 
 }
-

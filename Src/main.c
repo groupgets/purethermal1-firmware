@@ -94,6 +94,7 @@ int main(void)
 
   int frames = 0;
   uint32_t last_tick = HAL_GetTick();
+  lepton_buffer *current_buffer;
 
   /* USER CODE END 1 */
 
@@ -122,7 +123,7 @@ int main(void)
   DEBUG_PRINTF("Initialized...\n\r");
 
   // kick off the first transfer
-  lepton_transfer();
+  current_buffer = lepton_transfer();
 
   /* USER CODE END 2 */
 
@@ -134,10 +135,12 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-    while (!restart_frame)
+    while (complete_lepton_transfer(current_buffer) == LEPTON_STATUS_TRANSFERRING){
       HAL_Delay(1);
+      fflush(stdout);
+    }
 
-    if (restart_frame == -1)
+    if ((current_buffer->status & LEPTON_STATUS_RESYNC) == LEPTON_STATUS_RESYNC)
     {
       DEBUG_PRINTF("Synchronization lost\r\n");
       HAL_Delay(200);
@@ -148,11 +151,10 @@ int main(void)
       uint32_t curtick = HAL_GetTick();
       uint32_t ticks = curtick - last_tick;
       last_tick = curtick;
-      DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, restart_frame);
+      DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
     }
 
-    restart_frame = 0;
-    lepton_transfer();
+    current_buffer = lepton_transfer();
     frames++;
     WHITE_LED_TOGGLE;
 
