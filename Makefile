@@ -33,6 +33,7 @@ LIBINC += -IMiddlewares/Third_Party/FatFs/src/drivers
 LIBINC += -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F
 LIBINC += -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc
 LIBINC += -IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
+LIBINC += -IMiddlewares/ST/STM32_USB_Device_Library/Class/video/Inc
 LIBINC += -IMiddlewares/ST/STM32_USB_Host_Library/Core/Inc
 LIBINC += -IMiddlewares/ST/STM32_USB_Host_Library/Class/MSC/Inc
 LIBINC += -IMiddlewares/Third_Party/FatFs/src
