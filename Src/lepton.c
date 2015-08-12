@@ -18,67 +18,8 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-uint16_t leptonpacket[LEPTON_IMAGE_SIZE];
-
 #define RING_SIZE (3)
 lepton_buffer lepton_buffers[RING_SIZE];
-
-int print_image_binary_state =-1;
-int print_image_binary_i = 0;
-int print_image_binary_j = 0;
-
-uint8_t binary_header[] = {0xde,0xad,0xbe,0xef};
-//uint8_t binary_header[] = {0xad,0xde,0xef,0xbe};
-
-void print_image_binary_background(void)
-{
-  uint8_t *data_pointer;
-  if( print_image_binary_state == -1)
-  {
-    return;
-  }
-  else if( print_image_binary_state == 0)
-  {
-    //VCP_DataTx((uint8_t *) binary_header,4);
-    DEBUG_PRINTF("\n%02x %02x %02x %02x\n", binary_header[0], binary_header[1], binary_header[2], binary_header[3]);
-    print_image_binary_state = 5;
-    //print_image_binary_state = 6;
-    print_image_binary_i=0;
-  }
-  else if( print_image_binary_state == 5)
-  {
-    //VCP_put_char((leptonpacket[print_image_binary_i*80 + print_image_binary_j]>>8)&0xff);
-    //VCP_put_char(leptonpacket[print_image_binary_i*80 + print_image_binary_j]&0xff);
-    DEBUG_PRINTF("%04x ", leptonpacket[print_image_binary_i*80 + print_image_binary_j]&0xff);
-    DEBUG_PRINTF("%04x ", (leptonpacket[print_image_binary_i*80 + print_image_binary_j]>>8)&0xff);
-
-    print_image_binary_j++;
-    if(print_image_binary_j>=80)
-    {
-      print_image_binary_j=0;
-      print_image_binary_i+= 1;
-      if(print_image_binary_i>=60)
-      {
-        print_image_binary_state = -1;
-      }
-    }
-  }
-  else if( print_image_binary_state == 6)
-  {
-    data_pointer = (uint8_t *) leptonpacket;
-    //VCP_DataTx(data_pointer+print_image_binary_i,1);
-    DEBUG_PRINTF("%p", data_pointer+print_image_binary_i);
-
-    print_image_binary_i+=1;
-
-    if(print_image_binary_i>=(60*80*2))
-    {
-      print_image_binary_i=0;
-      print_image_binary_state = -1;
-    }
-
-  }
-}
 
 lepton_buffer* get_next_lepton_buffer()
 {
