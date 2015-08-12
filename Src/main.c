@@ -77,11 +77,11 @@ static void MX_USART2_UART_Init(void);
 extern volatile int restart_frame;
 #define DEBUG_PRINTF(...) printf(__VA_ARGS__);
 
-HAL_RCC_CSSCallback(void) {
+void HAL_RCC_CSSCallback(void) {
   printf("Oh no! HAL_RCC_CSSCallback()\r\n");
 }
 
-HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   printf("Yay! HAL_GPIO_EXTI_Callback()\r\n");
 }
 
