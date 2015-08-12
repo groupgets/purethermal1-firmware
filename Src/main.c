@@ -37,6 +37,8 @@
 /* USER CODE BEGIN Includes */
 
 #include "lepton.h"
+#include "usbd_uvc.h"
+#include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 /* USER CODE END Includes */
@@ -85,6 +87,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   printf("Yay! HAL_GPIO_EXTI_Callback()\r\n");
 }
 
+extern volatile uint8_t uvc_stream_status;
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -95,6 +99,9 @@ int main(void)
   int frames = 0;
   uint32_t last_tick = HAL_GetTick();
   lepton_buffer *current_buffer;
+
+  uint8_t uvc_header[2] = { 2, 0 };
+  uint32_t uvc_xmit_row = 0;
 
   /* USER CODE END 1 */
 
@@ -157,6 +164,67 @@ int main(void)
     current_buffer = lepton_transfer();
     frames++;
     WHITE_LED_TOGGLE;
+
+    // perform stream initialization
+    if (uvc_stream_status == 1)
+    {
+      printf("Starting UVC stream...\r\n");
+
+      uvc_header[0] = 2;
+      uvc_header[1] = 0;
+      UVC_Transmit_FS(uvc_header, 2);
+
+  	  uvc_stream_status = 2;
+      uvc_xmit_row = 0;
+    }
+
+    // put image on stream as long as stream is open
+    while (uvc_stream_status == 2)
+    {
+      uint8_t packet[VIDEO_PACKET_SIZE];
+      uint16_t count = 0, i;
+
+      packet[0] = uvc_header[count++];
+      packet[1] = uvc_header[count++];
+
+      while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+      {
+        for (i = 2; i < 82; i++)
+        {
+          // packet[count++] = (uint8_t)((current_buffer->data[uvc_xmit_row * 82 + i] - minv) * maxv);
+
+          uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+
+          // Don't bother scaling the data, just center around 8192 (lepton core temperature)
+          if (val <= 8064)
+            val = 0;
+          else if (val >= 8320)
+            val = 255;
+          else
+            val -= 8064;
+
+          packet[count++] = (uint8_t)val;
+        }
+
+        uvc_xmit_row++;
+      }
+
+      // image is done
+      if (uvc_xmit_row == 60)
+      {
+        packet[1] |= 0x2; // Flag end of frame
+      }
+
+      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
+        ;
+
+      if (uvc_xmit_row == 60)
+      {
+        uvc_header[1] ^= 1; // toggle bit 0 for next new frame
+        uvc_xmit_row = 0;
+        break;
+      }
+    }
 
     fflush(stdout);
   }
