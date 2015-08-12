@@ -36,6 +36,7 @@
 #include "stm32f4xx_hal.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
+#include "stm32f4xx_hal_pcd.h"
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 

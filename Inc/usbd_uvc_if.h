@@ -31,26 +31,26 @@
 */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USBD_CDC_IF_H
-#define __USBD_CDC_IF_H
+#ifndef __USBD_UVC_IF_H
+#define __USBD_UVC_IF_H
 
 #ifdef __cplusplus
  extern "C" {
 #endif
 /* Includes ------------------------------------------------------------------*/
-#include "usbd_cdc.h"
+#include "usbd_uvc.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* Exported cariables --------------------------------------------------------*/
-extern USBD_CDC_ItfTypeDef  USBD_Interface_fops_FS;
+extern USBD_UVC_ItfTypeDef  USBD_Interface_fops_FS;
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-/** @defgroup USBD_CDC_IF_Exported_FunctionsPrototype
+/** @defgroup USBD_UVC_IF_Exported_FunctionsPrototype
   * @{
   */ 
-uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
+uint8_t UVC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /**
   * @}
@@ -60,6 +60,6 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 }
 #endif
   
-#endif /* __USBD_CDC_IF_H */
+#endif /* __USBD_UVC_IF_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
