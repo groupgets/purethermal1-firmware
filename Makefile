@@ -136,6 +136,8 @@ libclean: clean
 	@$(MAKE) -C $(MDLDIR) clean
 
 clean:
+	@$(MAKE) -C $(LIBDIR) clean
+	@$(MAKE) -C $(MDLDIR) clean
 	-rm -f $(OBJS)
 	-rm -f main.list main.out main.hex main.map main.bin .depend
 
