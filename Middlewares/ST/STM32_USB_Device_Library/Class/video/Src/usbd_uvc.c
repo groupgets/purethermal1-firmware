@@ -63,6 +63,9 @@
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
+//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
+#define DEBUG_PRINTF(...) 
+
 volatile uint8_t uvc_stream_status = 0;
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
@@ -489,12 +492,12 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
     case USB_REQ_GET_DESCRIPTOR: 
       if( (req->wValue >> 8) == CS_DEVICE)
       {
-        printf("USB_REQ_GET_DESCRIPTOR(CS_DEVICE)\r\n");
+        DEBUG_PRINTF("USB_REQ_GET_DESCRIPTOR(CS_DEVICE)\r\n");
         USBD_CtlSendData (pdev, (uint8_t *)USBD_UVC_CfgFSDesc + 18, MIN(USB_VIDEO_DESC_SIZ , req->wLength));
       }
       else
       {
-        printf("USB_REQ_GET_DESCRIPTOR\r\n");
+        DEBUG_PRINTF("USB_REQ_GET_DESCRIPTOR\r\n");
         USBD_CtlSendData (pdev, (uint8_t *)hcdc->data, req->wLength);
       }
       break;
@@ -513,10 +516,10 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
         // TODO: refactor this to callback user code instead of doing this here
 
         if (ifalt == 1) {
-          printf("USB_REQ_SET_INTERFACE: 1\r\n");
+          DEBUG_PRINTF("USB_REQ_SET_INTERFACE: 1\r\n");
         	uvc_stream_status = 1;
         } else {
-          printf("USB_REQ_SET_INTERFACE: %d\r\n", req->wValue);
+          DEBUG_PRINTF("USB_REQ_SET_INTERFACE: %d\r\n", req->wValue);
           USBD_LL_FlushEP(pdev,USB_ENDPOINT_IN(1));
         	uvc_stream_status = 0;
         }
@@ -529,12 +532,12 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       }
       break;
     default:
-      printf("Unhandled standard request %x\r\n", req->bRequest);
+      DEBUG_PRINTF("Unhandled standard request %x\r\n", req->bRequest);
     }
     break;
  
   default: 
-    printf("Unknown setup request: %x\r\n", req->bmRequest);
+    DEBUG_PRINTF("Unknown setup request: %x\r\n", req->bmRequest);
     return USBD_FAIL;
     break;
   }
@@ -595,7 +598,7 @@ static uint8_t  USBD_UVC_DataOut (USBD_HandleTypeDef *pdev, uint8_t epnum)
 
 static uint8_t  USBD_UVC_SOF (USBD_HandleTypeDef *pdev)
 {     
-  printf("USBD_UVC_SOF()\n");
+  DEBUG_PRINTF("USBD_UVC_SOF()\n");
 
   // This is being done in our main loop, but this callback doesn't seem to get called right now anyhow
 

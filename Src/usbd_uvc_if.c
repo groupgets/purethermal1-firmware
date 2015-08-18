@@ -33,6 +33,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_uvc_if.h"
 
+//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
+#define DEBUG_PRINTF(...) 
+
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
@@ -133,34 +136,34 @@ __ALIGN_BEGIN USBD_UVC_VideoControlTypeDef videoProbeControl __ALIGN_END =
 
 void print_vc(USBD_UVC_VideoControlTypeDef* vc)
 {
-  printf("bmHint %x %x\r\n", vc->bmHint[0], vc->bmHint[1]);                      // 2
-  printf("bFormatIndex %x\r\n", vc->bFormatIndex[0]);                // 3
-  printf("bFrameIndex %x\r\n", vc->bFrameIndex[0]);                 // 4
-  printf("dwFrameInterval %x %x %x %x\r\n", vc->dwFrameInterval[0],
+  DEBUG_PRINTF("bmHint %x %x\r\n", vc->bmHint[0], vc->bmHint[1]);                      // 2
+  DEBUG_PRINTF("bFormatIndex %x\r\n", vc->bFormatIndex[0]);                // 3
+  DEBUG_PRINTF("bFrameIndex %x\r\n", vc->bFrameIndex[0]);                 // 4
+  DEBUG_PRINTF("dwFrameInterval %x %x %x %x\r\n", vc->dwFrameInterval[0],
                                             vc->dwFrameInterval[1],
                                             vc->dwFrameInterval[2],
                                             vc->dwFrameInterval[3]);             // 8
-  printf("wKeyFrameRate %x %x\r\n", vc->wKeyFrameRate[0], vc->wKeyFrameRate[1]);               // 10
-  printf("wPFrameRate %x %x\r\n", vc->wPFrameRate[0], vc->wPFrameRate[1]);                 // 12
-  printf("wCompQuality %x %x\r\n", vc->wCompQuality[0], vc->wCompQuality[1]);                // 14
-  printf("wCompWindowSize %x %x\r\n", vc->wCompWindowSize[0], vc->wCompWindowSize[1]);             // 16
-  printf("wDelay %x %x\r\n", vc->wDelay[0], vc->wDelay[1]);                      // 18
-  printf("dwMaxVideoFrameSize %x %x %x %x\r\n", vc->dwMaxVideoFrameSize[0],
+  DEBUG_PRINTF("wKeyFrameRate %x %x\r\n", vc->wKeyFrameRate[0], vc->wKeyFrameRate[1]);               // 10
+  DEBUG_PRINTF("wPFrameRate %x %x\r\n", vc->wPFrameRate[0], vc->wPFrameRate[1]);                 // 12
+  DEBUG_PRINTF("wCompQuality %x %x\r\n", vc->wCompQuality[0], vc->wCompQuality[1]);                // 14
+  DEBUG_PRINTF("wCompWindowSize %x %x\r\n", vc->wCompWindowSize[0], vc->wCompWindowSize[1]);             // 16
+  DEBUG_PRINTF("wDelay %x %x\r\n", vc->wDelay[0], vc->wDelay[1]);                      // 18
+  DEBUG_PRINTF("dwMaxVideoFrameSize %x %x %x %x\r\n", vc->dwMaxVideoFrameSize[0],
                                                  vc->dwMaxVideoFrameSize[1],
                                                  vc->dwMaxVideoFrameSize[2],
                                                  vc->dwMaxVideoFrameSize[3]);// 22
-  printf("dwMaxPayloadTransferSize %x %x %x %x\r\n", vc->dwMaxPayloadTransferSize[0],
+  DEBUG_PRINTF("dwMaxPayloadTransferSize %x %x %x %x\r\n", vc->dwMaxPayloadTransferSize[0],
                                                      vc->dwMaxPayloadTransferSize[1],
                                                      vc->dwMaxPayloadTransferSize[2],
                                                      vc->dwMaxPayloadTransferSize[3]);    // 26
-  printf("dwClockFrequency %x %x %x %x\r\n", vc->dwClockFrequency[0],
+  DEBUG_PRINTF("dwClockFrequency %x %x %x %x\r\n", vc->dwClockFrequency[0],
                                               vc->dwClockFrequency[1],
                                               vc->dwClockFrequency[2],
                                               vc->dwClockFrequency[3]);
-  printf("bmFramingInfo %x\r\n", vc->bmFramingInfo[0]);
-  printf("bPreferedVersion %x\r\n", vc->bPreferedVersion[0]);
-  printf("bMinVersion %x\r\n", vc->bMinVersion[0]);
-  printf("bMaxVersion %x\r\n", vc->bMaxVersion[0]);
+  DEBUG_PRINTF("bmFramingInfo %x\r\n", vc->bmFramingInfo[0]);
+  DEBUG_PRINTF("bPreferedVersion %x\r\n", vc->bPreferedVersion[0]);
+  DEBUG_PRINTF("bMinVersion %x\r\n", vc->bMinVersion[0]);
+  DEBUG_PRINTF("bMaxVersion %x\r\n", vc->bMaxVersion[0]);
 }
 
 /**
@@ -226,7 +229,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
 { 
   int i;
   /* USER CODE BEGIN 5 */
-  printf("UVC_Control_FS(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+  DEBUG_PRINTF("UVC_Control_FS(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
 
   switch (cmd)
   {
@@ -235,19 +238,19 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
   case GET_MIN:
   case GET_MAX:
 
-    printf("UVC_Control_FS(): ");
+    DEBUG_PRINTF("UVC_Control_FS(): ");
     switch (cmd) {
-      case GET_DEF: printf("GET_DEF "); break;
-      case GET_CUR: printf("GET_CUR "); break;
-      case GET_MIN: printf("GET_MIN "); break;
-      case GET_MAX: printf("GET_MAX "); break;
-      default: printf("UNKNOWN "); break;
+      case GET_DEF: DEBUG_PRINTF("GET_DEF "); break;
+      case GET_CUR: DEBUG_PRINTF("GET_CUR "); break;
+      case GET_MIN: DEBUG_PRINTF("GET_MIN "); break;
+      case GET_MAX: DEBUG_PRINTF("GET_MAX "); break;
+      default: DEBUG_PRINTF("UNKNOWN "); break;
     }
 
     if(/*idx == 1 &&*/ value == 256)
     {
-      printf("probe\r\n");
-      print_vc(&videoProbeControl);
+      DEBUG_PRINTF("probe\r\n");
+      //print_vc(&videoProbeControl);
 
   	  //Probe Request
       // memcpy(pbuf, &videoProbeControl, sizeof(USBD_UVC_VideoControlTypeDef));
@@ -258,8 +261,8 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else if (/*idx == 1 &&*/ value == 512)
     {
-      printf("commit\r\n");
-      print_vc(&videoCommitControl);
+      DEBUG_PRINTF("commit\r\n");
+      //print_vc(&videoCommitControl);
 
   	  //Commit Request
       // memcpy(pbuf, &videoCommitControl, sizeof(USBD_UVC_VideoControlTypeDef));
@@ -270,26 +273,26 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else
     {
-      printf("FAIL\r\n");
+      DEBUG_PRINTF("FAIL\r\n");
       return USBD_FAIL;
     }
     break;
 
   case SET_CUR:
 
-    printf("UVC_Control_FS(): SET_CUR ");
+    DEBUG_PRINTF("UVC_Control_FS(): SET_CUR ");
 
     if(/*idx == 1 &&*/ value == 256)
     {
-      printf("probe\r\n");
-      print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
+      DEBUG_PRINTF("probe\r\n");
+      //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
       //Probe Request
       // memcpy(&videoProbeControl, pbuf, length);
       if (((USBD_UVC_VideoControlTypeDef*)pbuf)->bFormatIndex[0] > 1 || ((USBD_UVC_VideoControlTypeDef*)pbuf)->bFrameIndex[0] > 1)
       // if (memcmp(pbuf, &videoProbeControl, length) != 0)
       {
-        printf("ERROR videoProbeControl not in format/frame range\r\n");
+        DEBUG_PRINTF("ERROR videoProbeControl not in format/frame range\r\n");
         return USBD_FAIL;
       }
       else
@@ -303,8 +306,8 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else if (/*idx == 1 &&*/ value == 512)
     {
-      printf("commit\r\n");
-      print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
+      DEBUG_PRINTF("commit\r\n");
+      //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
       //Commit Request
       // memcpy (&videoCommitControl, pbuf, sizeof(USBD_UVC_VideoControlTypeDef));
@@ -315,7 +318,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       // if (((USBD_UVC_VideoControlTypeDef*)pbuf)->bFormatIndex != 1 || ((USBD_UVC_VideoControlTypeDef*)pbuf)->bFrameIndex != 1)
       // // if (memcmp(pbuf, &videoCommitControl, length) != 0)
       // {
-      //   printf("UVC_Control_FS(): SET_[CUR] videoCommitControl did not match\r\n");
+      //   DEBUG_PRINTF("UVC_Control_FS(): SET_[CUR] videoCommitControl did not match\r\n");
       //   return USBD_FAIL;
       // }
       // else
@@ -323,14 +326,14 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else
     {
-      printf("FAIL\r\n");
+      DEBUG_PRINTF("FAIL\r\n");
 
       return USBD_FAIL;
     }
     break;
 
   default:
-    printf("FAIL: UVC_Control_FS() unknown %x\r\n", cmd);
+    DEBUG_PRINTF("FAIL: UVC_Control_FS() unknown %x\r\n", cmd);
     return USBD_FAIL;
   }
 

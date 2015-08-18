@@ -6,7 +6,8 @@
 #include "lepton.h"
 
 // #define DEBUG_PRINTF(...) debug_printf( __VA_ARGS__);
-#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
+//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
+#define DEBUG_PRINTF(...) 
 
 #define LEPTON_USART_PORT (USART2)
 
