@@ -37,9 +37,12 @@
 /* USER CODE BEGIN Includes */
 
 #include "lepton.h"
+#include "lepton_i2c.h"
 #include "usbd_uvc.h"
 #include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
+
+//#define THERMAL_DATA_UART
 
 /* USER CODE END Includes */
 
@@ -134,6 +137,10 @@ int main(void)
 	lepton_init();
 	DEBUG_PRINTF("Initialized...\n\r");
 
+	HAL_Delay(1000);
+
+	read_lepton_regs();
+
 	// kick off the first transfer
 	current_buffer = lepton_transfer();
 
@@ -170,6 +177,7 @@ int main(void)
 		frames++;
 		WHITE_LED_TOGGLE;
 
+#ifdef THERMAL_DATA_UART 
 		if ((frames % 3) == 0)
 		{
 			count = 0;
@@ -186,6 +194,7 @@ int main(void)
 
 			send_lepton_via_usart(lepton_raw);
 		}
+#endif
 
 		// perform stream initialization
 		if (uvc_stream_status == 1)
