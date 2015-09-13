@@ -83,8 +83,11 @@ static void MX_USART2_UART_Init(void);
 
 #define WHITE_LED_TOGGLE  (HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
 extern volatile int restart_frame;
-//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
-#define DEBUG_PRINTF(...) 
+#ifdef USART_DEBUG
+#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)
+#endif
 
 void HAL_RCC_CSSCallback(void) {
   DEBUG_PRINTF("Oh no! HAL_RCC_CSSCallback()\r\n");
@@ -350,8 +353,11 @@ void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-  //huart2.Init.BaudRate = 115200;
+#ifdef USART_DEBUG
+  huart2.Init.BaudRate = USART_DEBUG_SPEED;
+#else
   huart2.Init.BaudRate = 921600;
+#endif
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;

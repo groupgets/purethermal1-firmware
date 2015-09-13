@@ -79,6 +79,10 @@ OCD	= sudo openocd \
 # INCLUDES = -I$(SRCDIR) $(LIBINC)
 INCLUDES = $(LIBINC)
 CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-strict-aliasing -O2 $(INCLUDES) -g -Wfatal-errors -g 
+ifdef USART_DEBUG
+	USART_DEBUG_SPEED = 115200
+	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
+endif
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp
 LDFLAGS = -Wl,--gc-sections,-Map=$*.map,-cref -T $(LDSCRIPT) $(CPU)
 ARFLAGS = cr
@@ -88,6 +92,8 @@ OBJDUMPFLAGS = -S
 STARTUP_OBJ = $(CMSIS_DEVSUP)/Source/Templates/gcc/startup_$(STARTUP_FILE).o
 SYSTEM_OBJ = $(CMSIS_DEVSUP)/Source/Templates/system_$(SYSTEM_FILE).o
 
+.PHONY: print_vars
+
 BIN = main.bin
 
 OBJS = $(sort \
@@ -96,7 +102,7 @@ OBJS = $(sort \
  $(STARTUP_OBJ) \
  $(SYSTEM_OBJ))
 
-all: $(BIN)
+all: $(BIN) print_vars
 
 reset:
 	$(OCD) -c init -c "reset run" -c shutdown
@@ -155,3 +161,9 @@ include .depend
 .s.o:
 	@echo as $<
 	@$(AS) $(ASFLAGS) -c -o $@ $<
+
+print_vars:
+ifdef USART_DEBUG
+	$(info *** Using USART for print debugging ***)
+	$(info USART_DEBUG_SPEED=$(USART_DEBUG_SPEED))
+endif

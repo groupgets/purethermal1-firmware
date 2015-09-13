@@ -33,8 +33,11 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_uvc_if.h"
 
-//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
-#define DEBUG_PRINTF(...) 
+#ifdef USART_DEBUG
+#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)
+#endif
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
