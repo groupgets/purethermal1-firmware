@@ -517,7 +517,6 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
         	uvc_stream_status = 1;
         } else {
           printf("USB_REQ_SET_INTERFACE: %d\r\n", req->wValue);
-          USBD_LL_FlushEP(pdev,USB_ENDPOINT_IN(1));
         	uvc_stream_status = 0;
         }
       }
