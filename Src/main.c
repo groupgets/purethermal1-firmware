@@ -88,6 +88,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 }
 
 extern volatile uint8_t uvc_stream_status;
+extern USBD_UVC_VideoControlTypeDef videoCommitControl;
 
 /* USER CODE END 0 */
 
@@ -101,7 +102,7 @@ int main(void)
   lepton_buffer *current_buffer;
 
   uint8_t uvc_header[2] = { 2, 0 };
-  uint32_t uvc_xmit_row = 0;
+  uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
 
   /* USER CODE END 1 */
 
@@ -176,6 +177,7 @@ int main(void)
 
   	  uvc_stream_status = 2;
       uvc_xmit_row = 0;
+      uvc_xmit_plane = 0;
     }
 
     // put image on stream as long as stream is open
@@ -184,44 +186,146 @@ int main(void)
       uint8_t packet[VIDEO_PACKET_SIZE];
       uint16_t count = 0, i;
 
-      packet[0] = uvc_header[count++];
-      packet[1] = uvc_header[count++];
+      packet[count++] = uvc_header[0];
+      packet[count++] = uvc_header[1];
 
-      while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+      switch (videoCommitControl.bFormatIndex[0])
       {
-        for (i = 2; i < 82; i++)
+        case FMT_INDEX_NV12:
         {
-          // packet[count++] = (uint8_t)((current_buffer->data[uvc_xmit_row * 82 + i] - minv) * maxv);
+          // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
 
-          uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+          switch (uvc_xmit_plane)
+          {
+            case 0: // Y
+            {
+              // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+              while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+              {
+                for (i = 2; i < 82; i++)
+                {
+                  uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
 
-          // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-          if (val <= 8064)
-            val = 0;
-          else if (val >= 8320)
-            val = 255;
-          else
-            val -= 8064;
+                  // Don't bother scaling the data, just center around 8192 (lepton core temperature)
+                  if (val <= 8064)
+                    val = 0;
+                  else if (val >= 8320)
+                    val = 255;
+                  else
+                    val -= 8064;
 
-          packet[count++] = (uint8_t)val;
+                  packet[count++] = (uint8_t)val;
+                }
+
+                uvc_xmit_row++;
+              }
+
+              if (uvc_xmit_row == 60)
+              {
+                uvc_xmit_plane++;
+                uvc_xmit_row = 0;
+              }
+
+              break;
+            }
+            case 1: // VU
+            {
+              while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
+              {
+                for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
+                  packet[count++] = 0;
+
+                uvc_xmit_row++;
+              }
+
+              // image is done
+              if (uvc_xmit_row == 30)
+              {
+                if (uvc_xmit_plane == 2)
+                  packet[1] |= 0x2; // Flag end of frame
+                else
+                {
+                  uvc_xmit_plane++;
+                  uvc_xmit_row = 0;
+                }
+              }
+
+              break;
+            }
+          }
+  
+          break;
         }
+        case FMT_INDEX_GREY:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 2; i < 82; i++)
+            {
+              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
 
-        uvc_xmit_row++;
+              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
+              if (val <= 8064)
+                val = 0;
+              else if (val >= 8320)
+                val = 255;
+              else
+                val -= 8064;
+
+              packet[count++] = (uint8_t)val;
+            }
+
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == 60)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        case FMT_INDEX_Y16:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 2; i < 82; i++)
+            {
+              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              packet[count++] = (uint8_t)((val >> 0) & 0xFF);
+              packet[count++] = (uint8_t)((val >> 8) & 0xFF);
+            }
+
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == 60)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        default:
+          break;
       }
 
-      // image is done
-      if (uvc_xmit_row == 60)
-      {
-        packet[1] |= 0x2; // Flag end of frame
-      }
+      // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
+      // fflush(stdout);
 
       while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
         ;
 
-      if (uvc_xmit_row == 60)
+      if (packet[1] & 0x2)
       {
         uvc_header[1] ^= 1; // toggle bit 0 for next new frame
         uvc_xmit_row = 0;
+        uvc_xmit_plane = 0;
+        printf("Frame complete\r\n");
         break;
       }
     }

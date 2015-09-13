@@ -171,7 +171,6 @@ USBD_ClassTypeDef  USBD_UVC =
   USBD_UVC_GetDeviceQualifierDescriptor,
 };
 
-
 /* USB UVC device Configuration Descriptor */
 __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
 {
@@ -183,7 +182,7 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   0x01,                                      // bConfigurationValue      1 ID of this configuration
   0x00,                                      // iConfiguration           0 no description available
   USB_CONFIG_BUS_POWERED ,                   // bmAttributes          0x80 Bus Powered
-  USB_CONFIG_POWER_MA(100),                  // bMaxPower              100 mA
+  USB_CONFIG_POWER_MA(100),                  // bMaxPower              500 mA
   
   
   /* Interface Association Descriptor */
@@ -236,15 +235,42 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   WBVAL(0x0000),                             // wOcularFocalLength       0
   0x02,                                      // bControlSize             2
   0x00, 0x00,                                // bmControls          0x0000 no controls supported
-  
+
+  /* Processing Unit Descriptor */
+  0x0C,                           /* Descriptor size */
+  0x24,                           /* Class specific interface desc type */
+  0x05,                           /* Processing Unit Descriptor type */
+  0x02,                           /* ID of this terminal */
+  0x01,                           /* Source ID : 1 : Conencted to input terminal */
+  0x00,0x40,                      /* Digital multiplier */
+  0x03,                           /* Size of controls field for this terminal : 3 bytes */
+  0x00,0x00,0x00,                 /* No controls supported */
+  0x00,                           /* String desc index : Not used */
+
+  /* Extension Unit Descriptor */
+  0x1C,                           /* Descriptor size */
+  0x24,                           /* Class specific interface desc type */
+  0x06,                           /* Extension Unit Descriptor type */
+  0x03,                           /* ID of this terminal */
+  0xFF,0xFF,0xFF,0xFF,            /* 16 byte GUID */
+  0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,
+  0xFF,0xFF,0xFF,0xFF,
+  0x00,                           /* Number of controls in this terminal */
+  0x01,                           /* Number of input pins in this terminal */
+  0x02,                           /* Source ID : 2 : Connected to Proc Unit */
+  0x03,                           /* Size of controls field for this terminal : 3 bytes */
+  0x00,0x00,0x00,                 /* No controls supported */
+  0x00,                           /* String desc index : Not used */
+
   /* Output Terminal Descriptor */
   UVC_OUTPUT_TERMINAL_DESC_SIZE(0),          // bLength                  9
   CS_INTERFACE,                              // bDescriptorType         36 (INTERFACE)
   VC_OUTPUT_TERMINAL,                        // bDescriptorSubtype       3 (OUTPUT_TERMINAL)
-  0x02,                                      // bTerminalID              2 ID of this Terminal
+  0x04,                                      // bTerminalID              2 ID of this Terminal
   WBVAL(TT_STREAMING),                       // wTerminalType       0x0101 USB streaming terminal
   0x00,                                      // bAssocTerminal           0 no Terminal assiciated
-  0x01,                                      // bSourceID                1 input pin connected to output pin unit 1
+  0x03,                                      // bSourceID                1 input pin connected to output pin unit 1
   0x00,                                      // iTerminal                0 no description available
   
   
@@ -265,29 +291,30 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   
   
   /* Class-specific VS Header Descriptor (Input) */
-  UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(1,1),// bLength               14 13 + (1*1) (no specific controls used)
+  UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(3,1),// bLength               16 13 + (3*1) (no specific controls used)
   CS_INTERFACE,                              // bDescriptorType         36 (INTERFACE)
   VS_INPUT_HEADER,                           // bDescriptorSubtype       1 (INPUT_HEADER)
-  0x01,                                      // bNumFormats              1 one format descriptor follows
+  0x03,                                      // bNumFormats              1 one format descriptor follows
   WBVAL(VC_HEADER_SIZ),
   USB_ENDPOINT_IN(1),                        // bEndPointAddress      0x83 EP 3 IN
   0x00,                                      // bmInfo                   0 no dynamic format change supported
-  0x02,                                      // bTerminalLink            2 supplies terminal ID 2 (Output terminal)
+  0x04,                                      // bTerminalLink            2 supplies terminal ID 2 (Output terminal)
   0x00,                                      // bStillCaptureMethod      0 NO supports still image capture
   0x01,                                      // bTriggerSupport          0 HW trigger supported for still image capture
   0x00,                                      // bTriggerUsage            0 HW trigger initiate a still image capture
   0x01,                                      // bControlSize             1 one byte bmaControls field size
   0x00,                                      // bmaControls(0)           0 no VS specific controls
+  0x00,                                      // bmaControls(1)           0 no VS specific controls
+  0x00,                                      // bmaControls(2)           0 no VS specific controls
   
   
-  /* Class-specific VS Format Descriptor  */
   VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/
   CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
   VS_FORMAT_UNCOMPRESSED,               /* bDescriptorSubType : VS_FORMAT_UNCOMPRESSED subtype */
-  0x01,                                 /* bFormatIndex : First (and only) format descriptor */
+  FMT_INDEX_Y16,                                 /* bFormatIndex : Second format descriptor */
   0x01,                                 /* bNumFrameDescriptors : One frame descriptor for this format follows. */
-  GUID_VS_FORMAT,
-  BITS_PER_PIXEL,                       /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
+  GUID_VS_FORMAT_Y16,
+  16,                                    /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
   0x01,                                 /* bDefaultFrameIndex : Default frame index is 1. */
   0x00,                                 /* bAspectRatioX : Non-interlaced stream not required. */
   0x00,                                 /* bAspectRatioY : Non-interlaced stream not required. */
@@ -302,9 +329,84 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   0x02,                                 /* bmCapabilities : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */
   WBVAL(WIDTH),                         /* wWidth (2bytes): Width of frame is 128 pixels. */
   WBVAL(HEIGHT),                        /* wHeight (2bytes): Height of frame is 64 pixels. */
-  DBVAL(MIN_BIT_RATE),                  /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000 //5fps
-  DBVAL(MAX_BIT_RATE),                  /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000
-  DBVAL(MAX_FRAME_SIZE),                /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ // 128*64*2 = 16384 = 0x00004000
+  DBVAL(MIN_BIT_RATE(WIDTH,HEIGHT,16)),                  /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000 //5fps
+  DBVAL(MAX_BIT_RATE(WIDTH,HEIGHT,16)),                  /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000
+  DBVAL(MAX_FRAME_SIZE(WIDTH,HEIGHT,16)),                /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ // 128*64*2 = 16384 = 0x00004000
+  DBVAL(INTERVAL),				        /* dwDefaultFrameInterval : 1,000,000 * 100ns -> 10 FPS */ // 5 FPS -> 200ms -> 200,000 us -> 2,000,000 X 100ns = 0x001e8480
+  0x01,                                 /* bFrameIntervalType : Continuous frame interval */
+  DBVAL(INTERVAL),                      /* dwMinFrameInterval : 1,000,000 ns  *100ns -> 10 FPS */
+  
+  /* Color Matching Descriptor */
+  VS_COLOR_MATCHING_DESC_SIZE,          /* bLength */
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  0x0D,                                 /* bDescriptorSubType : VS_COLORFORMAT */
+  0x01,                                 /* bColorPrimarie : 1: BT.709, sRGB (default) */
+  0x01,                                 /* bTransferCharacteristics : 1: BT.709 (default) */
+  0x04,                                 /* bMatrixCoefficients : 1: BT. 709. */
+  
+  
+  VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FORMAT_UNCOMPRESSED,               /* bDescriptorSubType : VS_FORMAT_UNCOMPRESSED subtype */
+  FMT_INDEX_NV12,                                 /* bFormatIndex : First format descriptor */
+  0x01,                                 /* bNumFrameDescriptors : One frame descriptor for this format follows. */
+  GUID_VS_FORMAT_NV12,
+  12,                                   /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
+  0x01,                                 /* bDefaultFrameIndex : Default frame index is 1. */
+  0x00,                                 /* bAspectRatioX : Non-interlaced stream not required. */
+  0x00,                                 /* bAspectRatioY : Non-interlaced stream not required. */
+  0x00,                                 /* bmInterlaceFlags : Non-interlaced stream */
+  0x00,                                 /* bCopyProtect : No restrictions imposed on the duplication of this video stream. */
+  
+  /* Class-specific VS Frame Descriptor */
+  VS_FRAME_UNCOMPRESSED_DESC_SIZE,      /* bLength 30*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FRAME_UNCOMPRESSED,                /* bDescriptorSubType : VS_FRAME_UNCOMPRESSED */
+  0x01,                                 /* bFrameIndex : First (and only) frame descriptor */
+  0x02,                                 /* bmCapabilities : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */
+  WBVAL(WIDTH),                         /* wWidth (2bytes): Width of frame is 128 pixels. */
+  WBVAL(HEIGHT),                        /* wHeight (2bytes): Height of frame is 64 pixels. */
+  DBVAL(MIN_BIT_RATE(WIDTH,HEIGHT,12)),                  /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000 //5fps
+  DBVAL(MAX_BIT_RATE(WIDTH,HEIGHT,12)),                  /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000
+  DBVAL(MAX_FRAME_SIZE(WIDTH,HEIGHT,12)),                /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ // 128*64*2 = 16384 = 0x00004000
+  DBVAL(INTERVAL),				        /* dwDefaultFrameInterval : 1,000,000 * 100ns -> 10 FPS */ // 5 FPS -> 200ms -> 200,000 us -> 2,000,000 X 100ns = 0x001e8480
+  0x01,                                 /* bFrameIntervalType : Continuous frame interval */
+  DBVAL(INTERVAL),                      /* dwMinFrameInterval : 1,000,000 ns  *100ns -> 10 FPS */
+  
+  /* Color Matching Descriptor */
+  VS_COLOR_MATCHING_DESC_SIZE,          /* bLength */
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  0x0D,                                 /* bDescriptorSubType : VS_COLORFORMAT */
+  0x01,                                 /* bColorPrimarie : 1: BT.709, sRGB (default) */
+  0x01,                                 /* bTransferCharacteristics : 1: BT.709 (default) */
+  0x04,                                 /* bMatrixCoefficients : 1: BT. 709. */
+  
+  
+  /* Class-specific VS Format Descriptor  */
+  VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FORMAT_UNCOMPRESSED,               /* bDescriptorSubType : VS_FORMAT_UNCOMPRESSED subtype */
+  FMT_INDEX_GREY,                                 /* bFormatIndex : Second format descriptor */
+  0x01,                                 /* bNumFrameDescriptors : One frame descriptor for this format follows. */
+  GUID_VS_FORMAT_GREY,
+  8,                                    /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
+  0x01,                                 /* bDefaultFrameIndex : Default frame index is 1. */
+  0x00,                                 /* bAspectRatioX : Non-interlaced stream not required. */
+  0x00,                                 /* bAspectRatioY : Non-interlaced stream not required. */
+  0x00,                                 /* bmInterlaceFlags : Non-interlaced stream */
+  0x00,                                 /* bCopyProtect : No restrictions imposed on the duplication of this video stream. */
+  
+  /* Class-specific VS Frame Descriptor */
+  VS_FRAME_UNCOMPRESSED_DESC_SIZE,      /* bLength 30*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FRAME_UNCOMPRESSED,                /* bDescriptorSubType : VS_FRAME_UNCOMPRESSED */
+  0x01,                                 /* bFrameIndex : First (and only) frame descriptor */
+  0x02,                                 /* bmCapabilities : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */
+  WBVAL(WIDTH),                         /* wWidth (2bytes): Width of frame is 128 pixels. */
+  WBVAL(HEIGHT),                        /* wHeight (2bytes): Height of frame is 64 pixels. */
+  DBVAL(MIN_BIT_RATE(WIDTH,HEIGHT,8)),                  /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000 //5fps
+  DBVAL(MAX_BIT_RATE(WIDTH,HEIGHT,8)),                  /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000
+  DBVAL(MAX_FRAME_SIZE(WIDTH,HEIGHT,8)),                /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ // 128*64*2 = 16384 = 0x00004000
   DBVAL(INTERVAL),				        /* dwDefaultFrameInterval : 1,000,000 * 100ns -> 10 FPS */ // 5 FPS -> 200ms -> 200,000 us -> 2,000,000 X 100ns = 0x001e8480
   0x01,                                 /* bFrameIntervalType : Continuous frame interval */
   DBVAL(INTERVAL),                      /* dwMinFrameInterval : 1,000,000 ns  *100ns -> 10 FPS */

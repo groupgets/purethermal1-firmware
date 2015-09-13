@@ -102,7 +102,7 @@ __ALIGN_BEGIN USBD_UVC_VideoControlTypeDef videoCommitControl __ALIGN_END =
   {0x00,0x00,},                     // wCompQuality
   {0x00,0x00,},                     // wCompWindowSize
   {0x00,0x00,},                      // wDelay
-  {DBVAL(MAX_FRAME_SIZE),},    // dwMaxVideoFrameSize
+  {DBVAL(MAX_FRAME_SIZE(80,60,12)),},    // dwMaxVideoFrameSize
   {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
   {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
   {0x00},                           // bmFramingInfo
@@ -122,7 +122,7 @@ __ALIGN_BEGIN USBD_UVC_VideoControlTypeDef videoProbeControl __ALIGN_END =
   {0x00,0x00,},                     // wCompQuality
   {0x00,0x00,},                     // wCompWindowSize
   {0x00,0x00,},                      // wDelay
-  {DBVAL(MAX_FRAME_SIZE),},    // dwMaxVideoFrameSize
+  {DBVAL(MAX_FRAME_SIZE(80,60,12)),},    // dwMaxVideoFrameSize
   {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
   {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
   {0x00},                           // bmFramingInfo
@@ -153,6 +153,7 @@ void print_vc(USBD_UVC_VideoControlTypeDef* vc)
                                                      vc->dwMaxPayloadTransferSize[1],
                                                      vc->dwMaxPayloadTransferSize[2],
                                                      vc->dwMaxPayloadTransferSize[3]);    // 26
+#ifdef UVC_1_1
   printf("dwClockFrequency %x %x %x %x\r\n", vc->dwClockFrequency[0],
                                               vc->dwClockFrequency[1],
                                               vc->dwClockFrequency[2],
@@ -161,6 +162,7 @@ void print_vc(USBD_UVC_VideoControlTypeDef* vc)
   printf("bPreferedVersion %x\r\n", vc->bPreferedVersion[0]);
   printf("bMinVersion %x\r\n", vc->bMinVersion[0]);
   printf("bMaxVersion %x\r\n", vc->bMaxVersion[0]);
+#endif
 }
 
 /**
@@ -246,15 +248,62 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
 
     if(/*idx == 1 &&*/ value == 256)
     {
+      USBD_UVC_VideoControlTypeDef *rtnBuf = (USBD_UVC_VideoControlTypeDef*)pbuf;
       printf("probe\r\n");
-      print_vc(&videoProbeControl);
+      printf("from host:\r\n");
+      print_vc(rtnBuf);
 
-  	  //Probe Request
-      // memcpy(pbuf, &videoProbeControl, sizeof(USBD_UVC_VideoControlTypeDef));
-      for (i = 0; i < sizeof(USBD_UVC_VideoControlTypeDef) && i < length; i++)
+      if (cmd == GET_DEF)
       {
-        pbuf[i] = ((uint8_t*)&videoProbeControl)[i];
+        memcpy(rtnBuf,
+          &(USBD_UVC_VideoControlTypeDef) {
+            {0x00,0x00},                      // bmHint
+            {0x01},                           // bFormatIndex
+            {0x01},                           // bFrameIndex
+            {DBVAL(INTERVAL),},          // dwFrameInterval
+            {0x00,0x00,},                     // wKeyFrameRate
+            {0x00,0x00,},                     // wPFrameRate
+            {0x00,0x00,},                     // wCompQuality
+            {0x00,0x00,},                     // wCompWindowSize
+            {0x00,0x00,},                      // wDelay
+            {DBVAL(MAX_FRAME_SIZE(80,60,8)),},    // dwMaxVideoFrameSize
+            {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
+            {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
+            {0x00},                           // bmFramingInfo
+            {0x00},                           // bPreferedVersion
+            {0x00},                           // bMinVersion
+            {0x00},                           // bMaxVersion
+          }, length);
       }
+      else if (cmd == GET_CUR)
+      {
+        memcpy(rtnBuf, &videoProbeControl, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
+      }
+      else
+      {
+        memcpy(rtnBuf->dwMaxPayloadTransferSize, (uint8_t[]){ DBVAL(VIDEO_PACKET_SIZE) }, 4);
+        memcpy(rtnBuf->dwFrameInterval, (uint8_t[]){ DBVAL(INTERVAL) }, 4);
+        memcpy(rtnBuf->wKeyFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
+        memcpy(rtnBuf->wPFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
+        memcpy(rtnBuf->wCompQuality, (uint8_t[]){ WBVAL(0) }, 2);
+        memcpy(rtnBuf->wCompWindowSize, (uint8_t[]){ WBVAL(0) }, 2);
+        memcpy(rtnBuf->wDelay, (uint8_t[]){ WBVAL(0) }, 2);
+
+        switch(rtnBuf->bFormatIndex[0]) {
+        case FMT_INDEX_NV12:
+          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
+          break;
+        case FMT_INDEX_GREY:
+          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,8)) }, 4);
+          break;
+        default:
+          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,16)) }, 4);
+          break;
+        }
+      }
+
+      printf("returning:\r\n");
+      print_vc(rtnBuf);
     }
     else if (/*idx == 1 &&*/ value == 512)
     {
@@ -262,11 +311,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       print_vc(&videoCommitControl);
 
   	  //Commit Request
-      // memcpy(pbuf, &videoCommitControl, sizeof(USBD_UVC_VideoControlTypeDef));
-      for (i = 0; i < sizeof(USBD_UVC_VideoControlTypeDef) && i < length; i++)
-      {
-        pbuf[i] = ((uint8_t*)&videoCommitControl)[i];
-      }
+      memcpy(pbuf, &videoCommitControl, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
     }
     else
     {
@@ -276,50 +321,49 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     break;
 
   case SET_CUR:
-
+  {
     printf("UVC_Control_FS(): SET_CUR ");
+    USBD_UVC_VideoControlTypeDef *rtnBuf = (USBD_UVC_VideoControlTypeDef*)pbuf;
+
+    if (rtnBuf->bFormatIndex[0] > 3)
+    {
+      printf("\r\nBogus bFormatIndex value, ignoring\r\n");
+      break;
+    }
+
+    memcpy(rtnBuf->dwMaxPayloadTransferSize, (uint8_t[]){ DBVAL(VIDEO_PACKET_SIZE) }, 4);
+    memcpy(rtnBuf->dwFrameInterval, (uint8_t[]){ DBVAL(INTERVAL) }, 4);
+    memcpy(rtnBuf->wKeyFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
+    memcpy(rtnBuf->wPFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
+    memcpy(rtnBuf->wCompQuality, (uint8_t[]){ WBVAL(0) }, 2);
+    memcpy(rtnBuf->wCompWindowSize, (uint8_t[]){ WBVAL(0) }, 2);
+    memcpy(rtnBuf->wDelay, (uint8_t[]){ WBVAL(0) }, 2);
+
+    switch(rtnBuf->bFormatIndex[0]) {
+    case FMT_INDEX_NV12:
+      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
+      break;
+    case FMT_INDEX_GREY:
+      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,8)) }, 4);
+      break;
+    default:
+      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,16)) }, 4);
+      break;
+    }
 
     if(/*idx == 1 &&*/ value == 256)
     {
       printf("probe\r\n");
       print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
-      //Probe Request
-      // memcpy(&videoProbeControl, pbuf, length);
-      if (((USBD_UVC_VideoControlTypeDef*)pbuf)->bFormatIndex[0] > 1 || ((USBD_UVC_VideoControlTypeDef*)pbuf)->bFrameIndex[0] > 1)
-      // if (memcmp(pbuf, &videoProbeControl, length) != 0)
-      {
-        printf("ERROR videoProbeControl not in format/frame range\r\n");
-        return USBD_FAIL;
-      }
-      else
-      {
-        // memcpy(&videoProbeControl, pbuf, sizeof(USBD_UVC_VideoControlTypeDef));
-        for (i = 2; i < sizeof(USBD_UVC_VideoControlTypeDef) && i < length; i++)
-        {
-          ((uint8_t*)&videoProbeControl)[i] = pbuf[i];
-        }
-      }
+      memcpy(&videoProbeControl, pbuf, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
     }
     else if (/*idx == 1 &&*/ value == 512)
     {
       printf("commit\r\n");
       print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
-      //Commit Request
-      // memcpy (&videoCommitControl, pbuf, sizeof(USBD_UVC_VideoControlTypeDef));
-      for (i = 2; i < sizeof(USBD_UVC_VideoControlTypeDef) && i < length; i++)
-      {
-        ((uint8_t*)&videoCommitControl)[i] = pbuf[i];
-      }
-      // if (((USBD_UVC_VideoControlTypeDef*)pbuf)->bFormatIndex != 1 || ((USBD_UVC_VideoControlTypeDef*)pbuf)->bFrameIndex != 1)
-      // // if (memcmp(pbuf, &videoCommitControl, length) != 0)
-      // {
-      //   printf("UVC_Control_FS(): SET_[CUR] videoCommitControl did not match\r\n");
-      //   return USBD_FAIL;
-      // }
-      // else
-      //   memcpy (&videoCommitControl, pbuf, length);
+      memcpy(&videoCommitControl, pbuf, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
     }
     else
     {
@@ -328,7 +372,11 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       return USBD_FAIL;
     }
     break;
-
+  }
+  case GET_INFO:
+    printf("UVC_Control_FS(): get_info, this is probably wrong...\r\n", cmd);
+    pbuf[0] = 0x3;
+    break;
   default:
     printf("FAIL: UVC_Control_FS() unknown %x\r\n", cmd);
     return USBD_FAIL;
