@@ -5,9 +5,11 @@
 
 #include "lepton_i2c.h"
 
-// #define DEBUG_PRINTF(...) debug_printf( __VA_ARGS__);
-#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
-//#define DEBUG_PRINTF(...) 
+#ifdef USART_DEBUG
+#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)
+#endif
 
 extern I2C_HandleTypeDef hi2c1;
 

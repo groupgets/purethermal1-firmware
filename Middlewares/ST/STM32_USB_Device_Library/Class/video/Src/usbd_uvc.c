@@ -63,8 +63,11 @@
 #include "usbd_desc.h"
 #include "usbd_ctlreq.h"
 
-//#define DEBUG_PRINTF(...) printf(__VA_ARGS__);
-#define DEBUG_PRINTF(...) 
+#ifdef USART_DEBUG
+#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)
+#endif
 
 volatile uint8_t uvc_stream_status = 0;
 
