@@ -80,9 +80,15 @@ struct UVC_FRAME_DESC {
 #define GUID_VS_FORMAT_NV12 \
     'N',  'V',  '1',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
+#define GUID_VS_FORMAT_YU12 \
+    'I',  '4',  '2',  '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+
 #define FMT_INDEX_Y16 1
 #define FMT_INDEX_NV12 2
-#define FMT_INDEX_GREY 3
+#define FMT_INDEX_YU12 3
+#define FMT_INDEX_GREY 4
+
+#define NUM_FMT_INDEXES 4
 
 #define MAX_FRAME_SIZE(width, height, bits_per_pixel) ((unsigned long)((width*height*bits_per_pixel)>>3))
 // #define CAM_FPS                                       ((VIDEO_PACKET_SIZE*1000)/MAX_FRAME_SIZE)
@@ -207,7 +213,10 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
           UVC_OUTPUT_TERMINAL_DESC_SIZE(0))
 
 #define VC_HEADER_SIZ (unsigned int)(\
-          UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(3,1) + \
+          UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(4,1) + \
+          VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
+          VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
+          VS_COLOR_MATCHING_DESC_SIZE + \
           VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
           VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
           VS_COLOR_MATCHING_DESC_SIZE + \

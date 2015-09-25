@@ -297,6 +297,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
 
         switch(rtnBuf->bFormatIndex[0]) {
         case FMT_INDEX_NV12:
+        case FMT_INDEX_YU12:
           memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
           break;
         case FMT_INDEX_GREY:
@@ -331,7 +332,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     DEBUG_PRINTF("UVC_Control_FS(): SET_CUR ");
     USBD_UVC_VideoControlTypeDef *rtnBuf = (USBD_UVC_VideoControlTypeDef*)pbuf;
 
-    if (rtnBuf->bFormatIndex[0] > 3)
+    if (rtnBuf->bFormatIndex[0] > NUM_FMT_INDEXES)
     {
       DEBUG_PRINTF("\r\nBogus bFormatIndex value, ignoring\r\n");
       break;
@@ -347,6 +348,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
 
     switch(rtnBuf->bFormatIndex[0]) {
     case FMT_INDEX_NV12:
+    case FMT_INDEX_YU12:
       memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
       break;
     case FMT_INDEX_GREY:

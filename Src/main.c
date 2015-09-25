@@ -224,7 +224,9 @@ int main(void)
 
       switch (videoCommitControl.bFormatIndex[0])
       {
+        // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
         case FMT_INDEX_NV12:
+        case FMT_INDEX_YU12:
         {
           // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
 
