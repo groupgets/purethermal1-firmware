@@ -59,22 +59,42 @@
 #define WIDTH                                         ((unsigned int)80)
 #define HEIGHT                                        ((unsigned int)60)
 #define VIDEO_PACKET_SIZE                             ((unsigned int)(482))
-#define BITS_PER_PIXEL                                ((unsigned int)8)
 
-#define GUID_VS_FORMAT \
+struct UVC_FRAME_DESC {
+  unsigned int width;
+  unsigned int height;
+  unsigned int video_packet_size;
+  unsigned int bits_per_pixel;
+  const char* guid_vs_format;
+};
+
+#define GUID_VS_FORMAT_GREY \
     'Y',  '8',  '0',  '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-/*
-#define GUID_VS_FORMAT \
-    'Y',  'U',  'Y',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
-*/
+#define GUID_VS_FORMAT_Y16 \
+    'Y',  '1',  '6',  ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define BYTES_PER_PIXEL                               (BITS_PER_PIXEL>>3)
-#define MAX_FRAME_SIZE                                ((unsigned long)((WIDTH*HEIGHT*BITS_PER_PIXEL)>>3))
+#define GUID_VS_FORMAT_YUYV \
+    'Y',  'U',  'Y',  'V', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+
+#define GUID_VS_FORMAT_NV12 \
+    'N',  'V',  '1',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+
+#define GUID_VS_FORMAT_YU12 \
+    'I',  '4',  '2',  '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+
+#define FMT_INDEX_Y16 1
+#define FMT_INDEX_NV12 2
+#define FMT_INDEX_YU12 3
+#define FMT_INDEX_GREY 4
+
+#define NUM_FMT_INDEXES 4
+
+#define MAX_FRAME_SIZE(width, height, bits_per_pixel) ((unsigned long)((width*height*bits_per_pixel)>>3))
 // #define CAM_FPS                                       ((VIDEO_PACKET_SIZE*1000)/MAX_FRAME_SIZE)
 #define CAM_FPS                                       26
-#define MIN_BIT_RATE                                  ((unsigned long)(WIDTH*HEIGHT*BITS_PER_PIXEL*CAM_FPS))
-#define MAX_BIT_RATE                                  ((unsigned long)(WIDTH*HEIGHT*BITS_PER_PIXEL*CAM_FPS))
+#define MIN_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
+#define MAX_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
 #define INTERVAL                                      ((unsigned long)(10000000/CAM_FPS))
 
 #define USB_UVC_VCIF_NUM                              0
@@ -147,6 +167,9 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
 #define WBVAL(x) (x & 0xFF),((x >> 8) & 0xFF)
 #define DBVAL(x) (x & 0xFF),((x >> 8) & 0xFF),((x >> 16) & 0xFF),((x >> 24) & 0xFF)
 
+#define VALWB(x) ((x[0])|(x[1] << 8))
+#define VALDB(x) ((x[0])|(x[1] << 8)|(x[2] << 16)|(x[3] << 24))
+
 #define UVC_DATA_HS_IN_PACKET_SIZE                    VIDEO_PACKET_SIZE
 #define UVC_DATA_HS_OUT_PACKET_SIZE                   VIDEO_PACKET_SIZE
 
@@ -177,19 +200,32 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
   			  USB_LEN_CFG_DESC +\
   		    UVC_LEN_IF_ASSOCIATION_DESC +\
   		    USB_LEN_IF_DESC +  \
-  		    UVC_VC_INTERFACE_HEADER_DESC_SIZE(1) + \
-  		    UVC_CAMERA_TERMINAL_DESC_SIZE(2) + \
-  		    UVC_OUTPUT_TERMINAL_DESC_SIZE(0) + \
+  		    VC_TERMINAL_SIZ + \
   		    USB_LEN_IF_DESC +   \
-  		    UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(1,1) + \
-  		    VS_FORMAT_UNCOMPRESSED_DESC_SIZE +  \
-  		    VS_FRAME_UNCOMPRESSED_DESC_SIZE  +  \
-  		    VS_COLOR_MATCHING_DESC_SIZE  +\
+  		    VC_HEADER_SIZ + \
   		    USB_LEN_IF_DESC +  \
   		    USB_LEN_EP_DESC)
 
-#define VC_TERMINAL_SIZ (unsigned int)(UVC_VC_INTERFACE_HEADER_DESC_SIZE(1) + UVC_CAMERA_TERMINAL_DESC_SIZE(2) + UVC_OUTPUT_TERMINAL_DESC_SIZE(0))
-#define VC_HEADER_SIZ (unsigned int)(UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(1,1) + VS_FORMAT_UNCOMPRESSED_DESC_SIZE + VS_FRAME_UNCOMPRESSED_DESC_SIZE + VS_COLOR_MATCHING_DESC_SIZE)
+#define VC_TERMINAL_SIZ (unsigned int)(\
+          UVC_VC_INTERFACE_HEADER_DESC_SIZE(1) + \
+          UVC_CAMERA_TERMINAL_DESC_SIZE(2) + \
+          0x0C + 0x1C + \
+          UVC_OUTPUT_TERMINAL_DESC_SIZE(0))
+
+#define VC_HEADER_SIZ (unsigned int)(\
+          UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(4,1) + \
+          VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
+          VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
+          VS_COLOR_MATCHING_DESC_SIZE + \
+          VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
+          VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
+          VS_COLOR_MATCHING_DESC_SIZE + \
+          VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
+          VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
+          VS_COLOR_MATCHING_DESC_SIZE + \
+          VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
+          VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
+          VS_COLOR_MATCHING_DESC_SIZE)
 
 /* bMaxPower in Configuration Descriptor */
 #define USB_CONFIG_POWER_MA(mA)                       ((mA)/2)
