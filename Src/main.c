@@ -225,6 +225,7 @@ int main(void)
       switch (videoCommitControl.bFormatIndex[0])
       {
         // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
+        default:
         case FMT_INDEX_NV12:
         case FMT_INDEX_YU12:
         {
@@ -232,6 +233,7 @@ int main(void)
 
           switch (uvc_xmit_plane)
           {
+            default:
             case 0: // Y
             {
               // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
@@ -257,34 +259,52 @@ int main(void)
 
               if (uvc_xmit_row == 60)
               {
-                uvc_xmit_plane++;
+                uvc_xmit_plane = 1;
                 uvc_xmit_row = 0;
               }
 
               break;
             }
             case 1: // VU
+            case 2:
             {
-              while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
+              if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
               {
-                for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
-                  packet[count++] = 0;
-
-                uvc_xmit_row++;
-              }
-
-              // image is done
-              if (uvc_xmit_row == 30)
-              {
-                if (uvc_xmit_plane == 2)
-                  packet[1] |= 0x2; // Flag end of frame
-                else
+                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
                 {
-                  uvc_xmit_plane++;
-                  uvc_xmit_row = 0;
+                  for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
+                    packet[count++] = 128;
+
+                  uvc_xmit_row++;
+                }
+
+                if (uvc_xmit_row == 30)
+                  packet[1] |= 0x2; // Flag end of frame
+              }
+              else
+              {
+                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
+                {
+                  for (i = 0; i < 40 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
+                    packet[count++] = 128;
+
+                  uvc_xmit_row++;
+                }
+
+                // image is done
+                if (uvc_xmit_row == 30)
+                {
+                  if (uvc_xmit_plane == 1)
+                  {
+                    uvc_xmit_plane = 2;
+                    uvc_xmit_row = 0;
+                  }
+                  else
+                  {
+                    packet[1] |= 0x2; // Flag end of frame
+                  }
                 }
               }
-
               break;
             }
           }
@@ -345,8 +365,6 @@ int main(void)
 
           break;
         }
-        default:
-          break;
       }
 
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
@@ -360,7 +378,7 @@ int main(void)
         uvc_header[1] ^= 1; // toggle bit 0 for next new frame
         uvc_xmit_row = 0;
         uvc_xmit_plane = 0;
-        DEBUG_PRINTF("Frame complete\r\n");
+        // DEBUG_PRINTF("Frame complete\r\n");
         break;
       }
     }
