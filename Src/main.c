@@ -38,6 +38,7 @@
 
 #include "lepton.h"
 #include "lepton_i2c.h"
+#include "tmp007_i2c.h"
 #include "usbd_uvc.h"
 #include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
@@ -144,6 +145,7 @@ int main(void)
   HAL_Delay(1000);
 
   read_lepton_regs();
+  read_tmp007_regs();
 
   // kick off the first transfer
   current_buffer = lepton_transfer();
@@ -165,7 +167,8 @@ int main(void)
 
     if ((current_buffer->status & LEPTON_STATUS_RESYNC) == LEPTON_STATUS_RESYNC)
     {
-      DEBUG_PRINTF("Synchronization lost\r\n");
+      //DEBUG_PRINTF("Synchronization lost\r\n");
+      read_tmp007_regs();
       HAL_Delay(200);
     }
 
@@ -175,6 +178,7 @@ int main(void)
       uint32_t ticks = curtick - last_tick;
       last_tick = curtick;
       DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
+      read_tmp007_regs();
     }
 
     current_buffer = lepton_transfer();
