@@ -365,6 +365,38 @@ int main(void)
 
           break;
         }
+        case FMT_INDEX_YUYV:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 2; i < 82; i++)
+            {
+              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+
+              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
+              if (val <= 8064)
+                val = 0;
+              else if (val >= 8320)
+                val = 255;
+              else
+                val -= 8064;
+
+              packet[count++] = (uint8_t)val;
+              packet[count++] = 128;
+            }
+
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == 60)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
       }
 
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
