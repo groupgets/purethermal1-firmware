@@ -80,7 +80,7 @@ OCD	= sudo openocd \
 INCLUDES = $(LIBINC)
 CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-strict-aliasing -O2 $(INCLUDES) -g -Wfatal-errors -g 
 ifdef USART_DEBUG
-	USART_DEBUG_SPEED = 115200
+	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
 endif
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp

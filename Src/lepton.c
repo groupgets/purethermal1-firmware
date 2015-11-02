@@ -45,7 +45,7 @@ lepton_buffer* lepton_transfer(void)
   lepton_buffer* buf = get_next_lepton_buffer();
 
   do {
-    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)buf->data, 82, 0)) != HAL_OK)
+    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)buf->data, 82, 200)) != HAL_OK)
     {
       DEBUG_PRINTF("Error setting up SPI receive: %d\r\n", status);
       continue;
