@@ -297,10 +297,10 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   
   
   /* Class-specific VS Header Descriptor (Input) */
-  UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(4,1),// bLength               16 13 + (4*1) (no specific controls used)
+  UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(NUM_FMT_INDEXES,1),// bLength               16 13 + (4*1) (no specific controls used)
   CS_INTERFACE,                              // bDescriptorType         36 (INTERFACE)
   VS_INPUT_HEADER,                           // bDescriptorSubtype       1 (INPUT_HEADER)
-  0x04,                                      // bNumFormats              4 four format descriptors follow
+  NUM_FMT_INDEXES,                           // bNumFormats              4 four format descriptors follow
   WBVAL(VC_HEADER_SIZ),
   USB_ENDPOINT_IN(1),                        // bEndPointAddress      0x83 EP 3 IN
   0x00,                                      // bmInfo                   0 no dynamic format change supported
@@ -313,6 +313,44 @@ __ALIGN_BEGIN uint8_t USBD_UVC_CfgFSDesc[] __ALIGN_END =
   0x00,                                      // bmaControls(1)           0 no VS specific controls
   0x00,                                      // bmaControls(2)           0 no VS specific controls
   0x00,                                      // bmaControls(3)           0 no VS specific controls
+  0x00,                                      // bmaControls(4)           0 no VS specific controls
+  
+  
+  VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FORMAT_UNCOMPRESSED,               /* bDescriptorSubType : VS_FORMAT_UNCOMPRESSED subtype */
+  FMT_INDEX_YUYV,                                 /* bFormatIndex : First format descriptor */
+  0x01,                                 /* bNumFrameDescriptors : One frame descriptor for this format follows. */
+  GUID_VS_FORMAT_YUYV,
+  16,                                   /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
+  0x01,                                 /* bDefaultFrameIndex : Default frame index is 1. */
+  0x00,                                 /* bAspectRatioX : Non-interlaced stream not required. */
+  0x00,                                 /* bAspectRatioY : Non-interlaced stream not required. */
+  0x00,                                 /* bmInterlaceFlags : Non-interlaced stream */
+  0x00,                                 /* bCopyProtect : No restrictions imposed on the duplication of this video stream. */
+  
+  /* Class-specific VS Frame Descriptor */
+  VS_FRAME_UNCOMPRESSED_DESC_SIZE,      /* bLength 30*/
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  VS_FRAME_UNCOMPRESSED,                /* bDescriptorSubType : VS_FRAME_UNCOMPRESSED */
+  0x01,                                 /* bFrameIndex : First (and only) frame descriptor */
+  0x02,                                 /* bmCapabilities : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */
+  WBVAL(WIDTH),                         /* wWidth (2bytes): Width of frame is 128 pixels. */
+  WBVAL(HEIGHT),                        /* wHeight (2bytes): Height of frame is 64 pixels. */
+  DBVAL(MIN_BIT_RATE(WIDTH,HEIGHT,16)),                  /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000 //5fps
+  DBVAL(MAX_BIT_RATE(WIDTH,HEIGHT,16)),                  /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ // 128*64*16*5 = 655360 = 0x000A0000
+  DBVAL(MAX_FRAME_SIZE(WIDTH,HEIGHT,16)),                /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ // 128*64*2 = 16384 = 0x00004000
+  DBVAL(INTERVAL),				        /* dwDefaultFrameInterval : 1,000,000 * 100ns -> 10 FPS */ // 5 FPS -> 200ms -> 200,000 us -> 2,000,000 X 100ns = 0x001e8480
+  0x01,                                 /* bFrameIntervalType : Continuous frame interval */
+  DBVAL(INTERVAL),                      /* dwMinFrameInterval : 1,000,000 ns  *100ns -> 10 FPS */
+  
+  /* Color Matching Descriptor */
+  VS_COLOR_MATCHING_DESC_SIZE,          /* bLength */
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */
+  0x0D,                                 /* bDescriptorSubType : VS_COLORFORMAT */
+  0x01,                                 /* bColorPrimarie : 1: BT.709, sRGB (default) */
+  0x01,                                 /* bTransferCharacteristics : 1: BT.709 (default) */
+  0x04,                                 /* bMatrixCoefficients : 1: BT. 709. */
   
   
   VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/
