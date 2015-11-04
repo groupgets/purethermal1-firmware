@@ -25,7 +25,7 @@
 #define TMP007_I2CADDR (0x40<<1)
 #define TMP007_DEVID 0x1F
 
-
+long get_last_mili_celisius(void);
 HAL_StatusTypeDef tmp007_write_word(unsigned int reg,unsigned int data);
 uint16_t tmp007_read_reg(unsigned int reg);
 long get_mili_celisius(void);

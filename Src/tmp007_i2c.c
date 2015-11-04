@@ -19,6 +19,11 @@ int tmp007_init = 0;
 int16_t last_t_obj;
 long last_mili_celisius;
 
+long get_last_mili_celisius(void)
+{
+	return last_mili_celisius; 
+}
+
 HAL_StatusTypeDef tmp007_write_word(unsigned int reg,unsigned int word_data)
 {
 	uint8_t data[3];

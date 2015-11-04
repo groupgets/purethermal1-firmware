@@ -31,6 +31,7 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
+#include <stdint.h>
 #include "stm32f4xx_hal.h"
 #include "usb_device.h"
 
@@ -43,7 +44,10 @@
 #include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
+#define TMP007_OVERLAY
 //#define THERMAL_DATA_UART
+#define USART_DEBUG
+#define USART_DEBUG_SPEED (921600)
 
 /* USER CODE END Includes */
 
@@ -63,6 +67,8 @@ UART_HandleTypeDef huart2;
   
 uint8_t lepton_raw[60*80*2];
 uint8_t packet[VIDEO_PACKET_SIZE];
+lepton_buffer *current_buffer;
+lepton_buffer *last_buffer;
 
 /* USER CODE END PV */
 
@@ -82,6 +88,7 @@ static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN 0 */
 
+
 #define WHITE_LED_TOGGLE  (HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
 extern volatile int restart_frame;
 #ifdef USART_DEBUG
@@ -98,6 +105,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   DEBUG_PRINTF("Yay! HAL_GPIO_EXTI_Callback()\r\n");
 }
 
+#ifdef TMP007_OVERLAY 
+#include "ugui.h"
+UG_GUI gui; 
+void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
+{
+	last_buffer->data[(y*82)+(x+2)] = c;
+}
+#endif
+
 extern volatile uint8_t uvc_stream_status;
 extern USBD_UVC_VideoControlTypeDef videoCommitControl;
 
@@ -111,7 +127,6 @@ int main(void)
   uint16_t count = 0, i,j;
   int frames = 0;
   uint32_t last_tick = HAL_GetTick();
-  lepton_buffer *current_buffer;
 
   uint8_t uvc_header[2] = { 2, 0 };
   uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
@@ -146,9 +161,15 @@ int main(void)
 
   read_lepton_regs();
   read_tmp007_regs();
+    
 
   // kick off the first transfer
   current_buffer = lepton_transfer();
+
+#ifdef TMP007_OVERLAY 
+  UG_Init(&gui,pixel_set,80,60);
+  UG_FontSelect(&FONT_8X8);     
+#endif
 
   /* USER CODE END 2 */
 
@@ -181,9 +202,21 @@ int main(void)
       read_tmp007_regs();
     }
 
+    last_buffer = current_buffer;
     current_buffer = lepton_transfer();
     frames++;
     WHITE_LED_TOGGLE;
+
+#ifdef TMP007_OVERLAY 
+    val = get_last_mili_celisius()/1000;
+
+     UG_PutChar((val/100)%10 + '0',0,51,10000,0);
+     UG_PutChar((val/10)%10 + '0',8,51,10000,0);
+     UG_PutChar(val%10 + '0',16,51,10000,0);
+     UG_PutChar(248,24,51,10000,0);
+     UG_PutChar('C',32,51,10000,0);
+#endif
+
 
 #ifdef THERMAL_DATA_UART 
     if ((frames % 3) == 0)
@@ -245,7 +278,7 @@ int main(void)
               {
                 for (i = 2; i < 82; i++)
                 {
-                  uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+                  uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
 
                   // Don't bother scaling the data, just center around 8192 (lepton core temperature)
                   if (val <= 8064)
@@ -322,7 +355,7 @@ int main(void)
           {
             for (i = 2; i < 82; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
 
               // Don't bother scaling the data, just center around 8192 (lepton core temperature)
               if (val <= 8064)
@@ -353,7 +386,7 @@ int main(void)
           {
             for (i = 2; i < 82; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);
             }
@@ -376,7 +409,7 @@ int main(void)
           {
             for (i = 2; i < 82; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
 
               // Don't bother scaling the data, just center around 8192 (lepton core temperature)
               if (val <= 8064)
@@ -402,6 +435,8 @@ int main(void)
           break;
         }
       }
+
+
 
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
       // fflush(stdout);
