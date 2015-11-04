@@ -89,7 +89,6 @@ int convert_C_to_F(int C)
 
 int read_tmp007_regs(void)
 {
-	HAL_StatusTypeDef status;
 	long temperature;
 
 	if(tmp007_init == 0)
@@ -104,13 +103,9 @@ int read_tmp007_regs(void)
 		tmp007_init = 1;
 	}
 
-
-
-
 	temperature = get_mili_celisius();
-
 	DEBUG_PRINTF("TMP007_TOBJ: %x  mC: %d  C: %d  F: %d\n\r",tmp007_read_reg(TMP007_TOBJ)>>2,temperature,temperature/1000, convert_C_to_F(temperature/1000));
-
+	(void) temperature; //remove warning
 
 	return 1;
 }

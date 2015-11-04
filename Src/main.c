@@ -37,6 +37,7 @@
 
 /* USER CODE BEGIN Includes */
 
+#include "pt.h"
 #include "lepton.h"
 #include "lepton_i2c.h"
 #include "tmp007_i2c.h"

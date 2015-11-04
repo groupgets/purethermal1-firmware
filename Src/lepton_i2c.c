@@ -86,10 +86,9 @@ uint16_t read_reg(unsigned int reg)
 HAL_StatusTypeDef read_data()
 {
   int i;
-  int dataval;
   uint8_t data[36];
   int payload_length;
-  HAL_StatusTypeDef retrunval;
+  HAL_StatusTypeDef retrunval = 0;
   int timeout = 100;
 
   while (read_reg(0x2) & 0x01)
