@@ -125,6 +125,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
   uint16_t val;
+  int temperature;
   uint16_t count = 0, i,j;
   int frames = 0;
   uint32_t last_tick = HAL_GetTick();
@@ -209,11 +210,20 @@ int main(void)
     WHITE_LED_TOGGLE;
 
 #ifdef TMP007_OVERLAY 
-    val = get_last_mili_celisius()/1000;
+    temperature = get_last_mili_celisius()/1000;
 
-     UG_PutChar((val/100)%10 + '0',0,51,10000,0);
-     UG_PutChar((val/10)%10 + '0',8,51,10000,0);
-     UG_PutChar(val%10 + '0',16,51,10000,0);
+    if(temperature < 0)
+    {
+	    UG_PutChar('-',0,51,10000,0);
+	    temperature = -temperature;
+    }
+    else if(((temperature/100)%10) != 0 ) 
+    {
+	    UG_PutChar((temperature/100)%10 + '0',0,51,10000,0);
+    }
+
+     UG_PutChar((temperature/10)%10 + '0',8,51,10000,0);
+     UG_PutChar(temperature%10 + '0',16,51,10000,0);
      UG_PutChar(248,24,51,10000,0);
      UG_PutChar('C',32,51,10000,0);
 #endif
