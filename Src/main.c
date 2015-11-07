@@ -118,6 +118,101 @@ void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 extern volatile uint8_t uvc_stream_status;
 extern USBD_UVC_VideoControlTypeDef videoCommitControl;
 
+
+void draw_splash(void)
+{
+	int x_loc = 0;
+	int y_loc = 0;
+
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('P',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('U',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('R',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('E',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar(' ',x_loc,y_loc,10000,0);
+
+	x_loc=0;
+	y_loc += 8;
+	UG_PutChar('T',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('h',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('e',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('r',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('m',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('a',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('l',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar(' ',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('1',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('0',x_loc,y_loc,10000,0);
+
+	x_loc=0;
+	y_loc += 8;
+	y_loc += 8;
+	UG_PutChar('G',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('r',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('o',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('u',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('p',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('G',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('e',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('t',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('s',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('0',x_loc,y_loc,10000,0);
+	
+	x_loc=0;
+	y_loc += 8;
+	//UG_PutChar('G',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('r',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('o',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('u',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('p',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('.',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('c',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('o',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	UG_PutChar('m',x_loc,y_loc,10000,0);
+	x_loc+=8;
+	//UG_PutChar('0',x_loc,y_loc,10000,0);
+
+}
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -209,6 +304,7 @@ int main(void)
     frames++;
     WHITE_LED_TOGGLE;
 
+
 #ifdef TMP007_OVERLAY 
     temperature = get_last_mili_celisius()/1000;
 
@@ -228,6 +324,10 @@ int main(void)
      UG_PutChar('C',32,51,10000,0);
 #endif
 
+    if (((frames % 1800) > 0)   && ((frames % 1800) < 150)  )
+    {
+	    draw_splash();
+    }
 
 #ifdef THERMAL_DATA_UART 
     if ((frames % 3) == 0)
