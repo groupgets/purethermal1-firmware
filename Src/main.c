@@ -139,11 +139,15 @@ int main(void)
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
   lepton_init();
-  DEBUG_PRINTF("Initialized...\n\r");
 
   HAL_Delay(1000);
 
-  read_lepton_regs();
+  init_lepton_command_interface();
+  enable_lepton_agc();
+
+  DEBUG_PRINTF("Initialized...\n\r");
+
+  HAL_Delay(250);
 
   // kick off the first transfer
   current_buffer = lepton_transfer();

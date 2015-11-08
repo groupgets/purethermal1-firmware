@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_i2c.h"
 
 #include "lepton_i2c.h"
+
+#include "LEPTON_SDK.h"
+#include "LEPTON_SYS.h"
+#include "LEPTON_AGC.h"
+#include "LEPTON_VID.h"
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -12,173 +16,201 @@
 #endif
 
 extern I2C_HandleTypeDef hi2c1;
+LEP_CAMERA_PORT_DESC_T hport_desc;
 
-HAL_StatusTypeDef lepton_command(unsigned int moduleID, unsigned int commandID, unsigned int command)
+static HAL_StatusTypeDef print_cust_serial_number()
 {
-  uint8_t data[4];
-
-  // Command Register is a 16-bit register located at Register Address 0x0004
-  data[0] = (0x00);
-  data[1] =(0x04);
-
-  if (moduleID == 0x08) //OEM module ID
-  {
-    data[2] =(0x48);
-  }
-  else
-  {
-    data[2] =(moduleID & 0x0f);
-  }
-  data[3] =( ((commandID << 2 ) & 0xfc) | (command & 0x3));
-
-
-  return HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,4,10000);
-}
-
-HAL_StatusTypeDef agc_enable()
-{
-  uint8_t data[4];
-
-  data[0] = (0x01);
-  data[1] = (0x05);
-  data[2] = (0x00);
-  data[3] = (0x01);
-
-  return HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,4,10000);
-}
-
-HAL_StatusTypeDef set_reg(unsigned int reg)
-{
-  uint8_t data[2];
-
-  data[0] = (reg >> 8 & 0xff);
-  data[1] = (reg & 0xff);            // sends one byte
-
-  return HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,2,10000);
-}
-
-//Status reg 15:8 Error Code  7:3 Reserved 2:Boot Status 1:Boot Mode 0:busy
-
-uint16_t read_reg(unsigned int reg)
-{
-  int reading = 0;
-  uint8_t data[2];
-  HAL_StatusTypeDef status;
-  
-
-  set_reg(reg);
-
-  if( (status = HAL_I2C_Master_Receive(&hi2c1,LEPTON_ADDRESS,data,2,10000)) == HAL_OK)
-  {
-
-    reading =  (data[0]<<8 | (data[1]));
-
-    //DEBUG_PRINTF("reg: %d==0x%x (%d)\n\r",reg,reading,reading);
-  }
-  else
-  {
-    DEBUG_PRINTF("HAL_I2C_Master_Receive error %d\n\r",status);
-
-  }
-  return reading;
-}
-
-HAL_StatusTypeDef read_data()
-{
+  LEP_RESULT result;
+  LEP_SYS_CUST_SERIAL_NUMBER_T cust_serial_number;
   int i;
-  int dataval;
-  uint8_t data[36];
-  int payload_length;
-  HAL_StatusTypeDef retrunval;
-  int timeout = 100;
 
-  while (read_reg(0x2) & 0x01)
-  {
-    if(timeout--==0)
-    {
-      DEBUG_PRINTF("error busy timeout!\n\r");
-      break;
-    }
+  result = LEP_GetSysCustSerialNumber(&hport_desc, &cust_serial_number);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query camera customer serial number! %d\r\n", result);
+    return HAL_ERROR;
   }
 
-  payload_length = read_reg(0x6);
-  //DEBUG_PRINTF("payload_length=%d \n\r",payload_length);
+  DEBUG_PRINTF("SYS Customer Serial Number:\r\n");
+  for (i = 0; i < LEP_SYS_MAX_SERIAL_NUMBER_CHAR_SIZE; i++)
+    DEBUG_PRINTF("%x ", cust_serial_number.value[i]);
+  DEBUG_PRINTF("\r\n");
 
-  if((payload_length > 0) && (payload_length < 35) )
-  {
+  return HAL_OK;
+}
 
-    retrunval = HAL_I2C_Master_Receive(&hi2c1,LEPTON_ADDRESS,data,payload_length,10000);
+static HAL_StatusTypeDef print_flir_serial_number()
+{
+  LEP_RESULT result;
+  LEP_SYS_FLIR_SERIAL_NUMBER_T flir_serial_number;
 
-    for (i = 0; i < (payload_length); i++)
-    {
-      DEBUG_PRINTF("%x",data[i]);
-    }
-    DEBUG_PRINTF("\n\r\n\r");
+  result = LEP_GetSysFlirSerialNumber(&hport_desc, &flir_serial_number);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query flir serial number! %d\r\n", result);
+    return HAL_ERROR;
   }
-  return retrunval;
+
+  DEBUG_PRINTF("SYS FLIR Serial Number:\r\n");
+  DEBUG_PRINTF("%08llX\r\n", flir_serial_number);
+
+  return HAL_OK;
+}
+
+static HAL_StatusTypeDef print_camera_uptime()
+{
+  LEP_RESULT result;
+  LEP_SYS_UPTIME_NUMBER_T uptime;
+
+  result = LEP_GetSysCameraUpTime(&hport_desc, &uptime);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query camera uptime! %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  DEBUG_PRINTF("SYS camera uptime:\r\n");
+  DEBUG_PRINTF("%lu\r\n", uptime);
+
+  return HAL_OK;
+}
+
+static HAL_StatusTypeDef print_fpa_temp_celcius()
+{
+  LEP_RESULT result;
+  LEP_SYS_FPA_TEMPERATURE_CELCIUS_T temp;
+
+  result = LEP_GetSysFpaTemperatureCelcius(&hport_desc, &temp);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query fpa temp! %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  DEBUG_PRINTF("SYS fpa temp celcius:\r\n");
+  DEBUG_PRINTF("%f\r\n", temp);
+
+  return HAL_OK;
+}
+
+static HAL_StatusTypeDef print_aux_temp_celcius()
+{
+  LEP_RESULT result;
+  LEP_SYS_AUX_TEMPERATURE_CELCIUS_T temp;
+
+  result = LEP_GetSysAuxTemperatureCelcius(&hport_desc, &temp);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query fpa temp! %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  DEBUG_PRINTF("SYS aux temp celcius:\r\n");
+  DEBUG_PRINTF("%f\r\n", temp);
+
+  return HAL_OK;
+}
+
+static HAL_StatusTypeDef print_sdk_version()
+{
+  LEP_RESULT result;
+  LEP_SDK_VERSION_T version;
+
+  result = LEP_GetSDKVersion(&hport_desc, &version);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not query fpa temp! %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  DEBUG_PRINTF("Lepton SDK version:\r\n");
+  DEBUG_PRINTF("%u.%u.%u\r\n", version.major, version.minor, version.build);
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef get_scene_stats(uint16_t *min, uint16_t *max, uint16_t *avg)
+{
+  LEP_RESULT result;
+  LEP_SYS_SCENE_STATISTICS_T stats;
+
+  result = LEP_GetSysSceneStatistics(&hport_desc, &stats);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not get scene statistics! %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  *min = stats.minIntensity;
+  *max = stats.maxIntensity;
+  *avg = stats.meanIntensity;
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef enable_lepton_agc()
+{
+  LEP_RESULT result;
+  LEP_AGC_ENABLE_E enabled;
+
+  result = LEP_SetAgcHeqScaleFactor(&hport_desc, LEP_AGC_SCALE_TO_14_BITS);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set AGC scale factor\r\n");
+    return HAL_ERROR;
+  }
+
+  result = LEP_SetAgcCalcEnableState(&hport_desc, LEP_AGC_ENABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable AGC calc\r\n");
+    return HAL_ERROR;
+  }
+
+  result = LEP_SetAgcEnableState(&hport_desc, LEP_AGC_ENABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable AGC\r\n");
+    return HAL_ERROR;
+  }
+
+  result = LEP_GetAgcEnableState(&hport_desc, &enabled);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable AGC\r\n");
+    return HAL_ERROR;
+  }
+
+  if (enabled != LEP_AGC_ENABLE) {
+    DEBUG_PRINTF("AGC readback failed!\r\n");
+    return HAL_ERROR;
+  }
+
+  return HAL_OK;
 }
 
 // HAL_OK       = 0x00,
 //  HAL_ERROR    = 0x01,
 //  HAL_BUSY     = 0x02,
 //  HAL_TIMEOUT  = 0x03
-int read_lepton_regs(void)
+HAL_StatusTypeDef init_lepton_command_interface(void)
 {
-  HAL_StatusTypeDef status;
+  LEP_RESULT result;
 
+  result = LEP_OpenPort(0, LEP_CCI_TWI, 400, &hport_desc);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not open Lepton I2C port! %d\r\n", result);
+    return HAL_ERROR;
+  }
 
-  DEBUG_PRINTF("SYS Camera Customer Serial Number\n\r");
-  status = lepton_command(SYS, 0x28 >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  DEBUG_PRINTF("Lepton I2C command interface opened, device %02x\r\n", hport_desc.deviceAddress);
 
-  DEBUG_PRINTF("SYS Flir Serial Number\n\r");
-  status = lepton_command(SYS, 0x2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  if (print_sdk_version() != HAL_OK)
+    return HAL_ERROR;
 
-  DEBUG_PRINTF("SYS Camera Uptime\n\r");
-  status = lepton_command(SYS, 0x0C >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  if (print_cust_serial_number() != HAL_OK)
+    return HAL_ERROR;
 
-  DEBUG_PRINTF("SYS Fpa Temperature Kelvin\n\r");
-  status = lepton_command(SYS, 0x14 >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  if (print_flir_serial_number() != HAL_OK)
+    return HAL_ERROR;
 
-  DEBUG_PRINTF("SYS Aux Temperature Kelvin\n\r");
-  status = lepton_command(SYS, 0x10 >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  if (print_camera_uptime() != HAL_OK)
+    return HAL_ERROR;
 
-  DEBUG_PRINTF("OEM Chip Mask Revision\n\r");
-  status = lepton_command(OEM, 0x14 >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
+  if (print_fpa_temp_celcius() != HAL_OK)
+    return HAL_ERROR;
 
+  if (print_aux_temp_celcius() != HAL_OK)
+    return HAL_ERROR;
 
-  DEBUG_PRINTF("OEM Camera Software Revision\n\r");
-  status = lepton_command(OEM, 0x20 >> 2 , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-
-  //DEBUG_PRINTF("AGC Enable");
-  //agc_enable();
-  //read_data();
-
-  DEBUG_PRINTF("AGC READ\n\r");
-  status = lepton_command(AGC, 0x00  , GET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-
-  return 1;
+  return HAL_OK;
 }
