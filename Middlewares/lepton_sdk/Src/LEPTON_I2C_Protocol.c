@@ -108,7 +108,7 @@ LEP_RESULT LEP_I2C_OpenPort(LEP_UINT16 portID,
       return(LEP_COMM_INVALID_PORT_ERROR);
    }
 
-   *deviceAddress = 0x00;
+   *deviceAddress = 0x2A;
    result = LEP_I2C_MasterReadData( portID,
                                 *deviceAddress,
                                 LEP_I2C_STATUS_REG,
@@ -118,10 +118,10 @@ LEP_RESULT LEP_I2C_OpenPort(LEP_UINT16 portID,
    if(result != LEP_OK)
    {
       /*
-       *    Try 0x2A as the device address if 0x00 didn't work. In this case, we are in Virgin Boot Mode.
+       *    Try 0x00 as the device address if 0x2A didn't work. In this case, we are not in Virgin Boot Mode.
        *
        */
-      *deviceAddress = 0x2A;
+      *deviceAddress = 0x00;
       result = LEP_I2C_MasterReadData( portID,
                                    *deviceAddress,
                                    LEP_I2C_STATUS_REG,

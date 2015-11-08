@@ -248,6 +248,11 @@ extern "C"
    extern LEP_RESULT LEP_SetVidSbNucEnableState(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
                                                 LEP_VID_SBNUC_ENABLE_E vidSbNucEnableState);
 
+   extern LEP_RESULT LEP_GetVidFreezeEnableState(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                                 LEP_VID_FREEZE_ENABLE_E_PTR vidFreezeEnableStatePtr);
+   extern LEP_RESULT LEP_SetVidFreezeEnableState(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                                 LEP_VID_FREEZE_ENABLE_E vidFreezeEnableState);
+
 /******************************************************************************/
    #ifdef __cplusplus
 }

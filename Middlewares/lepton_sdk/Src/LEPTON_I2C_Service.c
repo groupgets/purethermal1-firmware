@@ -73,8 +73,9 @@
 #include "LEPTON_I2C_Service.h"
 //#include "atxmega128a1_I2C.h"
 //#include "jova_I2C.h"
-// #include "aardvark_I2C.h"
+//#include "aardvark_I2C.h"
 //#include "ftdi_I2C.h"
+#include "stm32_i2c.h"
 
 /******************************************************************************/
 /** LOCAL DEFINES                                                            **/
