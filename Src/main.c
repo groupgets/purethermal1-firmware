@@ -45,12 +45,11 @@
 #include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
-#define TMP007_OVERLAY
-//#define THERMAL_DATA_UART
-#define USART_DEBUG
-#define USART_DEBUG_SPEED (921600)
-
 /* USER CODE END Includes */
+
+#include "usb_task.h"
+#include "lepton_task.h"
+#include "uart_task.h"
 
 /* Private variables ---------------------------------------------------------*/
 CRC_HandleTypeDef hcrc;
@@ -65,11 +64,16 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+#ifdef USART_DEBUG
+#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
+#else
+#define DEBUG_PRINTF(...)
+#endif
   
-uint8_t lepton_raw[60*80*2];
-uint8_t packet[VIDEO_PACKET_SIZE];
-lepton_buffer *current_buffer;
-lepton_buffer *last_buffer;
+static struct pt lepton_task_pt;
+static struct pt usb_task_pt;
+static struct pt uart_task_pt;
 
 /* USER CODE END PV */
 
@@ -90,186 +94,13 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 
-#define WHITE_LED_TOGGLE  (HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
-extern volatile int restart_frame;
-#ifdef USART_DEBUG
-#define DEBUG_PRINTF(...) printf( __VA_ARGS__);
-#else
-#define DEBUG_PRINTF(...)
-#endif
-
-void HAL_RCC_CSSCallback(void) {
-  DEBUG_PRINTF("Oh no! HAL_RCC_CSSCallback()\r\n");
-}
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  DEBUG_PRINTF("Yay! HAL_GPIO_EXTI_Callback()\r\n");
-}
-
-#ifdef TMP007_OVERLAY 
-#include "ugui.h"
-UG_GUI gui; 
-void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
-{
-	last_buffer->data[(y*82)+(x+2)] = c;
-}
-#endif
-
-extern volatile uint8_t uvc_stream_status;
-extern USBD_UVC_VideoControlTypeDef videoCommitControl;
-
-
-void draw_splash(int min, int max)
-{
-	int x_loc = 0;
-	int y_loc = 0;
-
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('P',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('U',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('R',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('E',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar(' ',x_loc,y_loc,max,min);
-
-	x_loc=0;
-	y_loc += 8;
-	UG_PutChar('T',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('h',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('e',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('r',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('m',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('a',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('l',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar(' ',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('1',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('0',x_loc,y_loc,max,min);
-
-	x_loc=0;
-	y_loc += 8;
-	y_loc += 8;
-	UG_PutChar('G',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('r',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('o',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('u',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('p',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('G',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('e',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('t',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('s',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('0',x_loc,y_loc,max,min);
-	
-	x_loc=0;
-	y_loc += 8;
-	//UG_PutChar('G',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('r',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('o',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('u',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('p',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('.',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('c',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('o',x_loc,y_loc,max,min);
-	x_loc+=8;
-	UG_PutChar('m',x_loc,y_loc,max,min);
-	x_loc+=8;
-	//UG_PutChar('0',x_loc,y_loc,max,min);
-
-}
-
-void get_min_max(int * min, int * max)
-{
-	int i,j;
-	int val;
-	*min= 0xffff;
-	*max= 0;
-	for (j = 0; j < 60; j++)
-	{
-		for (i = 2; i < 82; i++)
-		{
-			val = last_buffer->data[j * 82 + i];
-
-			if( val > *max )
-			{
-				*max = val;
-			}
-			if( val < *min)
-			{
-				*min = val;
-			}
-		}
-      }
-}
-
-void scale_image_8bit(int min, int max)
-{
-	int i,j;
-	int val;
-
-	for (j = 0; j < 60; j++)
-	{
-		for (i = 2; i < 82; i++)
-		{
-			val = last_buffer->data[j * 82 + i];
-			val -= min;
-			val = (( val * 255) / (max-min));
-
-			last_buffer->data[j * 82 + i] = val;
-		}
-      }
-}
-
 /* USER CODE END 0 */
 
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  uint16_t val;
-  int temperature;
-  uint16_t count = 0, i,j;
-  int frames = 0;
-  uint32_t last_tick = HAL_GetTick();
-  int current_min, current_max;
 
-  uint8_t uvc_header[2] = { 2, 0 };
-  uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
 
   /* USER CODE END 1 */
 
@@ -303,13 +134,9 @@ int main(void)
   read_tmp007_regs();
     
 
-  // kick off the first transfer
-  current_buffer = lepton_transfer();
-
-#ifdef TMP007_OVERLAY 
-  UG_Init(&gui,pixel_set,80,60);
-  UG_FontSelect(&FONT_8X8);     
-#endif
+  PT_INIT(&lepton_task_pt);
+  PT_INIT(&usb_task_pt);
+  PT_INIT(&uart_task_pt);
 
   /* USER CODE END 2 */
 
@@ -321,310 +148,10 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-    while (complete_lepton_transfer(current_buffer) == LEPTON_STATUS_TRANSFERRING){
-      HAL_Delay(1);
-      fflush(stdout);
-    }
-
-    if ((current_buffer->status & LEPTON_STATUS_RESYNC) == LEPTON_STATUS_RESYNC)
-    {
-      //DEBUG_PRINTF("Synchronization lost\r\n");
-      read_tmp007_regs();
-      HAL_Delay(200);
-    }
-
-    if ((frames % 30) == 0)
-    {
-      uint32_t curtick = HAL_GetTick();
-      uint32_t ticks = curtick - last_tick;
-      last_tick = curtick;
-      DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
-      read_tmp007_regs();
-    }
-
-    last_buffer = current_buffer;
-    current_buffer = lepton_transfer();
-    frames++;
-    WHITE_LED_TOGGLE;
-
-
-
-#ifdef THERMAL_DATA_UART 
-    if ((frames % 3) == 0)
-    {
-      count = 0;
-      for (j = 0; j < 60; j++)
-      {
-        for (i = 2; i < 82; i++)
-        {
-          val = current_buffer->data[j * 82 + i];
-
-          lepton_raw[count++] = ((val>>8)&0xff);
-          lepton_raw[count++] = (val&0xff);
-        }
-      }
-
-      send_lepton_via_usart(lepton_raw);
-    }
-#endif
-
-
-   get_min_max(&current_min, &current_max);
-    scale_image_8bit(current_min, current_max);
-
-    if (((frames % 1800) > 0)   && ((frames % 1800) < 150)  )
-    {
-	    draw_splash(255, 0);
-    }
-    else
-    {
-
-#ifdef TMP007_OVERLAY 
-    temperature = get_last_mili_celisius()/1000;
-
-    if(temperature < 0)
-    {
-	    UG_PutChar('-',0,51,10000,0);
-	    temperature = -temperature;
-    }
-    else if(((temperature/100)%10) != 0 ) 
-    {
-	    UG_PutChar((temperature/100)%10 + '0',0,51,255,0);
-    }
-
-     UG_PutChar((temperature/10)%10 + '0',8,51,255,0);
-     UG_PutChar(temperature%10 + '0',16,51,255,0);
-     UG_PutChar(248,24,51,255,0);
-     UG_PutChar('C',32,51,255,0);
-#endif
-    }
-
-
-
-    // perform stream initialization
-    if (uvc_stream_status == 1)
-    {
-      DEBUG_PRINTF("Starting UVC stream...\r\n");
-
-      uvc_header[0] = 2;
-      uvc_header[1] = 0;
-      UVC_Transmit_FS(uvc_header, 2);
-
-      uvc_stream_status = 2;
-      uvc_xmit_row = 0;
-      uvc_xmit_plane = 0;
-    }
-
-    // put image on stream as long as stream is open
-    while (uvc_stream_status == 2)
-    {
-      count = 0;
-
-      packet[count++] = uvc_header[0];
-      packet[count++] = uvc_header[1];
-
-      switch (videoCommitControl.bFormatIndex[0])
-      {
-        // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
-        default:
-        case FMT_INDEX_NV12:
-        case FMT_INDEX_YU12:
-        {
-          // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
-
-          switch (uvc_xmit_plane)
-          {
-            default:
-            case 0: // Y
-            {
-              // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-              while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-              {
-                for (i = 2; i < 82; i++)
-                {
-                  uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
-
-		  /*
-                  // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-                  if (val <= 8064)
-                    val = 0;
-                  else if (val >= 8320)
-                    val = 255;
-                  else
-                    val -= 8064;
-		    */
-
-                  packet[count++] = (uint8_t)val;
-                }
-
-                uvc_xmit_row++;
-              }
-
-              if (uvc_xmit_row == 60)
-              {
-                uvc_xmit_plane = 1;
-                uvc_xmit_row = 0;
-              }
-
-              break;
-            }
-            case 1: // VU
-            case 2:
-            {
-              if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
-              {
-                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
-                {
-                  for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
-                    packet[count++] = 128;
-
-                  uvc_xmit_row++;
-                }
-
-                if (uvc_xmit_row == 30)
-                  packet[1] |= 0x2; // Flag end of frame
-              }
-              else
-              {
-                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
-                {
-                  for (i = 0; i < 40 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
-                    packet[count++] = 128;
-
-                  uvc_xmit_row++;
-                }
-
-                // image is done
-                if (uvc_xmit_row == 30)
-                {
-                  if (uvc_xmit_plane == 1)
-                  {
-                    uvc_xmit_plane = 2;
-                    uvc_xmit_row = 0;
-                  }
-                  else
-                  {
-                    packet[1] |= 0x2; // Flag end of frame
-                  }
-                }
-              }
-              break;
-            }
-          }
-  
-          break;
-        }
-        case FMT_INDEX_GREY:
-        {
-          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-          {
-            for (i = 2; i < 82; i++)
-            {
-              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
-
-	      /*
-              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-              if (val <= 8064)
-                val = 0;
-              else if (val >= 8320)
-                val = 255;
-              else
-                val -= 8064;
-		*/
-
-              packet[count++] = (uint8_t)val;
-            }
-
-            uvc_xmit_row++;
-          }
-
-          // image is done
-          if (uvc_xmit_row == 60)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
-          break;
-        }
-        case FMT_INDEX_Y16:
-        {
-          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-          {
-            for (i = 2; i < 82; i++)
-            {
-              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
-              packet[count++] = (uint8_t)((val >> 0) & 0xFF);
-              packet[count++] = (uint8_t)((val >> 8) & 0xFF);
-            }
-
-            uvc_xmit_row++;
-          }
-
-          // image is done
-          if (uvc_xmit_row == 60)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
-          break;
-        }
-        case FMT_INDEX_YUYV:
-        {
-          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-          {
-            for (i = 2; i < 82; i++)
-            {
-              uint16_t val = last_buffer->data[uvc_xmit_row * 82 + i];
-
-	      /*
-              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-              if (val <= 8064)
-                val = 0;
-              else if (val >= 8320)
-                val = 255;
-              else
-                val -= 8064;
-		*/
-
-              packet[count++] = (uint8_t)val;
-              packet[count++] = 128;
-            }
-
-            uvc_xmit_row++;
-          }
-
-          // image is done
-          if (uvc_xmit_row == 60)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
-          break;
-        }
-      }
-
-
-
-      // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
-      // fflush(stdout);
-
-      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
-        ;
-
-      if (packet[1] & 0x2)
-      {
-        uvc_header[1] ^= 1; // toggle bit 0 for next new frame
-        uvc_xmit_row = 0;
-        uvc_xmit_plane = 0;
-        // DEBUG_PRINTF("Frame complete\r\n");
-        break;
-      }
-    }
-
-    fflush(stdout);
+	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
+	  PT_SCHEDULE(usb_task(&usb_task_pt));
+	  PT_SCHEDULE(uart_task(&uart_task_pt));
+	  fflush(stdout);
   }
   /* USER CODE END 3 */
 
