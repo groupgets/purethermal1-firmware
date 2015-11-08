@@ -12,6 +12,7 @@
 #include "usbd_uvc_if.h"
 
 
+#include "uart_lepton.h"
 #include "usb_task.h"
 #include "lepton_task.h"
 #include "uart_task.h"
@@ -35,35 +36,36 @@ PT_THREAD( uart_task(struct pt *pt))
 	static int count;
 	static int i,j;
 	static lepton_buffer *last_buffer;
+	static struct pt uart_lepton_send_pt;
+
 
 	PT_BEGIN(pt);
 
 	while (1)
 	{
 #ifdef THERMAL_DATA_UART 
-		 PT_WAIT_UNTIL(pt,get_lepton_frame() != last_frame);
+		 PT_WAIT_UNTIL(pt,(get_lepton_frame() != last_frame) && (get_lepton_frame()%3==0));
 		 last_frame = get_lepton_frame();
 		 last_buffer = get_lepton_buffer();
 
-		if ((last_frame % 3) == 0)
-		{
-			count = 0;
-			for (j = 0; j < 60; j++)
-			{
-				for (i = 2; i < 82; i++)
-				{
-					val = last_buffer->data[j * 82 + i];
+		 count = 0;
+		 for (j = 0; j < 60; j++)
+		 {
+			 for (i = 2; i < 82; i++)
+			 {
+				 val = last_buffer->data[j * 82 + i];
 
-					lepton_raw[count++] = ((val>>8)&0xff);
-					lepton_raw[count++] = (val&0xff);
-				}
-			}
-			send_lepton_via_usart(lepton_raw);
-		}
+				 lepton_raw[count++] = ((val>>8)&0xff);
+				 lepton_raw[count++] = (val&0xff);
+			 }
+		 }
+		 //send_lepton_via_usart(lepton_raw);
+
+		 PT_SPAWN(pt,&uart_lepton_send_pt,uart_lepton_send(&uart_lepton_send,lepton_raw));
+
 #else
-		PT_YIELD(pt);
+		 PT_YIELD(pt);
 #endif
-
 	}
 	PT_END(pt);
 }

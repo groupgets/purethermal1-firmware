@@ -13,6 +13,7 @@
 
 #include "lepton_task.h"
 #include "project_config.h"
+#include "image_support.h"
 
 
 lepton_buffer *current_buffer;
@@ -56,7 +57,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 		{
 			PT_YIELD(pt);
 			fflush(stdout);
-			HAL_Delay(1);
+			//HAL_Delay(1);
 		}
 
 		if ((current_buffer->status & LEPTON_STATUS_RESYNC) == LEPTON_STATUS_RESYNC)

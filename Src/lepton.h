@@ -2,7 +2,11 @@
 #define LEPTON_H_
 
 #define VOSPI_FRAME_SIZE (164)
-#define LEPTON_IMAGE_SIZE ((60*80)*2)
+
+#define LEPTON_ROWS	(60)
+#define LEPTON_COLS	(80)
+#define LEPTON_IMAGE_SIZE ((LEPTON_ROWS*LEPTON_COLS))
+#define LEPTON_IMAGE_BYTE_SIZE ((LEPTON_IMAGE_SIZE)*2)
 
 typedef enum {
   LEPTON_STATUS_OK = 0,
