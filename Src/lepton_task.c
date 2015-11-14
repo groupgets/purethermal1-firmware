@@ -13,7 +13,6 @@
 
 #include "lepton_task.h"
 #include "project_config.h"
-#include "image_support.h"
 
 
 lepton_buffer *current_buffer;

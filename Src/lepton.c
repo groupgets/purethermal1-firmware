@@ -5,6 +5,8 @@
 
 #include "lepton.h"
 
+#include "project_config.h"
+
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else

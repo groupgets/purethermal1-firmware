@@ -50,6 +50,7 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 #include "usb_task.h"
 #include "lepton_task.h"
 #include "uart_task.h"
+#include "project_config.h"
 
 /* Private variables ---------------------------------------------------------*/
 CRC_HandleTypeDef hcrc;
@@ -125,12 +126,21 @@ int main(void)
 
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
+
   lepton_init();
   DEBUG_PRINTF("Initialized...\n\r");
+  fflush(stdout);
 
   HAL_Delay(1000);
 
+  DEBUG_PRINTF("reading_lepton_regs...\n\r");
+  fflush(stdout);
+
   read_lepton_regs();
+
+  DEBUG_PRINTF("reading_tmp007_regs...\n\r");
+  fflush(stdout);
+
   read_tmp007_regs();
     
 

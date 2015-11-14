@@ -5,7 +5,8 @@
 
 #include "tmp007_i2c.h"
 
-//#define USART_DEBUG
+#include "project_config.h"
+
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
