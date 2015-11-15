@@ -84,7 +84,7 @@ static HAL_StatusTypeDef print_fpa_temp_celcius()
   }
 
   DEBUG_PRINTF("SYS fpa temp celcius:\r\n");
-  DEBUG_PRINTF("%f\r\n", temp);
+  DEBUG_PRINTF("%d.%d\r\n", (int)temp, (int)((temp-(int)temp)*100.0f));
 
   return HAL_OK;
 }
@@ -101,7 +101,7 @@ static HAL_StatusTypeDef print_aux_temp_celcius()
   }
 
   DEBUG_PRINTF("SYS aux temp celcius:\r\n");
-  DEBUG_PRINTF("%f\r\n", temp);
+  DEBUG_PRINTF("%d.%d\r\n", (int)temp, (int)((temp-(int)temp)*100.0f));
 
   return HAL_OK;
 }
