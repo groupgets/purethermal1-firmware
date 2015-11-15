@@ -12,7 +12,3 @@ subdirs: ${SUBDIRS}
 
 ${SUBDIRS}:
 	${MAKE} -C $@
-
-clean:
-	find . -name *.a -delete
-	find . -name *.o -delete

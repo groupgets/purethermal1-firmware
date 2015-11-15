@@ -51,9 +51,9 @@ PT_THREAD( uart_task(struct pt *pt))
 		 count = 0;
 		 for (j = 0; j < 60; j++)
 		 {
-			 for (i = 2; i < 82; i++)
+			 for (i = 0; i < 80; i++)
 			 {
-				 val = last_buffer->data[j * 82 + i];
+				 val = last_buffer->lines[j].data.image_data[i];
 
 				 lepton_raw[count++] = ((val>>8)&0xff);
 				 lepton_raw[count++] = (val&0xff);

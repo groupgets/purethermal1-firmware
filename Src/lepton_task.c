@@ -96,7 +96,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 			uint32_t curtick = HAL_GetTick();
 			uint32_t ticks = curtick - last_tick;
 			last_tick = curtick;
-			DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
+
+      DEBUG_PRINTF("ms / frame: %lu, last end line: %d, line #%d\r\n", ticks / 30,
+        current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
+        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) | 
+        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0)
+      );
+
 			read_tmp007_regs();
 			//lepton_command(SYS, FPA_TEMPERATURE_KELVIN >> 2 , GET);
 			//lepton_read_data(lepton_i2c_buffer);

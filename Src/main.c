@@ -128,21 +128,22 @@ int main(void)
   fflush(stdout);
 
   lepton_init();
-  DEBUG_PRINTF("Initialized...\n\r");
-  fflush(stdout);
 
   HAL_Delay(1000);
 
-  DEBUG_PRINTF("reading_lepton_regs...\n\r");
-  fflush(stdout);
-
-  read_lepton_regs();
+  init_lepton_command_interface();
+#ifdef ENABLE_LEPTON_AGC
+  enable_lepton_agc();
+#endif
+  enable_telemetry();
 
   DEBUG_PRINTF("reading_tmp007_regs...\n\r");
-  fflush(stdout);
 
   read_tmp007_regs();
-    
+
+  DEBUG_PRINTF("Initialized...\n\r");
+
+  HAL_Delay(250);
 
   PT_INIT(&lepton_task_pt);
   PT_INIT(&usb_task_pt);

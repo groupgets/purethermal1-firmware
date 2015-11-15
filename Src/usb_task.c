@@ -45,7 +45,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 UG_GUI gui; 
 void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 {
-	last_buffer->data[(y*82)+(x+2)] = c;
+	last_buffer->lines[y].data.image_data[x] = c;
 }
 #endif
 
@@ -155,9 +155,9 @@ void get_min_max(int * min, int * max)
 	*max= 0;
 	for (j = 0; j < 60; j++)
 	{
-		for (i = 2; i < 82; i++)
+		for (i = 0; i < 80; i++)
 		{
-			val = last_buffer->data[j * 82 + i];
+			val = last_buffer->lines[j].data.image_data[i];
 
 			if( val > *max )
 			{
@@ -178,13 +178,13 @@ void scale_image_8bit(int min, int max)
 
 	for (j = 0; j < 60; j++)
 	{
-		for (i = 2; i < 82; i++)
+		for (i = 0; i < 80; i++)
 		{
-			val = last_buffer->data[j * 82 + i];
+			val = last_buffer->lines[j].data.image_data[i];
 			val -= min;
 			val = (( val * 255) / (max-min));
 
-			last_buffer->data[j * 82 + i] = val;
+			last_buffer->lines[j].data.image_data[i] = val;
 		}
 	}
 }
@@ -220,9 +220,10 @@ PT_THREAD( usb_task(struct pt *pt))
 		 last_frame = get_lepton_frame();
 		 last_buffer = get_lepton_buffer();
 
-
+#ifndef ENABLE_LEPTON_AGC
 		get_min_max(&current_min, &current_max);
 		scale_image_8bit(current_min, current_max);
+#endif
 
 		if (((last_frame % 1800) > 0)   && ((last_frame % 1800) < 150)  )
 		{
@@ -255,230 +256,196 @@ PT_THREAD( usb_task(struct pt *pt))
 
 
 
-		// perform stream initialization
-		if (uvc_stream_status == 1)
-		{
-			DEBUG_PRINTF("Starting UVC stream...\r\n");
+    // perform stream initialization
+    if (uvc_stream_status == 1)
+    {
+      DEBUG_PRINTF("Starting UVC stream...\r\n");
 
-			uvc_header[0] = 2;
-			uvc_header[1] = 0;
-			UVC_Transmit_FS(uvc_header, 2);
+      uvc_header[0] = 2;
+      uvc_header[1] = 0;
+      UVC_Transmit_FS(uvc_header, 2);
 
-			uvc_stream_status = 2;
-			uvc_xmit_row = 0;
-			uvc_xmit_plane = 0;
-		}
+      uvc_stream_status = 2;
+      uvc_xmit_row = 0;
+      uvc_xmit_plane = 0;
+    }
 
-		// put image on stream as long as stream is open
-		while (uvc_stream_status == 2)
-		{
-			count = 0;
+    // put image on stream as long as stream is open
+    while (uvc_stream_status == 2)
+    {
+      count = 0;
 
-			packet[count++] = uvc_header[0];
-			packet[count++] = uvc_header[1];
+      packet[count++] = uvc_header[0];
+      packet[count++] = uvc_header[1];
 
-			switch (videoCommitControl.bFormatIndex[0])
-			{
-				// HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
-				default:
-				case FMT_INDEX_NV12:
-				case FMT_INDEX_YU12:
-					{
-						// printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
+      switch (videoCommitControl.bFormatIndex[0])
+      {
+        // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
+        default:
+        case FMT_INDEX_NV12:
+        case FMT_INDEX_YU12:
+        {
+          // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
 
-						switch (uvc_xmit_plane)
-						{
-							default:
-							case 0: // Y
-								{
-									// while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-									while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-									{
-										for (i = 2; i < 82; i++)
-										{
-											 val = last_buffer->data[uvc_xmit_row * 82 + i];
+          switch (uvc_xmit_plane)
+          {
+            default:
+            case 0: // Y
+            {
+              // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+              {
+                for (i = 0; i < FRAME_LINE_LENGTH; i++)
+                {
+                  uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+                  // AGC is on so just use lower 8 bits
+                  packet[count++] = (uint8_t)val;
+                }
 
-											/*
-											// Don't bother scaling the data, just center around 8192 (lepton core temperature)
-											if (val <= 8064)
-											val = 0;
-											else if (val >= 8320)
-											val = 255;
-											else
-											val -= 8064;
-											*/
+                uvc_xmit_row++;
+              }
 
-											packet[count++] = (uint8_t)val;
-										}
+              if (uvc_xmit_row == IMAGE_NUM_LINES)
+              {
+                uvc_xmit_plane = 1;
+                uvc_xmit_row = 0;
+              }
 
-										uvc_xmit_row++;
-									}
+              break;
+            }
+            case 1: // VU
+            case 2:
+            {
+              if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
+              {
+                while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
+                {
+                  for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
+                    packet[count++] = 128;
 
-									if (uvc_xmit_row == 60)
-									{
-										uvc_xmit_plane = 1;
-										uvc_xmit_row = 0;
-									}
+                  uvc_xmit_row++;
+                }
 
-									break;
-								}
-							case 1: // VU
-							case 2:
-								{
-									if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
-									{
-										while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
-										{
-											for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
-												packet[count++] = 128;
+                if (uvc_xmit_row == 30)
+                  packet[1] |= 0x2; // Flag end of frame
+              }
+              else
+              {
+                while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
+                {
+                  for (i = 0; i < (FRAME_LINE_LENGTH/2) && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
+                    packet[count++] = 128;
 
-											uvc_xmit_row++;
-										}
+                  uvc_xmit_row++;
+                }
 
-										if (uvc_xmit_row == 30)
-											packet[1] |= 0x2; // Flag end of frame
-									}
-									else
-									{
-										while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
-										{
-											for (i = 0; i < 40 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
-												packet[count++] = 128;
+                // image is done
+                if (uvc_xmit_row == (IMAGE_NUM_LINES/2))
+                {
+                  if (uvc_xmit_plane == 1)
+                  {
+                    uvc_xmit_plane = 2;
+                    uvc_xmit_row = 0;
+                  }
+                  else
+                  {
+                    packet[1] |= 0x2; // Flag end of frame
+                  }
+                }
+              }
+              break;
+            }
+          }
+  
+          break;
+        }
+        case FMT_INDEX_GREY:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              // AGC is on, so just use lower 8 bits
+              packet[count++] = (uint8_t)val;
+            }
 
-											uvc_xmit_row++;
-										}
+            uvc_xmit_row++;
+          }
 
-										// image is done
-										if (uvc_xmit_row == 30)
-										{
-											if (uvc_xmit_plane == 1)
-											{
-												uvc_xmit_plane = 2;
-												uvc_xmit_row = 0;
-											}
-											else
-											{
-												packet[1] |= 0x2; // Flag end of frame
-											}
-										}
-									}
-									break;
-								}
-						}
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
 
-						break;
-					}
-				case FMT_INDEX_GREY:
-					{
-						// while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-						while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-						{
-							for (i = 2; i < 82; i++)
-							{
-								 val = last_buffer->data[uvc_xmit_row * 82 + i];
+          break;
+        }
+        case FMT_INDEX_Y16:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              packet[count++] = (uint8_t)((val >> 0) & 0xFF);
+              packet[count++] = (uint8_t)((val >> 8) & 0xFF);
+            }
 
-								/*
-								// Don't bother scaling the data, just center around 8192 (lepton core temperature)
-								if (val <= 8064)
-								val = 0;
-								else if (val >= 8320)
-								val = 255;
-								else
-								val -= 8064;
-								*/
+            uvc_xmit_row++;
+          }
 
-								packet[count++] = (uint8_t)val;
-							}
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
 
-							uvc_xmit_row++;
-						}
+          break;
+        }
+        case FMT_INDEX_YUYV:
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              // AGC is on so just use lower 8 bits
+              packet[count++] = (uint8_t)val;
+              packet[count++] = 128;
+            }
 
-						// image is done
-						if (uvc_xmit_row == 60)
-						{
-							packet[1] |= 0x2; // Flag end of frame
-						}
+            uvc_xmit_row++;
+          }
 
-						break;
-					}
-				case FMT_INDEX_Y16:
-					{
-						// while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-						while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-						{
-							for (i = 2; i < 82; i++)
-							{
-								 val = last_buffer->data[uvc_xmit_row * 82 + i];
-								packet[count++] = (uint8_t)((val >> 0) & 0xFF);
-								packet[count++] = (uint8_t)((val >> 8) & 0xFF);
-							}
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
 
-							uvc_xmit_row++;
-						}
+          break;
+        }
+      }
 
-						// image is done
-						if (uvc_xmit_row == 60)
-						{
-							packet[1] |= 0x2; // Flag end of frame
-						}
+      // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
+      // fflush(stdout);
 
-						break;
-					}
-				case FMT_INDEX_YUYV:
-					{
-						// while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-						while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
-						{
-							for (i = 2; i < 82; i++)
-							{
-								 val = last_buffer->data[uvc_xmit_row * 82 + i];
+      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
+        ;
 
-								/*
-								// Don't bother scaling the data, just center around 8192 (lepton core temperature)
-								if (val <= 8064)
-								val = 0;
-								else if  (val >= 8320)
-								val = 255;
-								else
-								val -= 8064;
-								*/
-
-								packet[count++] = (uint8_t)val;
-								packet[count++] = 128;
-							}
-
-							uvc_xmit_row++;
-						}
-
-						// image is done
-						if (uvc_xmit_row == 60)
-						{
-							packet[1] |= 0x2; // Flag end of frame
-						}
-
-						break;
-					}
-			}
-
-			// printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
-			// fflush(stdout);
-
-			while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
-			{
-				//PT_YIELD(pt);
-			}
-
-			if (packet[1] & 0x2)
-			{
-				uvc_header[1] ^= 1; // toggle bit 0 for next new frame
-				uvc_xmit_row = 0;
-				uvc_xmit_plane = 0;
-				// DEBUG_PRINTF("Frame complete\r\n");
-				break;
-			}
-		}
+      if (packet[1] & 0x2)
+      {
+        uvc_header[1] ^= 1; // toggle bit 0 for next new frame
+        uvc_xmit_row = 0;
+        uvc_xmit_plane = 0;
+        // DEBUG_PRINTF("Frame complete\r\n");
+        break;
+      }
+    }
 	}
 	PT_END(pt);
 }
-
-
