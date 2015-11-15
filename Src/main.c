@@ -180,9 +180,11 @@ int main(void)
       uint32_t ticks = curtick - last_tick;
       last_tick = curtick;
 
-      DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
-      DEBUG_PRINTF("Tele frame #%d\r\n",
-        (current_buffer->telemetry.frame_counter[1] << 16) + current_buffer->telemetry.frame_counter[0]);
+      DEBUG_PRINTF("ms / frame: %lu, last end line: %d, line #%d\r\n", ticks / 30,
+        current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
+        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) | 
+        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0)
+      );
     }
 
     current_buffer = lepton_transfer();
@@ -245,11 +247,11 @@ int main(void)
             case 0: // Y
             {
               // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-              while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
               {
-                for (i = 2; i < 82; i++)
+                for (i = 0; i < FRAME_LINE_LENGTH; i++)
                 {
-                  uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+                  uint16_t val = current_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
                   // AGC is on so just use lower 8 bits
                   packet[count++] = (uint8_t)val;
                 }
@@ -257,7 +259,7 @@ int main(void)
                 uvc_xmit_row++;
               }
 
-              if (uvc_xmit_row == 60)
+              if (uvc_xmit_row == IMAGE_NUM_LINES)
               {
                 uvc_xmit_plane = 1;
                 uvc_xmit_row = 0;
@@ -270,9 +272,9 @@ int main(void)
             {
               if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
               {
-                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
+                while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
                 {
-                  for (i = 0; i < 80 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
+                  for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
                     packet[count++] = 128;
 
                   uvc_xmit_row++;
@@ -283,16 +285,16 @@ int main(void)
               }
               else
               {
-                while (uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE)
+                while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
                 {
-                  for (i = 0; i < 40 && uvc_xmit_row < 30 && count < VIDEO_PACKET_SIZE; i++)
+                  for (i = 0; i < (FRAME_LINE_LENGTH/2) && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
                     packet[count++] = 128;
 
                   uvc_xmit_row++;
                 }
 
                 // image is done
-                if (uvc_xmit_row == 30)
+                if (uvc_xmit_row == (IMAGE_NUM_LINES/2))
                 {
                   if (uvc_xmit_plane == 1)
                   {
@@ -314,11 +316,11 @@ int main(void)
         case FMT_INDEX_GREY:
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
-            for (i = 2; i < 82; i++)
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = current_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
               // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
             }
@@ -327,7 +329,7 @@ int main(void)
           }
 
           // image is done
-          if (uvc_xmit_row == 60)
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
           {
             packet[1] |= 0x2; // Flag end of frame
           }
@@ -337,11 +339,11 @@ int main(void)
         case FMT_INDEX_Y16:
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
-            for (i = 2; i < 82; i++)
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = current_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);
             }
@@ -350,7 +352,7 @@ int main(void)
           }
 
           // image is done
-          if (uvc_xmit_row == 60)
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
           {
             packet[1] |= 0x2; // Flag end of frame
           }
@@ -360,11 +362,11 @@ int main(void)
         case FMT_INDEX_YUYV:
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < 60 && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
-            for (i = 2; i < 82; i++)
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
-              uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
+              uint16_t val = current_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
               // AGC is on so just use lower 8 bits
               packet[count++] = (uint8_t)val;
               packet[count++] = 128;
@@ -374,7 +376,7 @@ int main(void)
           }
 
           // image is done
-          if (uvc_xmit_row == 60)
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
           {
             packet[1] |= 0x2; // Flag end of frame
           }

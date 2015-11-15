@@ -45,15 +45,15 @@ lepton_buffer* lepton_transfer(void)
   lepton_buffer* buf = get_next_lepton_buffer();
 
   do {
-    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)buf->data, 82, 200)) != HAL_OK)
+    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)&buf->lines[0], FRAME_TOTAL_LENGTH, 200)) != HAL_OK)
     {
       DEBUG_PRINTF("Error setting up SPI receive: %d\r\n", status);
       continue;
     }
 
-    if((buf->data[0] & 0x0f00) != 0x0f00)
+    if((buf->lines[0].header[0] & 0x0f00) != 0x0f00)
     {
-      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->data[82], 82 * 59 + 82 * 3);
+      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->lines[1], FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES - 1));
       if (status)
       {
         DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);
@@ -76,12 +76,12 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   // lepton frame complete
   uint8_t* data = hspi->pRxBuffPtr;
-  lepton_buffer* buffer = (lepton_buffer*)(data - VOSPI_FRAME_SIZE - 2);
+  lepton_buffer* buffer = (lepton_buffer*)(data - FRAME_TOTAL_SIZE - 2);
   int frame;
 
-  frame = buffer->data[59 * 82] & 0xff;
+  frame = buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff;
 
-  if (frame != 59)
+  if (frame != (IMAGE_NUM_LINES - 1))
   {
     buffer->status = LEPTON_STATUS_RESYNC;
   }

@@ -1,8 +1,14 @@
 #ifndef LEPTON_H_
 #define LEPTON_H_
 
-#define VOSPI_FRAME_SIZE (164)
-#define LEPTON_IMAGE_SIZE ((60*80)*2)
+#define FRAME_HEADER_LENGTH (2)
+#define FRAME_LINE_LENGTH (80)
+#define FRAME_TOTAL_LENGTH (FRAME_HEADER_LENGTH + FRAME_LINE_LENGTH)
+#define FRAME_TOTAL_SIZE (FRAME_TOTAL_LENGTH * sizeof(uint16_t))
+#define IMAGE_NUM_LINES (60)
+#define TELEMETRY_NUM_LINES (3)
+#define IMAGE_OFFSET_LINES (0)
+#define TELEMETRY_OFFSET_LINES (IMAGE_NUM_LINES)
 
 typedef enum {
   LEPTON_STATUS_OK = 0,
@@ -11,8 +17,6 @@ typedef enum {
 } lepton_status;
 
 typedef struct __attribute__((packed)) _telemetry_data_l2 {
-
-  uint16_t pad_1[2];                  // w xx xx
 
   uint16_t telemetry_revision[1];     // w  0
   uint16_t time_ms[2];                // w  1  2
@@ -38,17 +42,9 @@ typedef struct __attribute__((packed)) _telemetry_data_l2 {
   uint16_t log2_ffc_frames[1];        // w 74
   uint16_t reserved_5[5];             // w 75 76 77 78 79
 
-  uint16_t pad_2[2];                  // w xx xx
-  uint16_t reserved_6[80];            // w 80-159
-
-  uint16_t pad_3[2];                  // w xx xx
-  uint16_t reserved_7[80];            // w 160-239
-
 } telemetry_data_l2;
 
 typedef struct __attribute__((packed)) _telemetry_data_l3 {
-
-  uint16_t pad_1[2];                  // w -2 -1
 
   uint16_t telemetry_revision[1];     // w  0
   uint16_t time_ms[2];                // w  1  2
@@ -71,22 +67,20 @@ typedef struct __attribute__((packed)) _telemetry_data_l3 {
   uint16_t video_output_format[2];    // w 72 73
   uint16_t reserved_6[7];             // w 74 75 76 77 78 79
 
-  uint16_t pad_2[2];                  // w xx xx
-  uint16_t reserved_7[80];            // w 80-159
-
-  uint16_t pad_3[2];                  // w xx xx
-  uint16_t reserved_8[80];            // w 160-239
-
-  uint16_t pad_4[2];                  // w xx xx
-  uint16_t reserved_9[80];            // w 240-319
-
 } telemetry_data_l3;
+
+typedef struct __attribute__((packed)) _vospi_packet {
+  uint16_t header[2];
+  union {
+    uint16_t image_data[FRAME_LINE_LENGTH];
+    telemetry_data_l2 telemetry_data;
+  } data;
+} vospi_packet;
 
 typedef struct _lepton_buffer {
   uint8_t number;
   lepton_status status;
-  uint16_t data[VOSPI_FRAME_SIZE/2 * 60];
-  telemetry_data_l2 telemetry;
+  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_NUM_LINES];
 } lepton_buffer;
 
 lepton_status complete_lepton_transfer(lepton_buffer *);
