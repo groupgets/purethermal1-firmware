@@ -53,7 +53,7 @@ lepton_buffer* lepton_transfer(void)
 
     if((buf->data[0] & 0x0f00) != 0x0f00)
     {
-      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->data[82], 82 * 59);
+      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->data[82], 82 * 59 + 82 * 3);
       if (status)
       {
         DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);

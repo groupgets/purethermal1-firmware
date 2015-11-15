@@ -144,6 +144,7 @@ int main(void)
 
   init_lepton_command_interface();
   enable_lepton_agc();
+  enable_telemetry();
 
   DEBUG_PRINTF("Initialized...\n\r");
 
@@ -178,7 +179,10 @@ int main(void)
       uint32_t curtick = HAL_GetTick();
       uint32_t ticks = curtick - last_tick;
       last_tick = curtick;
+
       DEBUG_PRINTF("ms / frame: %lu, last end line: %d\r\n", ticks / 30, current_buffer->data[82*59] & 0xff);
+      DEBUG_PRINTF("Tele frame #%d\r\n",
+        (current_buffer->telemetry.frame_counter[1] << 16) + current_buffer->telemetry.frame_counter[0]);
     }
 
     current_buffer = lepton_transfer();
