@@ -246,15 +246,7 @@ int main(void)
                 for (i = 2; i < 82; i++)
                 {
                   uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
-
-                  // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-                  if (val <= 8064)
-                    val = 0;
-                  else if (val >= 8320)
-                    val = 255;
-                  else
-                    val -= 8064;
-
+                  // AGC is on so just use lower 8 bits
                   packet[count++] = (uint8_t)val;
                 }
 
@@ -323,15 +315,7 @@ int main(void)
             for (i = 2; i < 82; i++)
             {
               uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
-
-              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-              if (val <= 8064)
-                val = 0;
-              else if (val >= 8320)
-                val = 255;
-              else
-                val -= 8064;
-
+              // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
             }
 
@@ -377,15 +361,7 @@ int main(void)
             for (i = 2; i < 82; i++)
             {
               uint16_t val = current_buffer->data[uvc_xmit_row * 82 + i];
-
-              // Don't bother scaling the data, just center around 8192 (lepton core temperature)
-              if (val <= 8064)
-                val = 0;
-              else if (val >= 8320)
-                val = 255;
-              else
-                val -= 8064;
-
+              // AGC is on so just use lower 8 bits
               packet[count++] = (uint8_t)val;
               packet[count++] = 128;
             }

@@ -146,15 +146,22 @@ HAL_StatusTypeDef enable_lepton_agc()
   LEP_RESULT result;
   LEP_AGC_ENABLE_E enabled;
 
-  result = LEP_SetAgcHeqScaleFactor(&hport_desc, LEP_AGC_SCALE_TO_14_BITS);
+  result = LEP_GetAgcEnableState(&hport_desc, &enabled);
   if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not set AGC scale factor\r\n");
+    DEBUG_PRINTF("Could not query AGC value %d\r\n", result);
     return HAL_ERROR;
   }
+  DEBUG_PRINTF("Initial AGC value: %d\r\n", enabled);
 
   result = LEP_SetAgcCalcEnableState(&hport_desc, LEP_AGC_ENABLE);
   if (result != LEP_OK) {
     DEBUG_PRINTF("Could not enable AGC calc\r\n");
+    return HAL_ERROR;
+  }
+
+  LEP_SetAgcPolicy(&hport_desc, LEP_AGC_HEQ);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set AGC policy\r\n");
     return HAL_ERROR;
   }
 
@@ -166,12 +173,33 @@ HAL_StatusTypeDef enable_lepton_agc()
 
   result = LEP_GetAgcEnableState(&hport_desc, &enabled);
   if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not enable AGC\r\n");
+    DEBUG_PRINTF("Could not query AGC value %d\r\n", result);
+    return HAL_ERROR;
+  }
+  DEBUG_PRINTF("Current AGC value: %d\r\n", enabled);
+
+  // result = LEP_SetAgcHeqScaleFactor(&hport_desc, LEP_AGC_SCALE_TO_14_BITS);
+  // if (result != LEP_OK) {
+  //   DEBUG_PRINTF("Could not set AGC scale factor\r\n");
+  //   return HAL_ERROR;
+  // }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef enable_telemetry(void)
+{
+  LEP_RESULT result;
+
+  result = LEP_SetSysTelemetryLocation(&hport_desc, LEP_TELEMETRY_LOCATION_FOOTER);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set telemetry location %d\r\n", result);
     return HAL_ERROR;
   }
 
-  if (enabled != LEP_AGC_ENABLE) {
-    DEBUG_PRINTF("AGC readback failed!\r\n");
+  result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_ENABLED);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable telemetry %d\r\n", result);
     return HAL_ERROR;
   }
 
