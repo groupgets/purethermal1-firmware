@@ -162,7 +162,6 @@ int main(void)
 	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
 	  PT_SCHEDULE(usb_task(&usb_task_pt));
 	  PT_SCHEDULE(uart_task(&uart_task_pt));
-	  fflush(stdout);
   }
   /* USER CODE END 3 */
 
