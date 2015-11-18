@@ -79,7 +79,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t curtick = 0;
 	static uint32_t last_tick = 0;
 	static uint32_t last_logged_count = 0;
-	static unsigned int current_frame_count;
+	static uint32_t current_frame_count = 0;
 	static lepton_buffer *current_buffer;
 	curtick = last_tick = HAL_GetTick();
 
@@ -109,7 +109,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
-			DEBUG_PRINTF("fps: %lu, last end line: %d, frame #%u, buffer %p\r\n",
+			DEBUG_PRINTF("fps: %lu, last end line: %d, frame #%lu, buffer %p\r\n",
 				(current_frame_count - last_logged_count) / 3,
 				current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
 				current_frame_count, current_buffer
