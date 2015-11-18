@@ -93,7 +93,8 @@ PT_THREAD( lepton_task(struct pt *pt))
 		{
 			if (current_buffer->status | LEPTON_STATUS_RESYNC)
 			{
-				DEBUG_PRINTF("Synchronization lost, status: %d\r\n", current_buffer->status);
+				if (current_frame_count != 0)
+					DEBUG_PRINTF("Synchronization lost, status: %d\r\n", current_buffer->status);
 				HAL_Delay(250);
 			}
 			else
