@@ -23,7 +23,7 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-#define RING_SIZE (3)
+#define RING_SIZE (4)
 lepton_buffer lepton_buffers[RING_SIZE];
 
 lepton_buffer* get_next_lepton_buffer()
