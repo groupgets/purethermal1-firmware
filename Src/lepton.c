@@ -44,29 +44,30 @@ lepton_status complete_lepton_transfer(lepton_buffer* buffer)
 lepton_buffer* lepton_transfer(void)
 {
   HAL_StatusTypeDef status;
-  lepton_buffer* buf = get_next_lepton_buffer();
+  lepton_buffer *buf = get_next_lepton_buffer();
+  vospi_packet *packet = (vospi_packet*)&buf->lines[0];
+
+  // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
 
   do {
-    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)&buf->lines[0], FRAME_TOTAL_LENGTH, 200)) != HAL_OK)
+    if ((status = HAL_SPI_Receive(&hspi2, (uint8_t*)packet, FRAME_TOTAL_LENGTH, 200)) != HAL_OK)
     {
-      DEBUG_PRINTF("Error setting up SPI receive: %d\r\n", status);
-      continue;
+      DEBUG_PRINTF("Error setting up SPI receive to buf: %p@%p: %d\r\n", buf, packet, status);
+      buf->status = LEPTON_STATUS_RESYNC;
+      return buf;
     }
+  } while ((buf->lines[0].header[0] & 0x0f00) == 0x0f00);
 
-    if((buf->lines[0].header[0] & 0x0f00) != 0x0f00)
-    {
-      status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)&buf->lines[1], FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES - 1));
-      if (status)
-      {
-        DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);
-      }
-      break;
-    }
-
-  } while (1);
+  status = HAL_SPI_Receive_DMA(&hspi2, (uint8_t*)(packet + 1), FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES - 1));
+  if (status)
+  {
+    DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);
+    buf->status = LEPTON_STATUS_RESYNC;
+    return buf;
+  }
 
   buf->status = LEPTON_STATUS_TRANSFERRING;
-	return buf;
+  return buf;
 }
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
@@ -77,11 +78,9 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   // lepton frame complete
-  uint8_t* data = hspi->pRxBuffPtr;
-  lepton_buffer* buffer = (lepton_buffer*)(data - FRAME_TOTAL_SIZE - 2);
-  int frame;
-
-  frame = buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff;
+  vospi_packet *packet = (vospi_packet*)hspi->pRxBuffPtr;
+  lepton_buffer *buffer = (lepton_buffer*)(packet - 1);
+  uint8_t frame = buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff;
 
   if (frame != (IMAGE_NUM_LINES - 1))
   {
@@ -100,6 +99,7 @@ void lepton_init(void )
   {
     lepton_buffers[i].number = i;
     lepton_buffers[i].status = LEPTON_STATUS_OK;
+    DEBUG_PRINTF("Initialized lepton buffer %d @ %p\r\n", i, &lepton_buffers[i]);
   }
 
 	LEPTON_RESET_L_LOW;

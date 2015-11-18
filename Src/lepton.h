@@ -78,9 +78,9 @@ typedef struct __attribute__((packed)) _vospi_packet {
 } vospi_packet;
 
 typedef struct _lepton_buffer {
+  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_NUM_LINES];
   uint8_t number;
   lepton_status status;
-  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_NUM_LINES];
 } lepton_buffer;
 
 lepton_status complete_lepton_transfer(lepton_buffer *);
