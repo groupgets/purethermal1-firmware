@@ -44,9 +44,9 @@ PT_THREAD( uart_task(struct pt *pt))
 	while (1)
 	{
 #ifdef THERMAL_DATA_UART 
-		 PT_WAIT_UNTIL(pt,(get_lepton_frame() != last_frame) && (get_lepton_frame()%3==0));
-		 last_frame = get_lepton_frame();
-		 last_buffer = get_lepton_buffer();
+		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame);
+		 WHITE_LED_TOGGLE;
+		 last_frame = get_lepton_buffer(&last_buffer);
 
 		 count = 0;
 		 for (j = 0; j < 60; j++)

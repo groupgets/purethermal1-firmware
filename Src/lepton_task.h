@@ -3,8 +3,7 @@
 
 #include "pt.h"
 
-lepton_buffer * get_lepton_buffer(void);
-int get_lepton_frame(void);
+uint32_t get_lepton_buffer(lepton_buffer **buffer);
 
 PT_THREAD( lepton_task(struct pt *pt));
 

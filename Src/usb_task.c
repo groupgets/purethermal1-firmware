@@ -189,7 +189,6 @@ void scale_image_8bit(int min, int max)
 	}
 }
 
-extern lepton_buffer *completed_buffer;
 
 PT_THREAD( usb_task(struct pt *pt))
 {
@@ -213,12 +212,9 @@ PT_THREAD( usb_task(struct pt *pt))
 
 	while (1)
 	{
-
-		 //PT_WAIT_UNTIL(pt,get_lepton_frame() != last_frame);
-		 PT_WAIT_UNTIL(pt,(get_lepton_frame() != last_frame) && (get_lepton_frame()%3==0));
+		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame);
 		 WHITE_LED_TOGGLE;
-		 last_frame = get_lepton_frame();
-		 last_buffer = get_lepton_buffer();
+		 last_frame = get_lepton_buffer(&last_buffer);
 
 #ifndef ENABLE_LEPTON_AGC
 		get_min_max(&current_min, &current_max);

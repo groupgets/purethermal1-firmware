@@ -15,9 +15,8 @@
 #include "project_config.h"
 
 
-lepton_buffer *current_buffer;
 lepton_buffer *completed_buffer;
-int frames;
+uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
 
@@ -32,14 +31,11 @@ unsigned short aux_temperature_k;
 #endif
 
 
-lepton_buffer * get_lepton_buffer(void)
+uint32_t get_lepton_buffer(lepton_buffer **buffer)
 {
-	return completed_buffer;
-}
-
-int get_lepton_frame(void)
-{
-	return frames;
+  if (buffer != NULL)
+    *buffer = completed_buffer;
+	return completed_frame_count;
 }
 
 void init_lepton_state(void);
@@ -63,45 +59,46 @@ void init_lepton_state(void)
 
 PT_THREAD( lepton_task(struct pt *pt))
 {
-	static uint32_t last_tick;
-
 	PT_BEGIN(pt);
 
-	init_lepton_state();
-
-	last_tick = HAL_GetTick();
-	frames = 0;
-
-	// kick off the first transfer
-	current_buffer = lepton_transfer();
+	static uint32_t curtick = 0;
+	static uint32_t last_tick = 0;
+	static uint32_t last_logged_count = 0;
+	static unsigned int current_frame_count;
+	static lepton_buffer *current_buffer;
+	curtick = last_tick = HAL_GetTick();
 
 	while (1)
 	{
-		while (complete_lepton_transfer(current_buffer) == LEPTON_STATUS_TRANSFERRING)
+		current_buffer = lepton_transfer();
+
+		PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING);
+
+		if (complete_lepton_transfer(current_buffer) != LEPTON_STATUS_OK)
 		{
-			PT_YIELD(pt);
-			fflush(stdout);
-			//HAL_Delay(1);
+			if (current_buffer->status | LEPTON_STATUS_RESYNC)
+			{
+				DEBUG_PRINTF("Synchronization lost, status: %d\r\n", current_buffer->status);
+				HAL_Delay(250);
+			}
+			else
+			{
+				DEBUG_PRINTF("Transfer failed, status: %d\r\n", current_buffer->status);
+			}
+			continue;
 		}
 
-		if ((current_buffer->status & LEPTON_STATUS_RESYNC) == LEPTON_STATUS_RESYNC)
-		{
-			//DEBUG_PRINTF("Synchronization lost\r\n");
-			read_tmp007_regs();
-			HAL_Delay(200);
-		}
+		current_frame_count =
+			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) |
+			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0);
 
-		if ((frames % 30) == 0)
+		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
-			uint32_t curtick = HAL_GetTick();
-			uint32_t ticks = curtick - last_tick;
-			last_tick = curtick;
-
-      DEBUG_PRINTF("ms / frame: %lu, last end line: %d, line #%d\r\n", ticks / 30,
-        current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
-        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) | 
-        (current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0)
-      );
+			DEBUG_PRINTF("fps: %lu, last end line: %d, frame #%u, buffer %p\r\n",
+				(current_frame_count - last_logged_count) / 3,
+				current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
+				current_frame_count, current_buffer
+			);
 
 			read_tmp007_regs();
 			//lepton_command(SYS, FPA_TEMPERATURE_KELVIN >> 2 , GET);
@@ -118,14 +115,17 @@ PT_THREAD( lepton_task(struct pt *pt))
 			//aux_temperature_k = (lepton_i2c_buffer[0] | (lepton_i2c_buffer[1] <<8));
 
 			DEBUG_PRINTF("fpa %x, aux: %x\r\n", fpa_temperature_k, aux_temperature_k);
+
+			last_tick = curtick;
+			last_logged_count = current_frame_count;
 		}
 
-		completed_buffer = current_buffer;
-		current_buffer = lepton_transfer();
-		frames++;
-		//WHITE_LED_TOGGLE;
-
-		PT_YIELD(pt);
+		// Need to update completed buffer for clients?
+		if (completed_frame_count != current_frame_count)
+		{
+			completed_buffer = current_buffer;
+			completed_frame_count = current_frame_count;
+		}
 	}
 	PT_END(pt);
 }
