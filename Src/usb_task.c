@@ -441,7 +441,9 @@ PT_THREAD( usb_task(struct pt *pt))
         // DEBUG_PRINTF("Frame complete\r\n");
         break;
       }
+      PT_YIELD(pt);
     }
+    PT_YIELD(pt);
 	}
 	PT_END(pt);
 }
