@@ -20,9 +20,6 @@ uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
 
-unsigned short fpa_temperature_k;
-unsigned short aux_temperature_k;
-
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -56,6 +53,24 @@ void init_lepton_state(void)
 */
 }
 
+static float k_to_c(uint16_t unitsKelvin)
+{
+	return ( ( (float)( unitsKelvin / 100 ) + ( (float)( unitsKelvin % 100 ) * 0.01f ) ) - 273.15f );
+}
+
+static void print_telemetry_temps(telemetry_data_l2* telemetry)
+{
+	//
+	uint16_t fpa_temperature_k = telemetry->fpa_temp_100k[0];
+	uint16_t aux_temperature_k = telemetry->housing_temp_100k[0];
+
+	float fpa_c = k_to_c(fpa_temperature_k);
+	float aux_c = k_to_c(aux_temperature_k);
+
+	DEBUG_PRINTF("fpa %d.%d°c, aux/housing: %d.%d°c\r\n",
+		(int)(fpa_c), (int)((fpa_c-(int)fpa_c)*100),
+		(int)(aux_c), (int)((aux_c-(int)aux_c)*100));
+}
 
 PT_THREAD( lepton_task(struct pt *pt))
 {
@@ -100,21 +115,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 				current_frame_count, current_buffer
 			);
 
+			print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
+
 			read_tmp007_regs();
-			//lepton_command(SYS, FPA_TEMPERATURE_KELVIN >> 2 , GET);
-			//lepton_read_data(lepton_i2c_buffer);
-
-			lepton_read_command(SYS, FPA_TEMPERATURE_KELVIN,lepton_i2c_buffer );
-			fpa_temperature_k = (lepton_i2c_buffer[0]<<8 | (lepton_i2c_buffer[1] ));
-
-			lepton_read_command(SYS, AUX_TEMPERATURE_KELVIN,lepton_i2c_buffer );
-			aux_temperature_k = (lepton_i2c_buffer[0]<<8 | (lepton_i2c_buffer[1] ));
-
-			//lepton_command(SYS, AUX_TEMPERATURE_KELVIN >> 2 , GET);
-			//lepton_read_data(lepton_i2c_buffer);
-			//aux_temperature_k = (lepton_i2c_buffer[0] | (lepton_i2c_buffer[1] <<8));
-
-			DEBUG_PRINTF("fpa %x, aux: %x\r\n", fpa_temperature_k, aux_temperature_k);
 
 			last_tick = curtick;
 			last_logged_count = current_frame_count;
