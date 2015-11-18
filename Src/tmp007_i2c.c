@@ -105,7 +105,7 @@ int read_tmp007_regs(void)
 	}
 
 	temperature = get_mili_celisius();
-	DEBUG_PRINTF("TMP007_TOBJ: %x  mC: %d  C: %d  F: %d\n\r",tmp007_read_reg(TMP007_TOBJ)>>2,temperature,temperature/1000, convert_C_to_F(temperature/1000));
+	DEBUG_PRINTF("TMP007_TOBJ: %x  mC: %ld  C: %ld  F: %d\n\r",tmp007_read_reg(TMP007_TOBJ)>>2,temperature,temperature/1000, convert_C_to_F(temperature/1000));
 	(void) temperature; //remove warning
 
 	return 1;
