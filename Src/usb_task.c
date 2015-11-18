@@ -17,15 +17,12 @@
 
 #include "project_config.h"
 
+extern volatile uint8_t uvc_stream_status;
+extern USBD_UVC_VideoControlTypeDef videoCommitControl;
 
+static int last_frame_count;
+static lepton_buffer *last_buffer;
 
-
-uint8_t packet[VIDEO_PACKET_SIZE];
-lepton_buffer *last_buffer;
-
-
-#define WHITE_LED_TOGGLE  (HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
-extern volatile int restart_frame;
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
@@ -43,17 +40,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 #ifdef TMP007_OVERLAY 
 #include "ugui.h"
 UG_GUI gui; 
-void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
+static void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 {
 	last_buffer->lines[y].data.image_data[x] = c;
 }
 #endif
 
-extern volatile uint8_t uvc_stream_status;
-extern USBD_UVC_VideoControlTypeDef videoCommitControl;
-
-
-void draw_splash(int min, int max)
+static void draw_splash(int min, int max)
 {
 	int x_loc = 0;
 	int y_loc = 0;
@@ -147,7 +140,8 @@ void draw_splash(int min, int max)
 
 }
 
-void get_min_max(int * min, int * max)
+#ifndef ENABLE_LEPTON_AGC
+static void get_min_max(lepton_buffer *buffer, int * min, int * max)
 {
 	int i,j;
 	int val;
@@ -157,7 +151,7 @@ void get_min_max(int * min, int * max)
 	{
 		for (i = 0; i < 80; i++)
 		{
-			val = last_buffer->lines[j].data.image_data[i];
+			val = buffer->lines[j].data.image_data[i];
 
 			if( val > *max )
 			{
@@ -171,7 +165,7 @@ void get_min_max(int * min, int * max)
 	}
 }
 
-void scale_image_8bit(int min, int max)
+static void scale_image_8bit(lepton_buffer *buffer, int min, int max)
 {
 	int i,j;
 	int val;
@@ -180,30 +174,26 @@ void scale_image_8bit(int min, int max)
 	{
 		for (i = 0; i < 80; i++)
 		{
-			val = last_buffer->lines[j].data.image_data[i];
+			val = buffer->lines[j].data.image_data[i];
 			val -= min;
 			val = (( val * 255) / (max-min));
 
-			last_buffer->lines[j].data.image_data[i] = val;
+			buffer->lines[j].data.image_data[i] = val;
 		}
 	}
 }
-
+#endif
 
 PT_THREAD( usb_task(struct pt *pt))
 {
-	static uint16_t val;
 	static int temperature;
 	static uint16_t count = 0, i;
-	static int last_frame = 0;
-	static int current_min, current_max;
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
+	static uint8_t packet[VIDEO_PACKET_SIZE];
 
 	PT_BEGIN(pt);
-
-
 
 #ifdef TMP007_OVERLAY 
 	UG_Init(&gui,pixel_set,80,60);
@@ -212,16 +202,16 @@ PT_THREAD( usb_task(struct pt *pt))
 
 	while (1)
 	{
-		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame);
+		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame_count);
 		 WHITE_LED_TOGGLE;
-		 last_frame = get_lepton_buffer(&last_buffer);
+		 last_frame_count = get_lepton_buffer(&last_buffer);
 
 #ifndef ENABLE_LEPTON_AGC
-		get_min_max(&current_min, &current_max);
-		scale_image_8bit(current_min, current_max);
+		get_min_max(last_buffer, &current_min, &current_max);
+		scale_image_8bit(last_buffer, current_min, current_max);
 #endif
 
-		if (((last_frame % 1800) > 0)   && ((last_frame % 1800) < 150)  )
+		if (((last_frame_count % 1800) > 0)   && ((last_frame_count % 1800) < 150)  )
 		{
 #ifdef SPLASHSCREEN_OVERLAY 
 			draw_splash(255, 0);
