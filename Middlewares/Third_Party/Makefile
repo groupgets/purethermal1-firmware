@@ -14,5 +14,4 @@ ${SUBDIRS}:
 	${MAKE} -C $@
 
 clean:
-	find . -name *.a -delete
-	find . -name *.o -delete
+	-for d in $(SUBDIRS); do (echo "cleaning up in $$d"; cd $$d; $(MAKE) clean ); done
