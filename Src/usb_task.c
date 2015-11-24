@@ -268,8 +268,8 @@ PT_THREAD( usb_task(struct pt *pt))
       {
         // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
         default:
-        case FMT_INDEX_NV12:
-        case FMT_INDEX_YU12:
+        case VS_FMT_INDEX(NV12):
+        case VS_FMT_INDEX(YU12):
         {
           // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
 
@@ -302,7 +302,7 @@ PT_THREAD( usb_task(struct pt *pt))
             case 1: // VU
             case 2:
             {
-              if (videoCommitControl.bFormatIndex[0] == FMT_INDEX_NV12)
+              if (videoCommitControl.bFormatIndex[0] == VS_FMT_INDEX(NV12))
               {
                 while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
                 {
@@ -345,7 +345,7 @@ PT_THREAD( usb_task(struct pt *pt))
   
           break;
         }
-        case FMT_INDEX_GREY:
+        case VS_FMT_INDEX(GREY):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
@@ -368,7 +368,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
-        case FMT_INDEX_Y16:
+        case VS_FMT_INDEX(Y16):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
@@ -391,7 +391,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
-        case FMT_INDEX_YUYV:
+        case VS_FMT_INDEX(YUYV):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)

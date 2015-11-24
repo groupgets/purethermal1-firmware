@@ -53,50 +53,50 @@
 #define UVC_IN_EP                                     0x81  /* EP1 for data IN */
 #define UVC_OUT_EP                                    0x01  /* EP1 for data OUT */
 // #define UVC_CMD_EP                                    0x82  /* EP2 for UVC commands */
-
-/* UVC Endpoints parameters: you can fine tune these values depending on the needed baudrates and performance. */
-
-#define WIDTH                                         ((unsigned int)80)
-#define HEIGHT                                        ((unsigned int)60)
 #define VIDEO_PACKET_SIZE                             ((unsigned int)(482))
 
-struct UVC_FRAME_DESC {
-  unsigned int width;
-  unsigned int height;
-  unsigned int video_packet_size;
-  unsigned int bits_per_pixel;
-  const char* guid_vs_format;
+#define CAM_FPS                                       9
+
+enum _vs_fmt_indexes {
+  VS_FMT_INDEX_NONE = 0,
+  VS_FMT_INDEX_YUYV,
+  VS_FMT_INDEX_Y16,
+  VS_FMT_INDEX_NV12,
+  VS_FMT_INDEX_YU12,
+  VS_FMT_INDEX_GREY,
+  VS_FMT_INDEX_MAX,
 };
 
-#define GUID_VS_FORMAT_GREY \
+enum _vs_fmt_size {
+  VS_FMT_SIZE_NONE =  0,
+  VS_FMT_SIZE_YUYV = 16,
+  VS_FMT_SIZE_Y16  = 16,
+  VS_FMT_SIZE_NV12 = 12,
+  VS_FMT_SIZE_YU12 = 12,
+  VS_FMT_SIZE_GREY =  8,
+};
+
+#define VS_FMT_GUID_NONE \
+    '0',  '0',  '0',  '0', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+
+#define VS_FMT_GUID_GREY \
     'Y',  '8',  '0',  '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define GUID_VS_FORMAT_Y16 \
+#define VS_FMT_GUID_Y16 \
     'Y',  '1',  '6',  ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define GUID_VS_FORMAT_YUYV \
+#define VS_FMT_GUID_YUYV \
     'Y',  'U',  'Y',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define GUID_VS_FORMAT_NV12 \
+#define VS_FMT_GUID_NV12 \
     'N',  'V',  '1',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define GUID_VS_FORMAT_YU12 \
+#define VS_FMT_GUID_YU12 \
     'I',  '4',  '2',  '0', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
-#define FMT_INDEX_YUYV 1
-#define FMT_INDEX_Y16 2
-#define FMT_INDEX_NV12 3
-#define FMT_INDEX_YU12 4
-#define FMT_INDEX_GREY 5
-
-#define NUM_FMT_INDEXES 5
-
-#define MAX_FRAME_SIZE(width, height, bits_per_pixel) ((unsigned long)((width*height*bits_per_pixel)>>3))
-// #define CAM_FPS                                       ((VIDEO_PACKET_SIZE*1000)/MAX_FRAME_SIZE)
-#define CAM_FPS                                       26
-#define MIN_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
-#define MAX_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
-#define INTERVAL                                      ((unsigned long)(10000000/CAM_FPS))
+#define VS_FMT_INDEX(NAME) VS_FMT_INDEX_ ## NAME
+#define VS_FMT_GUID(NAME) { VS_FMT_GUID_ ## NAME }
+#define VS_FMT_SIZE(NAME) VS_FMT_SIZE_ ## NAME
 
 #define USB_UVC_VCIF_NUM                              0
 #define USB_UVC_VSIF_NUM                              (char)1
@@ -160,6 +160,51 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
   uint8_t    bMaxVersion[1];
 }USBD_UVC_VideoControlTypeDef;
 
+struct uvc_format_uncompressed {
+  uint8_t bLength; /* 27*/
+  uint8_t bDescriptorType; /* : CS_INTERFACE */
+  uint8_t bDescriptorSubType; /* : VS_FORMAT_UNCOMPRESSED subtype */
+  uint8_t bFormatIndex; /* : First format descriptor */
+  uint8_t bNumFrameDescriptors; /* : One frame descriptor for this format follows. */
+  uint8_t sGuidFormat[16];
+  uint8_t bBitsPerPixel; /* : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */
+  uint8_t bDefaultFrameIndex; /* : Default frame index is 1. */
+  uint8_t bAspectRatioX; /* : Non-interlaced stream not required. */
+  uint8_t bAspectRatioY; /* : Non-interlaced stream not required. */
+  uint8_t bmInterlaceFlags; /* : Non-interlaced stream */
+  uint8_t bCopyProtect; /* : No restrictions imposed on the duplication of this video stream. */
+
+};
+
+struct uvc_frame_uncompressed {
+  uint8_t bLength; /* 30*/
+  uint8_t bDescriptorType; /* : CS_INTERFACE */
+  uint8_t bDescriptorSubType; /* : VS_FRAME_UNCOMPRESSED */
+  uint8_t bFrameIndex; /* : First (and only) frame descriptor */
+  uint8_t bmCapabilities; /* : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */
+  uint8_t wWidth[2]; /* (2bytes): Width of frame is 128 pixels. */
+  uint8_t wHeight[2]; /* (2bytes): Height of frame is 64 pixels. */
+  uint8_t dwMinBitRate[4]; /* (4bytes): Min bit rate in bits/s  */
+  uint8_t dwMaxBitRate[4]; /* (4bytes): Max bit rate in bits/s  */
+  uint8_t dwMaxVideoFrameBufSize[4]; /* (4bytes): Maximum video or still frame size, in bytes. */
+  uint8_t dwDefaultFrameInterval[4]; /* : 1,000,000 * 100ns -> 10 FPS */
+  uint8_t bFrameIntervalType; /* : Continuous frame interval */
+  uint8_t dwMinFrameInterval[4]; /* : 1,000,000 ns  *100ns -> 10 FPS */
+
+};
+
+struct uvc_cs_color_matching {
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubType;
+  uint8_t bColorPrimary;
+  uint8_t bTransferCharacteristics;
+  uint8_t bMatrixCoefficients;
+};
+
+/**
+  * @}
+  */ 
 
 /** @defgroup USBD_CORE_Exported_Macros
   * @{
@@ -214,7 +259,7 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
           UVC_OUTPUT_TERMINAL_DESC_SIZE(0))
 
 #define VC_HEADER_SIZ (unsigned int)(\
-          UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE(NUM_FMT_INDEXES,1) + \
+          UVC_VS_INTERFACE_INPUT_HEADER_DESC_SIZE((VS_FMT_INDEX_MAX-1),1) + \
           VS_FORMAT_UNCOMPRESSED_DESC_SIZE + \
           VS_FRAME_UNCOMPRESSED_DESC_SIZE + \
           VS_COLOR_MATCHING_DESC_SIZE + \
@@ -233,11 +278,55 @@ typedef struct  _USBD_UVC_VideoControlTypeDef{
 
 /* bMaxPower in Configuration Descriptor */
 #define USB_CONFIG_POWER_MA(mA)                       ((mA)/2)
+#define MAX_FRAME_SIZE(width, height, bits_per_pixel) ((unsigned long)((width*height*bits_per_pixel)>>3))
+#define MIN_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
+#define MAX_BIT_RATE(width, height, bits_per_pixel)   ((unsigned long)(width*height*bits_per_pixel*CAM_FPS))
+#define INTERVAL                                      ((unsigned long)(10000000/CAM_FPS))
 
 /* bEndpointAddress in Endpoint Descriptor */
 #define USB_ENDPOINT_DIRECTION_MASK                   0x80
 #define USB_ENDPOINT_OUT(addr)                        ((addr) | 0x00)
 #define USB_ENDPOINT_IN(addr)                         ((addr) | 0x80)
+
+#define UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(FMT_NAME, NUM_FRAME_DESCS) { \
+  VS_FORMAT_UNCOMPRESSED_DESC_SIZE,     /* bLength 27*/ \
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */ \
+  VS_FORMAT_UNCOMPRESSED,               /* bDescriptorSubType : VS_FORMAT_UNCOMPRESSED subtype */ \
+  VS_FMT_INDEX(FMT_NAME),               /* bFormatIndex : First format descriptor */ \
+  NUM_FRAME_DESCS,                      /* bNumFrameDescriptors : One frame descriptor for this format follows. */ \
+  VS_FMT_GUID(FMT_NAME),                /* */ \
+  VS_FMT_SIZE(FMT_NAME),                /* bBitsPerPixel : Number of bits per pixel used to specify color in the decoded video frame - 16 for yuy2, 12 for nv12... */ \
+  0x01,                                 /* bDefaultFrameIndex : Default frame index is 1. */ \
+  0x00,                                 /* bAspectRatioX : Non-interlaced stream not required. */ \
+  0x00,                                 /* bAspectRatioY : Non-interlaced stream not required. */ \
+  0x00,                                 /* bmInterlaceFlags : Non-interlaced stream */ \
+  0x00,                                 /* bCopyProtect : No restrictions imposed on the duplication of this video stream. */ \
+}
+
+#define UVC_FRAME_FORMAT(FRAME_INDEX, FMT_NAME, WIDTH, HEIGHT) { \
+  VS_FRAME_UNCOMPRESSED_DESC_SIZE,      /* bLength 30*/ \
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */ \
+  VS_FRAME_UNCOMPRESSED,                /* bDescriptorSubType : VS_FRAME_UNCOMPRESSED */ \
+  FRAME_INDEX,                          /* bFrameIndex : First (and only) frame descriptor */ \
+  0x02,                                 /* bmCapabilities : Still images using capture method 0 are supported at this frame setting.D1: Fixed frame-rate. */ \
+  {WBVAL(WIDTH)},                       /* wWidth (2bytes): Width of frame is 128 pixels. */ \
+  {WBVAL(HEIGHT)},                      /* wHeight (2bytes): Height of frame is 64 pixels. */ \
+  {DBVAL(MIN_BIT_RATE(WIDTH,HEIGHT,VS_FMT_SIZE(FMT_NAME)))}, /* dwMinBitRate (4bytes): Min bit rate in bits/s  */ \
+  {DBVAL(MAX_BIT_RATE(WIDTH,HEIGHT,VS_FMT_SIZE(FMT_NAME)))}, /* dwMaxBitRate (4bytes): Max bit rate in bits/s  */ \
+  {DBVAL(MAX_FRAME_SIZE(WIDTH,HEIGHT,VS_FMT_SIZE(FMT_NAME)))}, /* dwMaxVideoFrameBufSize (4bytes): Maximum video or still frame size, in bytes. */ \
+  {DBVAL(INTERVAL)},                      /* dwDefaultFrameInterval : */ \
+  0x01,                                 /* bFrameIntervalType : Continuous frame interval */ \
+  {DBVAL(INTERVAL)},                    /* dwMinFrameInterval : 1,000,000 ns  *100ns -> 10 FPS */ \
+}
+
+#define UVC_COLOR_MATCHING_DESCRIPTOR() { \
+  VS_COLOR_MATCHING_DESC_SIZE,          /* bLength */ \
+  CS_INTERFACE,                         /* bDescriptorType : CS_INTERFACE */ \
+  0x0D,                                 /* bDescriptorSubType : VS_COLORFORMAT */ \
+  0x01,                                 /* bColorPrimarie : 1: BT.709, sRGB (default) */ \
+  0x01,                                 /* bTransferCharacteristics : 1: BT.709 (default) */ \
+  0x04,                                 /* bMatrixCoefficients : 1: BT. 709. */ \
+}
 
 /**
   * @}
