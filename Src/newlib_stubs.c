@@ -27,6 +27,17 @@
 #undef errno
 extern int errno;
 
+#define HUSART(A) huart ## A
+#define USART(STD) HUSART(STD)
+
+#define STDOUT STDOUT_USART
+#define STDERR STDERR_USART
+#define STDIN STDIN_USART
+
+extern UART_HandleTypeDef USART(STDOUT);
+extern UART_HandleTypeDef USART(STDERR);
+extern UART_HandleTypeDef USART(STDIN);
+
 /*
  environ
  A pointer to a list of environment variables and their values. 
@@ -167,30 +178,9 @@ char * stack = (char*) __get_MSP();
 
 
 int _read(int file, char *ptr, int len) {
-    int n;
-    int num = 0;
-    switch (file) {
-    case STDIN_FILENO:
-        for (n = 0; n < len; n++) {
-#if   STDIN_USART == 1
-            while ((USART1->SR & UART_FLAG_RXNE) == (uint16_t)RESET) {}
-            char c = (char)(USART1->DR & (uint16_t)0x01FF);
-#elif STDIN_USART == 2
-            while ((USART2->SR & UART_FLAG_RXNE) == (uint16_t) RESET) {}
-            char c = (char) (USART2->DR & (uint16_t) 0x01FF);
-#elif STDIN_USART == 3
-            while ((USART3->SR & UART_FLAG_RXNE) == (uint16_t)RESET) {}
-            char c = (char)(USART3->DR & (uint16_t)0x01FF);
-#endif
-            *ptr++ = c;
-            num++;
-        }
-        break;
-    default:
-        errno = EBADF;
-        return -1;
-    }
-    return num;
+    // TODO: interrupt or DMA transfer would be more efficient
+    HAL_UART_Receive(&USART(STDIN), (uint8_t*)ptr, len, HAL_MAX_DELAY);
+    return len;
 }
 
 /*
@@ -237,39 +227,15 @@ int _wait(int *status) {
  Returns -1 on error or number of bytes sent
  */
 int _write(int file, char *ptr, int len) {
-    int n;
+    // TODO: interrupt or DMA transfer would be more efficient
     switch (file) {
-    case STDOUT_FILENO: /*stdout*/
-        for (n = 0; n < len; n++) {
-#if STDOUT_USART == 1
-            while ((USART1->SR & UART_FLAG_TC) == (uint16_t)RESET) {}
-            USART1->DR = (*ptr++ & (uint16_t)0x01FF);
-#elif  STDOUT_USART == 2
-            while ((USART2->SR & UART_FLAG_TC) == (uint16_t) RESET) {
-            }
-            USART2->DR = (*ptr++ & (uint16_t) 0x01FF);
-#elif  STDOUT_USART == 3
-            while ((USART3->SR & UART_FLAG_TC) == (uint16_t)RESET) {}
-            USART3->DR = (*ptr++ & (uint16_t)0x01FF);
-#endif
-        }
+      case STDOUT_FILENO:
+        HAL_UART_Transmit(&USART(STDOUT), (uint8_t*)ptr, len, HAL_MAX_DELAY);
         break;
-    case STDERR_FILENO: /* stderr */
-        for (n = 0; n < len; n++) {
-#if STDERR_USART == 1
-            while ((USART1->SR & UART_FLAG_TC) == (uint16_t)RESET) {}
-            USART1->DR = (*ptr++ & (uint16_t)0x01FF);
-#elif  STDERR_USART == 2
-            while ((USART2->SR & UART_FLAG_TC) == (uint16_t) RESET) {
-            }
-            USART2->DR = (*ptr++ & (uint16_t) 0x01FF);
-#elif  STDERR_USART == 3
-            while ((USART3->SR & UART_FLAG_TC) == (uint16_t)RESET) {}
-            USART3->DR = (*ptr++ & (uint16_t)0x01FF);
-#endif
-        }
+      case STDERR_FILENO:
+        HAL_UART_Transmit(&USART(STDERR), (uint8_t*)ptr, len, HAL_MAX_DELAY);
         break;
-    default:
+      default:
         errno = EBADF;
         return -1;
     }
