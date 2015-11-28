@@ -3,8 +3,13 @@
 
 #define FRAME_HEADER_LENGTH (2)
 #define FRAME_LINE_LENGTH (80)
+#ifdef Y16
 #define FRAME_TOTAL_LENGTH (FRAME_HEADER_LENGTH + FRAME_LINE_LENGTH)
-#define FRAME_TOTAL_SIZE (FRAME_TOTAL_LENGTH * sizeof(uint16_t))
+#else
+#define FRAME_TOTAL_LENGTH (FRAME_HEADER_LENGTH + FRAME_LINE_LENGTH + 40)
+#endif
+#define FRAME_TOTAL_SIZE_Y16 (FRAME_TOTAL_LENGTH * sizeof(uint16_t) * 1)
+#define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
 #define TELEMETRY_NUM_LINES (3)
 #define IMAGE_OFFSET_LINES (0)
@@ -69,6 +74,13 @@ typedef struct __attribute__((packed)) _telemetry_data_l3 {
 
 } telemetry_data_l3;
 
+typedef struct __attribute__((packed)) _rgb {
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+} rgb_t;
+
+#ifdef Y16
 typedef struct __attribute__((packed)) _vospi_packet {
   uint16_t header[2];
   union {
@@ -76,6 +88,15 @@ typedef struct __attribute__((packed)) _vospi_packet {
     telemetry_data_l2 telemetry_data;
   } data;
 } vospi_packet;
+#else
+typedef struct __attribute__((packed)) _vospi_packet {
+  uint16_t header[2];
+  union {
+    rgb_t image_data[FRAME_LINE_LENGTH];
+    telemetry_data_l2 telemetry_data;
+  } data;
+} vospi_packet;
+#endif
 
 typedef struct _lepton_buffer {
   vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_NUM_LINES];

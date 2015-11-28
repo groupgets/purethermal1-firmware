@@ -104,9 +104,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 			continue;
 		}
 
+#ifdef Y16
 		current_frame_count =
 			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) |
 			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0);
+#else
+		current_frame_count++;
+#endif
 
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
@@ -116,7 +120,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 				current_frame_count, current_buffer
 			);
 
+#ifdef Y16
 			print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
+#endif
 
 			read_tmp007_regs();
 
@@ -125,7 +131,11 @@ PT_THREAD( lepton_task(struct pt *pt))
 		}
 
 		// Need to update completed buffer for clients?
+#ifdef Y16
 		if (completed_frame_count != current_frame_count)
+#else
+		if ((current_frame_count % 3) == 0)
+#endif
 		{
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;

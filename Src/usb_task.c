@@ -42,7 +42,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 UG_GUI gui; 
 static void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 {
+#ifdef Y16
 	last_buffer->lines[y].data.image_data[x] = c;
+#else
+	last_buffer->lines[y].data.image_data[x] = (rgb_t) { c, c, c };
+#endif
 }
 #endif
 
@@ -211,6 +215,19 @@ PT_THREAD( usb_task(struct pt *pt))
 		scale_image_8bit(last_buffer, current_min, current_max);
 #endif
 
+#ifndef Y16
+		// when we first start, byteswap the entire image
+		for (i = 0; i < IMAGE_NUM_LINES; i++)
+		{
+			uint16_t* lineptr = (uint16_t*)last_buffer->lines[IMAGE_OFFSET_LINES + i].data.image_data;
+			while (lineptr < (uint16_t*)&last_buffer->lines[IMAGE_OFFSET_LINES + i].data.image_data[FRAME_LINE_LENGTH])
+			{
+				uint8_t* bytes = (uint8_t*)lineptr;
+				*lineptr++ = bytes[0] << 8 | bytes[1];
+			}
+		}
+#endif
+
 		if (((last_frame_count % 1800) > 0)   && ((last_frame_count % 1800) < 150)  )
 		{
 #ifdef SPLASHSCREEN_OVERLAY 
@@ -283,7 +300,11 @@ PT_THREAD( usb_task(struct pt *pt))
               {
                 for (i = 0; i < FRAME_LINE_LENGTH; i++)
                 {
+#ifdef Y16
                   uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+                  uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+#endif
                   // AGC is on so just use lower 8 bits
                   packet[count++] = (uint8_t)val;
                 }
@@ -352,7 +373,11 @@ PT_THREAD( usb_task(struct pt *pt))
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
+#ifdef Y16
               uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+              uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+#endif
               // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
             }
@@ -375,7 +400,11 @@ PT_THREAD( usb_task(struct pt *pt))
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
+#ifdef Y16
               uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+              uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+#endif
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);
             }
@@ -393,6 +422,7 @@ PT_THREAD( usb_task(struct pt *pt))
         }
         case VS_FMT_INDEX(YUYV):
         {
+#ifdef Y16
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
@@ -406,6 +436,28 @@ PT_THREAD( usb_task(struct pt *pt))
 
             uvc_xmit_row++;
           }
+#else
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint8_t UV;
+              rgb_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+
+              uint8_t Y1 =  (0.257f * (float)val.r) + (0.504f * (float)val.g) + (0.098f * (float)val.b);
+
+              if ((i % 2) == 0)
+                UV = -(0.148f * (float)val.r) - (0.291f * (float)val.g) + (0.439f * (float)val.b) + 128;
+              else
+                UV =  (0.439f * (float)val.r) - (0.368f * (float)val.g) - (0.071f * (float)val.b) + 128;
+
+              packet[count++] = Y1;
+              packet[count++] = UV;
+            }
+
+            uvc_xmit_row++;
+          }
+#endif
 
           // image is done
           if (uvc_xmit_row == IMAGE_NUM_LINES)

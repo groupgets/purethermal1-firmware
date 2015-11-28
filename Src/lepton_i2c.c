@@ -343,6 +343,12 @@ HAL_StatusTypeDef enable_rgb888(void)
     return HAL_ERROR;
   }
 
+  result = LEP_SetVidPcolorLut(&hport_desc, LEP_VID_FUSION_LUT);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set color lut: %d\r\n", result);
+    return HAL_ERROR;
+  }
+
   return HAL_OK;
 }
 

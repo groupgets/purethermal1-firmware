@@ -137,6 +137,10 @@ int main(void)
 #endif
   enable_telemetry();
 
+#ifndef Y16
+  enable_rgb888();
+#endif
+
   DEBUG_PRINTF("reading_tmp007_regs...\n\r");
 
   read_tmp007_regs();
