@@ -139,7 +139,7 @@ int main(void)
 #ifdef Y16
   enable_telemetry();
 #else
-  enable_rgb888();
+  enable_rgb888(PSUEDOCOLOR_LUT);
 #endif
 
   DEBUG_PRINTF("reading_tmp007_regs...\n\r");

@@ -333,7 +333,7 @@ HAL_StatusTypeDef enable_telemetry(void)
   return HAL_OK;
 }
 
-HAL_StatusTypeDef enable_rgb888(void)
+HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
 {
   HAL_StatusTypeDef result;
 
@@ -343,7 +343,7 @@ HAL_StatusTypeDef enable_rgb888(void)
     return HAL_ERROR;
   }
 
-  result = LEP_SetVidPcolorLut(&hport_desc, LEP_VID_FUSION_LUT);
+  result = LEP_SetVidPcolorLut(&hport_desc, pcolor_lut);
   if (result != LEP_OK) {
     DEBUG_PRINTF("Could not set color lut: %d\r\n", result);
     return HAL_ERROR;
