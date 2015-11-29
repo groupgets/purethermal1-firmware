@@ -1,6 +1,8 @@
 #ifndef LEPTON_H_
 #define LEPTON_H_
 
+#include "project_config.h"
+
 #define FRAME_HEADER_LENGTH (2)
 #define FRAME_LINE_LENGTH (80)
 #ifdef Y16
@@ -11,7 +13,11 @@
 #define FRAME_TOTAL_SIZE_Y16 (FRAME_TOTAL_LENGTH * sizeof(uint16_t) * 1)
 #define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
+#ifdef Y16
 #define TELEMETRY_NUM_LINES (3)
+#else
+#define TELEMETRY_NUM_LINES (0)
+#endif
 #define IMAGE_OFFSET_LINES (0)
 #define TELEMETRY_OFFSET_LINES (IMAGE_NUM_LINES)
 

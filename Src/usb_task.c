@@ -303,7 +303,8 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
                   uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-                  uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+                  rgb_t rgbval = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+                  uint8_t val = (0.257f * (float)rgbval.r) + (0.504f * (float)rgbval.g) + (0.098f * (float)rgbval.b);
 #endif
                   // AGC is on so just use lower 8 bits
                   packet[count++] = (uint8_t)val;
@@ -328,7 +329,19 @@ PT_THREAD( usb_task(struct pt *pt))
                 while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
                 {
                   for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
+                  {
+#ifdef Y16
                     packet[count++] = 128;
+#else
+                    rgb_t rgbval = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+                    uint8_t val;
+                    if ((i % 2) == 0)
+                      val = -(0.148f * (float)rgbval.r) - (0.291f * (float)rgbval.g) + (0.439f * (float)rgbval.b) + 128;
+                    else
+                      val =  (0.439f * (float)rgbval.r) - (0.368f * (float)rgbval.g) - (0.071f * (float)rgbval.b) + 128;
+                    packet[count++] = val;
+#endif
+                  }
 
                   uvc_xmit_row++;
                 }
@@ -341,7 +354,19 @@ PT_THREAD( usb_task(struct pt *pt))
                 while (uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE)
                 {
                   for (i = 0; i < (FRAME_LINE_LENGTH/2) && uvc_xmit_row < (IMAGE_NUM_LINES/2) && count < VIDEO_PACKET_SIZE; i++)
+                  {
+#ifdef Y16
                     packet[count++] = 128;
+#else
+                    rgb_t rgbval = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+                    uint8_t val;
+                    if (uvc_xmit_plane == 1)
+                      val = -(0.148f * (float)rgbval.r) - (0.291f * (float)rgbval.g) + (0.439f * (float)rgbval.b) + 128;
+                    else
+                      val =  (0.439f * (float)rgbval.r) - (0.368f * (float)rgbval.g) - (0.071f * (float)rgbval.b) + 128;
+                    packet[count++] = val;
+#endif
+                  }
 
                   uvc_xmit_row++;
                 }
@@ -376,7 +401,8 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
               uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-              uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+              rgb_t rgbval = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              uint8_t val = (0.257f * (float)rgbval.r) + (0.504f * (float)rgbval.g) + (0.098f * (float)rgbval.b);
 #endif
               // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
@@ -403,7 +429,8 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
               uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-              uint8_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i].g;
+              rgb_t rgbval = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              uint16_t val = (0.257f * (float)rgbval.r) + (0.504f * (float)rgbval.g) + (0.098f * (float)rgbval.b);
 #endif
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);

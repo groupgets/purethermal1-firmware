@@ -135,9 +135,10 @@ int main(void)
 #ifdef ENABLE_LEPTON_AGC
   enable_lepton_agc();
 #endif
-  enable_telemetry();
 
-#ifndef Y16
+#ifdef Y16
+  enable_telemetry();
+#else
   enable_rgb888();
 #endif
 
