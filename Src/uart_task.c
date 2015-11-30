@@ -53,7 +53,12 @@ PT_THREAD( uart_task(struct pt *pt))
 		 {
 			 for (i = 0; i < 80; i++)
 			 {
+#ifdef Y16
 				 val = last_buffer->lines[j].data.image_data[i];
+#else
+				 rgb_t rgbval = last_buffer->lines[j].data.image_data[i];
+				 val = (0.257f * (float)rgbval.r) + (0.504f * (float)rgbval.g) + (0.098f * (float)rgbval.b);
+#endif
 
 				 lepton_raw[count++] = ((val>>8)&0xff);
 				 lepton_raw[count++] = (val&0xff);
