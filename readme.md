@@ -35,7 +35,7 @@ The following are compiler installation instructions for various platforms, requ
 TODO
 
 
-### Windows
+#### Windows
 
 TODO
 
@@ -44,7 +44,14 @@ TODO
 
     git clone git@bitbucket.org:groupgets/lepton-devboard.git
     cd lepton-devboard
+
+If you wish, you can modify `Src/project_config.h` to customize your build. Then you can simply build:
+
     make
+
+or
+
+    make USART_DEBUG=1
 
 
 ## Installing the Firmware
