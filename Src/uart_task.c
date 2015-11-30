@@ -12,10 +12,7 @@
 #include "usbd_uvc_if.h"
 
 
-#include "uart_lepton.h"
-#include "usb_task.h"
-#include "lepton_task.h"
-#include "uart_task.h"
+#include "tasks.h"
 #include "project_config.h"
 
 
@@ -64,7 +61,6 @@ PT_THREAD( uart_task(struct pt *pt))
 				 lepton_raw[count++] = (val&0xff);
 			 }
 		 }
-		 //send_lepton_via_usart(lepton_raw);
 
 		 PT_SPAWN(pt,&uart_lepton_send_pt,uart_lepton_send(&uart_lepton_send,lepton_raw));
 

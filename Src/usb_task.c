@@ -12,8 +12,7 @@
 #include "usbd_uvc_if.h"
 
 
-#include "usb_task.h"
-#include "lepton_task.h"
+#include "tasks.h"
 
 #include "project_config.h"
 

@@ -47,9 +47,7 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 /* USER CODE END Includes */
 
-#include "usb_task.h"
-#include "lepton_task.h"
-#include "uart_task.h"
+#include "tasks.h"
 #include "project_config.h"
 
 /* Private variables ---------------------------------------------------------*/

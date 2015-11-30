@@ -11,7 +11,7 @@
 #include "usbd_uvc.h"
 #include "usbd_uvc_if.h"
 
-#include "lepton_task.h"
+#include "tasks.h"
 #include "project_config.h"
 
 
