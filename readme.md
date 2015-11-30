@@ -14,7 +14,7 @@ and use as-is. For others, forking this project and making your own modification
 
 ## Building the Firmware
 
-This is a Makefile-based project, and we use the GCC ARM Embedded toolchain from https://launchpad.net/gcc-arm-embedded,
+This is a Makefile-based project, and we use the GCC ARM Embedded toolchain from https://launchpad.net/gcc-arm-embedded/+download,
 however, other toolchains that work for the STM32 (such as Mentor's Sourcery toolchain) should also work.
 
 
@@ -32,7 +32,15 @@ The following are compiler installation instructions for various platforms, requ
 
 #### OS X
 
-TODO
+Launchpad has toolchain binaries for OS X. To keep things simple, we'll install then into `/usr/local/gcc-arm-none-eabi-*`
+
+    sudo mkdir -p /usr/local
+    curl -L https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-mac.tar.bz2 -o ~/Downloads/gcc-arm-embedded.tar.bz2
+    sudo tar xjf ~/Downloads/gcc-arm-embedded.tar.bz2 -C /usr/local && rm ~/Downloads/gcc-arm-embedded.tar.bz2
+
+Then you need to add this location to your path. Add to your .bashrc, or every time you open a new shell and wish to build execute:
+
+    export PATH=$PATH:/usr/local/gcc-arm-none-eabi-4_9-2015q3/bin
 
 
 #### Windows
@@ -56,7 +64,20 @@ or
 
 ## Installing the Firmware
 
-TODO
+### OS X
+
+Install dfu-util via Homebrew
+
+    brew install dfu-util
+
+Then run:
+
+    ./flash.sh
+
+
+### Windows
+
+See the document "GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf"
 
 
 ## For More Information
