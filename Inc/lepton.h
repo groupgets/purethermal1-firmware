@@ -110,6 +110,17 @@ typedef struct _lepton_buffer {
   lepton_status status;
 } lepton_buffer;
 
+typedef struct __attribute__((packed)) _yuv422 {
+  uint8_t y;
+  uint8_t uv;
+} yuv422_t;
+
+typedef yuv422_t yuv422_row_t[FRAME_LINE_LENGTH];
+
+typedef struct __attribute__((packed)) _yuv422_buffer {
+  yuv422_row_t data[IMAGE_NUM_LINES];
+} yuv422_buffer_t;
+
 lepton_status complete_lepton_transfer(lepton_buffer *);
 lepton_buffer* lepton_transfer(void);
 

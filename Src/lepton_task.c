@@ -20,6 +20,14 @@ uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
 
+uint32_t completed_yuv_frame_count;
+yuv422_buffer_t yuv_buffers[2];
+
+struct rgb_to_yuv_state {
+  struct pt pt;
+  lepton_buffer *restrict rgb;
+  yuv422_buffer_t *restrict buffer;
+};
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -33,6 +41,13 @@ uint32_t get_lepton_buffer(lepton_buffer **buffer)
   if (buffer != NULL)
     *buffer = completed_buffer;
 	return completed_frame_count;
+}
+
+uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
+{
+  if (buffer != NULL)
+    *buffer = &yuv_buffers[completed_yuv_frame_count%2];
+	return completed_yuv_frame_count;
 }
 
 void init_lepton_state(void);
@@ -81,6 +96,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t last_logged_count = 0;
 	static uint32_t current_frame_count = 0;
 	static lepton_buffer *current_buffer;
+	static struct pt rgb_to_yuv_pt;
 	curtick = last_tick = HAL_GetTick();
 
 	while (1)
@@ -139,9 +155,55 @@ PT_THREAD( lepton_task(struct pt *pt))
 		{
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
+
+#ifndef Y16
+			PT_SPAWN(
+				pt,
+				&rgb_to_yuv_pt,
+				rgb_to_yuv(&rgb_to_yuv_pt, completed_buffer, &yuv_buffers[(completed_yuv_frame_count + 1) % 2])
+			);
+#endif
 		}
 	}
 	PT_END(pt);
 }
 
+PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buffer_t *restrict buffer))
+{
+  PT_BEGIN(pt);
 
+  static int row, col;
+
+  for (row = 0; row < IMAGE_NUM_LINES; row++)
+  {
+    uint16_t* lineptr = (uint16_t*)lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data;
+    while (lineptr < (uint16_t*)&lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
+    {
+      uint8_t* bytes = (uint8_t*)lineptr;
+      *lineptr++ = bytes[0] << 8 | bytes[1];
+    }
+
+    for (col = 0; col < FRAME_LINE_LENGTH; col++)
+    {
+#ifdef Y16
+      uint16_t val = lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[col];
+      buffer->data[row][col] = (yuv422_t){ (uint8_t)val, 128 };
+#else
+      rgb_t val = lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[col];
+      float r = val.r, g = val.g, b = val.b;
+
+      buffer->data[row][col].y = (0.257f * r) + (0.504f * g) + (0.098f * b);
+
+      if ((col % 2) == 0)
+        buffer->data[row][col].uv = -(0.148f * r) - (0.291f * g) + (0.439f * b) + 128;
+      else
+        buffer->data[row][col].uv =  (0.439f * r) - (0.368f * g) - (0.071f * b) + 128;
+#endif
+    }
+    PT_YIELD(pt);
+  }
+
+  completed_yuv_frame_count++;
+
+	PT_END(pt);
+}

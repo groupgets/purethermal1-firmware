@@ -82,7 +82,7 @@ OCD	= sudo openocd \
   
 # INCLUDES = -I$(SRCDIR) $(LIBINC)
 INCLUDES = $(LIBINC)
-CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-strict-aliasing -fno-short-enums -O2 $(INCLUDES) -g -Wfatal-errors
+CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -O2 $(INCLUDES) -g -Wfatal-errors -std=c99
 ifdef USART_DEBUG
 	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
