@@ -168,6 +168,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 	PT_END(pt);
 }
 
+static inline uint8_t clamp (float x)
+{
+  if (x < 0)         return 0;
+  else if (x > 255)  return 255;
+  else               return (uint8_t)x;
+}
+
 PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buffer_t *restrict buffer))
 {
   PT_BEGIN(pt);
@@ -192,12 +199,13 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buff
       rgb_t val = lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[col];
       float r = val.r, g = val.g, b = val.b;
 
-      buffer->data[row][col].y = (0.257f * r) + (0.504f * g) + (0.098f * b);
+      float y1 = 0.299f * r + 0.587f * g + 0.114f * b;
 
+      buffer->data[row][col].y =    clamp (0.859f *      y1  +  16.0f);
       if ((col % 2) == 0)
-        buffer->data[row][col].uv = -(0.148f * r) - (0.291f * g) + (0.439f * b) + 128;
+        buffer->data[row][col].uv = clamp (0.496f * (b - y1) + 128.0f);
       else
-        buffer->data[row][col].uv =  (0.439f * r) - (0.368f * g) - (0.071f * b) + 128;
+        buffer->data[row][col].uv = clamp (0.627f * (r - y1) + 128.0f);
 #endif
     }
     PT_YIELD(pt);
