@@ -202,6 +202,8 @@ struct usbd_uvc_cfg {
   struct uvc_processing_unit_descriptor uvc_vc_processing_unit;
   struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 3) uvc_vc_extension_unit;
   struct uvc_output_terminal_descriptor uvc_vc_output_terminal;
+  struct usb_endpoint_descriptor uvc_vc_ep;
+  struct uvc_control_endpoint_descriptor uvc_vc_cs_ep;
 
   struct usb_interface_descriptor uvc_vs_if_alt0_desc;
   struct _UVC_INPUT_HEADER_DESCRIPTOR(1, VS_NUM_FORMATS) uvc_vs_input_header_desc;
@@ -338,6 +340,24 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
     .iTerminal = 0x00,                           // 0 no description available
   },
 
+  /* Standard Interrupt Endpoint Descriptor */
+  .uvc_vc_ep = {
+    .bLength = USB_DT_ENDPOINT_SIZE,              // 7
+    .bDescriptorType = USB_DESC_TYPE_ENDPOINT,    // 5 (ENDPOINT)
+    .bEndpointAddress = UVC_CMD_EP,               // 0x82 EP 2 IN
+    .bmAttributes = USBD_EP_TYPE_INTR,            // interrupt
+    .wMaxPacketSize = CMD_PACKET_SIZE,            // 8 bytes status
+    .bInterval = 0x20,                            // poll at least every 32ms
+  },
+
+  /* Class-specific Interrupt Endpoint Descriptor */
+  .uvc_vc_cs_ep = {
+    .bLength = UVC_DT_CONTROL_ENDPOINT_SIZE,
+    .bDescriptorType = UVC_CS_ENDPOINT,
+    .bDescriptorSubType = USBD_EP_TYPE_INTR,
+    .wMaxTransferSize = CMD_PACKET_SIZE,
+  },
+
 
   /*-------------- Video Streaming (VS) Interface Descriptor ----------------*/
 
@@ -365,7 +385,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
     .wTotalLength =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_input_header_desc) + 
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_frames_formats),
-    .bEndpointAddress = USB_ENDPOINT_IN(1),    // 0x83 EP 3 IN
+    .bEndpointAddress = UVC_IN_EP,             // 0x83 EP 3 IN
     .bmInfo = 0x00,                            // 0 no dynamic format change supported
     .bTerminalLink = 0x04,                     // 2 supplies terminal ID 2 (Output terminal)
     .bStillCaptureMethod = 0x00,               // 0 NO supports still image capture
@@ -427,7 +447,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
   .uvc_vs_if_alt1_ep = {
     .bLength = USB_DT_ENDPOINT_SIZE,              // 7
     .bDescriptorType = USB_DESC_TYPE_ENDPOINT,    // 5 (ENDPOINT)
-    .bEndpointAddress = USB_ENDPOINT_IN(1),       // 0x83 EP 3 IN
+    .bEndpointAddress = UVC_IN_EP,                // 0x83 EP 3 IN
     .bmAttributes = USBD_EP_TYPE_ISOC,            // 1 isochronous transfer type
     .wMaxPacketSize = VIDEO_PACKET_SIZE,
     .bInterval = 0x01,                            // 1 one frame interval
@@ -455,23 +475,18 @@ static uint8_t  USBD_UVC_Init (USBD_HandleTypeDef *pdev,
   uint8_t ret = 0;
   USBD_UVC_HandleTypeDef   *hcdc;
   
-  if(pdev->dev_speed == USBD_SPEED_HIGH  ) 
-  {  
-    /* Open EP IN */
-    USBD_LL_OpenEP(pdev,
-                   UVC_IN_EP,
-                   USBD_EP_TYPE_ISOC,
-                   UVC_DATA_HS_IN_PACKET_SIZE);
-  }
-  else
-  {
-    /* Open EP IN */
-    USBD_LL_OpenEP(pdev,
-                   UVC_IN_EP,
-                   USBD_EP_TYPE_ISOC,
-                   UVC_DATA_FS_IN_PACKET_SIZE);
-  }
-    
+  /* Open EP IN */
+  USBD_LL_OpenEP(pdev,
+                 UVC_IN_EP,
+                 USBD_EP_TYPE_ISOC,
+                 VIDEO_PACKET_SIZE);
+
+  USBD_LL_OpenEP(pdev,
+                 UVC_CMD_EP,
+                 USBD_EP_TYPE_INTR,
+                 CMD_PACKET_SIZE);
+
+
   pdev->pClassData = USBD_malloc(sizeof (USBD_UVC_HandleTypeDef));
   
   if(pdev->pClassData == NULL)
@@ -507,6 +522,9 @@ static uint8_t  USBD_UVC_DeInit (USBD_HandleTypeDef *pdev,
   /* Open EP IN */
   USBD_LL_CloseEP(pdev,
               UVC_IN_EP);
+
+  USBD_LL_CloseEP(pdev,
+              UVC_CMD_EP);
 
   /* DeInit  physical Interface components */
   if(pdev->pClassData != NULL)
@@ -857,22 +875,11 @@ uint8_t  USBD_UVC_ReceivePacket(USBD_HandleTypeDef *pdev)
   /* Suspend or Resume USB Out process */
   if(pdev->pClassData != NULL)
   {
-    if(pdev->dev_speed == USBD_SPEED_HIGH  ) 
-    {      
-      /* Prepare Out endpoint to receive next packet */
-      USBD_LL_PrepareReceive(pdev,
-                             UVC_OUT_EP,
-                             hcdc->RxBuffer,
-                             UVC_DATA_HS_OUT_PACKET_SIZE);
-    }
-    else
-    {
-      /* Prepare Out endpoint to receive next packet */
-      USBD_LL_PrepareReceive(pdev,
-                             UVC_OUT_EP,
-                             hcdc->RxBuffer,
-                             UVC_DATA_FS_OUT_PACKET_SIZE);
-    }
+    /* Prepare Out endpoint to receive next packet */
+    // USBD_LL_PrepareReceive(pdev,
+    //                        UVC_OUT_EP,
+    //                        hcdc->RxBuffer,
+    //                        UVC_DATA_FS_OUT_PACKET_SIZE);
     return USBD_OK;
   }
   else

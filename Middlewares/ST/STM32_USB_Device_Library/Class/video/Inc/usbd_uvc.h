@@ -59,9 +59,9 @@
 #endif
 
 #define UVC_IN_EP                                     0x81  /* EP1 for data IN */
-#define UVC_OUT_EP                                    0x01  /* EP1 for data OUT */
-// #define UVC_CMD_EP                                    0x82  /* EP2 for UVC commands */
+#define UVC_CMD_EP                                    0x82  /* EP2 for UVC commands */
 #define VIDEO_PACKET_SIZE                             ((unsigned int)(482))
+#define CMD_PACKET_SIZE                               ((unsigned int)(8))
 
 #define CAM_FPS                                       9
 
