@@ -97,77 +97,65 @@ USBD_HandleTypeDef  *hUsbDevice_0;
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
 //data array for Video Probe and Commit
-__ALIGN_BEGIN USBD_UVC_VideoControlTypeDef videoCommitControl __ALIGN_END =
+__ALIGN_BEGIN struct uvc_streaming_control videoCommitControl __ALIGN_END =
 {
-  {0x00,0x00},                      // bmHint
-  {0x01},                           // bFormatIndex
-  {0x01},                           // bFrameIndex
-  {DBVAL(0),},          // dwFrameInterval
-  {0x00,0x00,},                     // wKeyFrameRate
-  {0x00,0x00,},                     // wPFrameRate
-  {0x00,0x00,},                     // wCompQuality
-  {0x00,0x00,},                     // wCompWindowSize
-  {0x00,0x00,},                      // wDelay
-  {DBVAL(MAX_FRAME_SIZE(80,60,12)),},    // dwMaxVideoFrameSize
-  {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
-  {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
-  {0x00},                           // bmFramingInfo
-  {0x00},                           // bPreferedVersion
-  {0x00},                           // bMinVersion
-  {0x00},                           // bMaxVersion
+  .bmHint = 0x00,
+  .bFormatIndex = VS_FMT_INDEX(YUYV),
+  .bFrameIndex = 0x01,
+  .dwFrameInterval = 0, 
+  .wKeyFrameRate = 0,
+  .wPFrameRate = 0,
+  .wCompQuality = 0,
+  .wCompWindowSize = 0,
+  .wDelay = 0,
+  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
+  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
+  .dwClockFrequency = 0,
+  .bmFramingInfo = 0,
+  .bPreferedVersion = 0,
+  .bMinVersion = 0,
+  .bMaxVersion = 0,
 };
 
-__ALIGN_BEGIN USBD_UVC_VideoControlTypeDef videoProbeControl __ALIGN_END =
+__ALIGN_BEGIN struct uvc_streaming_control videoProbeControl __ALIGN_END =
 {
-  {0x00,0x00},                      // bmHint
-  {0x01},                           // bFormatIndex
-  {0x01},                           // bFrameIndex
-  {DBVAL(0),},          // dwFrameInterval
-  {0x00,0x00,},                     // wKeyFrameRate
-  {0x00,0x00,},                     // wPFrameRate
-  {0x00,0x00,},                     // wCompQuality
-  {0x00,0x00,},                     // wCompWindowSize
-  {0x00,0x00,},                      // wDelay
-  {DBVAL(MAX_FRAME_SIZE(80,60,12)),},    // dwMaxVideoFrameSize
-  {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
-  {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
-  {0x00},                           // bmFramingInfo
-  {0x00},                           // bPreferedVersion
-  {0x00},                           // bMinVersion
-  {0x00},                           // bMaxVersion
+  .bmHint = 0x00,
+  .bFormatIndex = VS_FMT_INDEX(YUYV),
+  .bFrameIndex = 0x01,
+  .dwFrameInterval = 0, 
+  .wKeyFrameRate = 0,
+  .wPFrameRate = 0,
+  .wCompQuality = 0,
+  .wCompWindowSize = 0,
+  .wDelay = 0,
+  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
+  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
+  .dwClockFrequency = 0,
+  .bmFramingInfo = 0,
+  .bPreferedVersion = 0,
+  .bMinVersion = 0,
+  .bMaxVersion = 0,
 };
 
-void print_vc(USBD_UVC_VideoControlTypeDef* vc)
+void print_vc(struct uvc_streaming_control* vc)
 {
-  DEBUG_PRINTF("bmHint %x %x\r\n", vc->bmHint[0], vc->bmHint[1]);                      // 2
-  DEBUG_PRINTF("bFormatIndex %x\r\n", vc->bFormatIndex[0]);                // 3
-  DEBUG_PRINTF("bFrameIndex %x\r\n", vc->bFrameIndex[0]);                 // 4
-  DEBUG_PRINTF("dwFrameInterval %x %x %x %x\r\n", vc->dwFrameInterval[0],
-                                            vc->dwFrameInterval[1],
-                                            vc->dwFrameInterval[2],
-                                            vc->dwFrameInterval[3]);             // 8
-  DEBUG_PRINTF("wKeyFrameRate %x %x\r\n", vc->wKeyFrameRate[0], vc->wKeyFrameRate[1]);               // 10
-  DEBUG_PRINTF("wPFrameRate %x %x\r\n", vc->wPFrameRate[0], vc->wPFrameRate[1]);                 // 12
-  DEBUG_PRINTF("wCompQuality %x %x\r\n", vc->wCompQuality[0], vc->wCompQuality[1]);                // 14
-  DEBUG_PRINTF("wCompWindowSize %x %x\r\n", vc->wCompWindowSize[0], vc->wCompWindowSize[1]);             // 16
-  DEBUG_PRINTF("wDelay %x %x\r\n", vc->wDelay[0], vc->wDelay[1]);                      // 18
-  DEBUG_PRINTF("dwMaxVideoFrameSize %x %x %x %x\r\n", vc->dwMaxVideoFrameSize[0],
-                                                 vc->dwMaxVideoFrameSize[1],
-                                                 vc->dwMaxVideoFrameSize[2],
-                                                 vc->dwMaxVideoFrameSize[3]);// 22
-  DEBUG_PRINTF("dwMaxPayloadTransferSize %x %x %x %x\r\n", vc->dwMaxPayloadTransferSize[0],
-                                                     vc->dwMaxPayloadTransferSize[1],
-                                                     vc->dwMaxPayloadTransferSize[2],
-                                                     vc->dwMaxPayloadTransferSize[3]);    // 26
+  DEBUG_PRINTF("bmHint 0x%x\r\n", vc->bmHint);                      // 2
+  DEBUG_PRINTF("bFormatIndex %d\r\n", vc->bFormatIndex);                // 3
+  DEBUG_PRINTF("bFrameIndex %d\r\n", vc->bFrameIndex);                 // 4
+  DEBUG_PRINTF("dwFrameInterval %lu\r\n", vc->dwFrameInterval);             // 8
+  DEBUG_PRINTF("wKeyFrameRate %d\r\n", vc->wKeyFrameRate);               // 10
+  DEBUG_PRINTF("wPFrameRate %d\r\n", vc->wPFrameRate);                 // 12
+  DEBUG_PRINTF("wCompQuality %d\r\n", vc->wCompQuality);                // 14
+  DEBUG_PRINTF("wCompWindowSize %d\r\n", vc->wCompWindowSize);             // 16
+  DEBUG_PRINTF("wDelay %d\r\n", vc->wDelay);                      // 18
+  DEBUG_PRINTF("dwMaxVideoFrameSize %lu\r\n", vc->dwMaxVideoFrameSize);// 22
+  DEBUG_PRINTF("dwMaxPayloadTransferSize %lu\r\n", vc->dwMaxPayloadTransferSize);    // 26
 #ifdef UVC_1_1
-  DEBUG_PRINTF("dwClockFrequency %x %x %x %x\r\n", vc->dwClockFrequency[0],
-                                              vc->dwClockFrequency[1],
-                                              vc->dwClockFrequency[2],
-                                              vc->dwClockFrequency[3]);
-  DEBUG_PRINTF("bmFramingInfo %x\r\n", vc->bmFramingInfo[0]);
-  DEBUG_PRINTF("bPreferedVersion %x\r\n", vc->bPreferedVersion[0]);
-  DEBUG_PRINTF("bMinVersion %x\r\n", vc->bMinVersion[0]);
-  DEBUG_PRINTF("bMaxVersion %x\r\n", vc->bMaxVersion[0]);
+  DEBUG_PRINTF("dwClockFrequency %d\r\n", vc->dwClockFrequency);
+  DEBUG_PRINTF("bmFramingInfo 0x%x\r\n", vc->bmFramingInfo);
+  DEBUG_PRINTF("bPreferedVersion %d\r\n", vc->bPreferedVersion);
+  DEBUG_PRINTF("bMinVersion %d\r\n", vc->bMinVersion);
+  DEBUG_PRINTF("bMaxVersion %d\r\n", vc->bMaxVersion);
 #endif
 }
 
@@ -232,79 +220,79 @@ static int8_t UVC_DeInit_FS(void)
   */
 static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
-  int i;
   /* USER CODE BEGIN 5 */
   DEBUG_PRINTF("UVC_Control_FS(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
 
   switch (cmd)
   {
-  case GET_DEF:
-  case GET_CUR:
-  case GET_MIN:
-  case GET_MAX:
+  case UVC_GET_DEF:
+  case UVC_GET_CUR:
+  case UVC_GET_MIN:
+  case UVC_GET_MAX:
 
     DEBUG_PRINTF("UVC_Control_FS(): ");
     switch (cmd) {
-      case GET_DEF: DEBUG_PRINTF("GET_DEF "); break;
-      case GET_CUR: DEBUG_PRINTF("GET_CUR "); break;
-      case GET_MIN: DEBUG_PRINTF("GET_MIN "); break;
-      case GET_MAX: DEBUG_PRINTF("GET_MAX "); break;
+      case UVC_GET_DEF: DEBUG_PRINTF("UVC_GET_DEF "); break;
+      case UVC_GET_CUR: DEBUG_PRINTF("UVC_GET_CUR "); break;
+      case UVC_GET_MIN: DEBUG_PRINTF("UVC_GET_MIN "); break;
+      case UVC_GET_MAX: DEBUG_PRINTF("UVC_GET_MAX "); break;
       default: DEBUG_PRINTF("UNKNOWN "); break;
     }
 
     if(/*idx == 1 &&*/ value == 256)
     {
-      USBD_UVC_VideoControlTypeDef *rtnBuf = (USBD_UVC_VideoControlTypeDef*)pbuf;
+      struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
       DEBUG_PRINTF("probe\r\n");
       DEBUG_PRINTF("from host:\r\n");
       print_vc(rtnBuf);
-
-      if (cmd == GET_DEF)
+      if (cmd == UVC_GET_DEF)
       {
         memcpy(rtnBuf,
-          &(USBD_UVC_VideoControlTypeDef) {
-            {0x00,0x00},                      // bmHint
-            {0x01},                           // bFormatIndex
-            {0x01},                           // bFrameIndex
-            {DBVAL(INTERVAL),},          // dwFrameInterval
-            {0x00,0x00,},                     // wKeyFrameRate
-            {0x00,0x00,},                     // wPFrameRate
-            {0x00,0x00,},                     // wCompQuality
-            {0x00,0x00,},                     // wCompWindowSize
-            {0x00,0x00,},                      // wDelay
-            {DBVAL(MAX_FRAME_SIZE(80,60,8)),},    // dwMaxVideoFrameSize
-            {DBVAL(VIDEO_PACKET_SIZE),},         // dwMaxPayloadTransferSize
-            {0x00, 0x00, 0x00, 0x00},         // dwClockFrequency
-            {0x00},                           // bmFramingInfo
-            {0x00},                           // bPreferedVersion
-            {0x00},                           // bMinVersion
-            {0x00},                           // bMaxVersion
+          &(struct uvc_streaming_control) {
+            .bmHint = 0x00,
+            .bFormatIndex = VS_FMT_INDEX(YUYV),
+            .bFrameIndex = 0x01,
+            .dwFrameInterval = 0, 
+            .wKeyFrameRate = 0,
+            .wPFrameRate = 0,
+            .wCompQuality = 0,
+            .wCompWindowSize = 0,
+            .wDelay = 0,
+            .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
+            .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
+            .dwClockFrequency = 0,
+            .bmFramingInfo = 0,
+            .bPreferedVersion = 0,
+            .bMinVersion = 0,
+            .bMaxVersion = 0,
           }, length);
       }
-      else if (cmd == GET_CUR)
+      else if (cmd == UVC_GET_CUR)
       {
-        memcpy(rtnBuf, &videoProbeControl, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
+        memcpy(rtnBuf, &videoProbeControl, MIN(sizeof(struct uvc_streaming_control), length));
       }
       else
       {
-        memcpy(rtnBuf->dwMaxPayloadTransferSize, (uint8_t[]){ DBVAL(VIDEO_PACKET_SIZE) }, 4);
-        memcpy(rtnBuf->dwFrameInterval, (uint8_t[]){ DBVAL(INTERVAL) }, 4);
-        memcpy(rtnBuf->wKeyFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
-        memcpy(rtnBuf->wPFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
-        memcpy(rtnBuf->wCompQuality, (uint8_t[]){ WBVAL(0) }, 2);
-        memcpy(rtnBuf->wCompWindowSize, (uint8_t[]){ WBVAL(0) }, 2);
-        memcpy(rtnBuf->wDelay, (uint8_t[]){ WBVAL(0) }, 2);
+        rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
+        rtnBuf->dwFrameInterval = INTERVAL;
+        rtnBuf->wKeyFrameRate = 0;
+        rtnBuf->wPFrameRate = 0;
+        rtnBuf->wCompQuality = 0;
+        rtnBuf->wCompWindowSize = 0;
+        rtnBuf->wDelay = 0;
 
-        switch(rtnBuf->bFormatIndex[0]) {
+        switch(rtnBuf->bFormatIndex) {
         case VS_FMT_INDEX(NV12):
         case VS_FMT_INDEX(YU12):
-          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
           break;
         case VS_FMT_INDEX(GREY):
-          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,8)) }, 4);
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
           break;
+        case VS_FMT_INDEX(YUYV):
+        case VS_FMT_INDEX(Y16):
         default:
-          memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,16)) }, 4);
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
           break;
         }
       }
@@ -318,7 +306,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       //print_vc(&videoCommitControl);
 
   	  //Commit Request
-      memcpy(pbuf, &videoCommitControl, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
+      memcpy(pbuf, &videoCommitControl, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else
     {
@@ -327,35 +315,37 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     break;
 
-  case SET_CUR:
+  case UVC_SET_CUR:
   {
-    DEBUG_PRINTF("UVC_Control_FS(): SET_CUR ");
-    USBD_UVC_VideoControlTypeDef *rtnBuf = (USBD_UVC_VideoControlTypeDef*)pbuf;
+    DEBUG_PRINTF("UVC_Control_FS(): UVC_SET_CUR ");
+    struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
 
-    if (rtnBuf->bFormatIndex[0] >= VS_FMT_INDEX_MAX)
+    if (rtnBuf->bFormatIndex > VS_NUM_FORMATS)
     {
       DEBUG_PRINTF("\r\nBogus bFormatIndex value, ignoring\r\n");
       break;
     }
 
-    memcpy(rtnBuf->dwMaxPayloadTransferSize, (uint8_t[]){ DBVAL(VIDEO_PACKET_SIZE) }, 4);
-    memcpy(rtnBuf->dwFrameInterval, (uint8_t[]){ DBVAL(INTERVAL) }, 4);
-    memcpy(rtnBuf->wKeyFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
-    memcpy(rtnBuf->wPFrameRate, (uint8_t[]){ WBVAL(0) }, 2);
-    memcpy(rtnBuf->wCompQuality, (uint8_t[]){ WBVAL(0) }, 2);
-    memcpy(rtnBuf->wCompWindowSize, (uint8_t[]){ WBVAL(0) }, 2);
-    memcpy(rtnBuf->wDelay, (uint8_t[]){ WBVAL(0) }, 2);
+    rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
+    rtnBuf->dwFrameInterval = INTERVAL;
+    rtnBuf->wKeyFrameRate = 0;
+    rtnBuf->wPFrameRate = 0;
+    rtnBuf->wCompQuality = 0;
+    rtnBuf->wCompWindowSize = 0;
+    rtnBuf->wDelay = 0;
 
-    switch(rtnBuf->bFormatIndex[0]) {
+    switch(rtnBuf->bFormatIndex) {
     case VS_FMT_INDEX(NV12):
     case VS_FMT_INDEX(YU12):
-      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,12)) }, 4);
+      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
       break;
     case VS_FMT_INDEX(GREY):
-      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,8)) }, 4);
+      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
       break;
+    case VS_FMT_INDEX(YUYV):
+    case VS_FMT_INDEX(Y16):
     default:
-      memcpy(rtnBuf->dwMaxVideoFrameSize, (uint8_t[]){ DBVAL(MAX_FRAME_SIZE(80,60,16)) }, 4);
+      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
       break;
     }
 
@@ -364,14 +354,14 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       DEBUG_PRINTF("probe\r\n");
       //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
-      memcpy(&videoProbeControl, pbuf, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
+      memcpy(&videoProbeControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else if (/*idx == 1 &&*/ value == 512)
     {
       DEBUG_PRINTF("commit\r\n");
       //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
-      memcpy(&videoCommitControl, pbuf, MIN(sizeof(USBD_UVC_VideoControlTypeDef), length));
+      memcpy(&videoCommitControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else
     {
@@ -381,8 +371,8 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     break;
   }
-  case GET_INFO:
-    DEBUG_PRINTF("UVC_Control_FS(): get_info, this is probably wrong...\r\n", cmd);
+  case UVC_GET_INFO:
+    DEBUG_PRINTF("UVC_Control_FS(): UVC_GET_INFO, this is probably wrong...\r\n");
     pbuf[0] = 0x3;
     break;
   default:

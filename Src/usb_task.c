@@ -17,7 +17,7 @@
 #include "project_config.h"
 
 extern volatile uint8_t uvc_stream_status;
-extern USBD_UVC_VideoControlTypeDef videoCommitControl;
+extern struct uvc_streaming_control videoCommitControl;
 
 static int last_frame_count;
 #ifdef Y16
@@ -276,7 +276,7 @@ PT_THREAD( usb_task(struct pt *pt))
       packet[count++] = uvc_header[0];
       packet[count++] = uvc_header[1];
 
-      switch (videoCommitControl.bFormatIndex[0])
+      switch (videoCommitControl.bFormatIndex)
       {
         // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
         default:
@@ -318,7 +318,7 @@ PT_THREAD( usb_task(struct pt *pt))
             case 1: // VU
             case 2:
             {
-              int incr = (videoCommitControl.bFormatIndex[0] == VS_FMT_INDEX(NV12) ? 1 : 2);
+              int incr = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(NV12) ? 1 : 2);
               int plane_offset = uvc_xmit_plane - 1;
 
               while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
@@ -338,7 +338,7 @@ PT_THREAD( usb_task(struct pt *pt))
               // plane is done
               if (uvc_xmit_row == IMAGE_NUM_LINES)
               {
-                if (uvc_xmit_plane == 1 && videoCommitControl.bFormatIndex[0] == VS_FMT_INDEX(YU12))
+                if (uvc_xmit_plane == 1 && videoCommitControl.bFormatIndex == VS_FMT_INDEX(YU12))
                 {
                   uvc_xmit_plane = 2;
                   uvc_xmit_row = 0;
