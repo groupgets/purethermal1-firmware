@@ -257,7 +257,7 @@ struct uvc_camera_terminal_descriptor {
 	uint16_t wObjectiveFocalLengthMax;
 	uint16_t wOcularFocalLength;
 	uint8_t  bControlSize;
-	uint8_t  bmControls[2];
+	uint8_t  bmControls[3];
 } __attribute__((__packed__));
 
 #define UVC_DT_CAMERA_TERMINAL_SIZE(n)			(15+(n))

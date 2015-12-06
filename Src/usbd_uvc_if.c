@@ -168,15 +168,25 @@ void print_vc(struct uvc_streaming_control* vc)
   */
 static int8_t UVC_Init_FS     (void);
 static int8_t UVC_DeInit_FS   (void);
-static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_Control        (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_Receive_FS  (uint8_t* pbuf, uint32_t *Len);
 
 USBD_UVC_ItfTypeDef USBD_Interface_fops_FS = 
 {
-  UVC_Init_FS,
-  UVC_DeInit_FS,
-  UVC_Control_FS,  
-  UVC_Receive_FS
+  .Init = UVC_Init_FS,
+  .DeInit = UVC_DeInit_FS,
+  .Control = UVC_Control,
+  .VC_CtrlGet = UVC_VC_ControlGet,
+  .VC_CtrlSet = UVC_VC_ControlSet,
+  .VS_CtrlGet = UVC_VS_ControlGet,
+  .VS_CtrlSet = UVC_VS_ControlSet,
+  .ControlGet = UVC_VC_ControlGet,
+  .ControlSet = UVC_VC_ControlSet,
+  .Receive = UVC_Receive_FS,
 };
 
 /* Private functions ---------------------------------------------------------*/
@@ -210,6 +220,12 @@ static int8_t UVC_DeInit_FS(void)
   /* USER CODE END 4 */ 
 }
 
+static int8_t UVC_Control  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+{
+  DEBUG_PRINTF("UVC_Control(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+  return USBD_OK;
+}
+
 /**
   * @brief  UVC_Control_FS
   *         Manage the UVC class requests
@@ -218,10 +234,90 @@ static int8_t UVC_DeInit_FS(void)
   * @param  length: Number of data to be sent (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
   /* USER CODE BEGIN 5 */
-  DEBUG_PRINTF("UVC_Control_FS(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+  uint8_t cs_value = (value >> 8) & 0xFF;
+
+  DEBUG_PRINTF("UVC_VC_ControlGet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+
+  DEBUG_PRINTF("UVC_VC_ControlGet(cs=%d): ", cs_value);
+  switch (cmd) {
+    case UVC_GET_DEF: DEBUG_PRINTF("UVC_GET_DEF "); break;
+    case UVC_GET_CUR: DEBUG_PRINTF("UVC_GET_CUR "); break;
+    case UVC_GET_MIN: DEBUG_PRINTF("UVC_GET_MIN "); break;
+    case UVC_GET_MAX: DEBUG_PRINTF("UVC_GET_MAX "); break;
+    case UVC_GET_RES: DEBUG_PRINTF("UVC_GET_RES "); break;
+    case UVC_GET_INFO: DEBUG_PRINTF("UVC_GET_INFO "); break;
+    default: DEBUG_PRINTF("UNKNOWN "); break;
+  }
+
+  switch (cmd)
+  {
+  case UVC_GET_MIN:
+    pbuf[0] = 0;
+    break;
+  case UVC_GET_DEF:
+  case UVC_GET_CUR:
+    pbuf[0] = 128;
+    break;
+  case UVC_GET_MAX:
+    pbuf[0] = 255;
+    break;
+  case UVC_GET_RES:
+    pbuf[0] = 1;
+    break;
+  case UVC_GET_LEN:
+    pbuf[0] = 2;
+    break;
+  case UVC_GET_INFO:
+    pbuf[0] = UVC_CONTROL_CAP_GET | UVC_CONTROL_CAP_DISABLED;
+    break;
+  default:
+    DEBUG_PRINTF("FAIL: UVC_VC_ControlGet() unknown %x\r\n", cmd);
+    return USBD_FAIL;
+  }
+
+  return (USBD_OK);
+  /* USER CODE END 5 */
+}
+
+static int8_t UVC_VC_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+{ 
+  /* USER CODE BEGIN 5 */
+  uint8_t cs_value = (value >> 8) & 0xFF;
+
+  DEBUG_PRINTF("UVC_VC_ControlSet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+
+  switch (cmd)
+  {
+  case UVC_SET_CUR:
+    DEBUG_PRINTF("UVC_VC_ControlSet()\r\n");
+    break;
+  default:
+    DEBUG_PRINTF("FAIL: UVC_VC_ControlSet() unknown %x\r\n", cmd);
+    return USBD_FAIL;
+  }
+
+  return (USBD_OK);
+  /* USER CODE END 5 */
+}
+
+
+/**
+  * @brief  UVC_Control_FS
+  *         Manage the UVC class requests
+  * @param  cmd: Command code            
+  * @param  pbuf: Buffer containing command data (request parameters)
+  * @param  length: Number of data to be sent (in bytes)
+  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
+  */
+static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+{ 
+  /* USER CODE BEGIN 5 */
+  uint8_t cs_value = (value >> 8) & 0xFF;
+
+  DEBUG_PRINTF("UVC_VS_ControlGet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
 
   switch (cmd)
   {
@@ -230,7 +326,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
   case UVC_GET_MIN:
   case UVC_GET_MAX:
 
-    DEBUG_PRINTF("UVC_Control_FS(): ");
+    DEBUG_PRINTF("UVC_VS_ControlGet(): ");
     switch (cmd) {
       case UVC_GET_DEF: DEBUG_PRINTF("UVC_GET_DEF "); break;
       case UVC_GET_CUR: DEBUG_PRINTF("UVC_GET_CUR "); break;
@@ -239,7 +335,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       default: DEBUG_PRINTF("UNKNOWN "); break;
     }
 
-    if(/*idx == 1 &&*/ value == 256)
+    if(cs_value == UVC_VS_PROBE_CONTROL || cs_value == UVC_VS_STILL_PROBE_CONTROL)
     {
       struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
       DEBUG_PRINTF("probe\r\n");
@@ -300,7 +396,7 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       DEBUG_PRINTF("returning:\r\n");
       print_vc(rtnBuf);
     }
-    else if (/*idx == 1 &&*/ value == 512)
+    else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
       DEBUG_PRINTF("commit\r\n");
       //print_vc(&videoCommitControl);
@@ -310,14 +406,37 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else
     {
-      DEBUG_PRINTF("FAIL\r\n");
-      return USBD_FAIL;
+      DEBUG_PRINTF("FAIL? (cs_value = %d)\r\n", cs_value);
+      // return USBD_FAIL;
     }
     break;
 
+  case UVC_GET_INFO:
+    DEBUG_PRINTF("UVC_VS_ControlGet(): UVC_GET_INFO, this is probably wrong...\r\n");
+    pbuf[0] = 0x3;
+    break;
+
+  default:
+    DEBUG_PRINTF("FAIL: UVC_VS_ControlGet() unknown %x\r\n", cmd);
+    return USBD_FAIL;
+  }
+
+  return (USBD_OK);
+  /* USER CODE END 5 */
+}
+
+static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+{ 
+  /* USER CODE BEGIN 5 */
+  uint8_t cs_value = (value >> 8) & 0xFF;
+
+  DEBUG_PRINTF("UVC_VS_ControlSet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+
+  switch (cmd)
+  {
   case UVC_SET_CUR:
   {
-    DEBUG_PRINTF("UVC_Control_FS(): UVC_SET_CUR ");
+    DEBUG_PRINTF("UVC_VS_ControlSet(): UVC_SET_CUR ");
     struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
 
     if (rtnBuf->bFormatIndex > VS_NUM_FORMATS)
@@ -349,14 +468,14 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
       break;
     }
 
-    if(/*idx == 1 &&*/ value == 256)
+    if(cs_value == UVC_VS_PROBE_CONTROL || cs_value == UVC_VS_STILL_PROBE_CONTROL)
     {
       DEBUG_PRINTF("probe\r\n");
       //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
 
       memcpy(&videoProbeControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
-    else if (/*idx == 1 &&*/ value == 512)
+    else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
       DEBUG_PRINTF("commit\r\n");
       //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
@@ -365,18 +484,15 @@ static int8_t UVC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint
     }
     else
     {
-      DEBUG_PRINTF("FAIL\r\n");
+      DEBUG_PRINTF("FAIL? value = %d\r\n", value);
 
-      return USBD_FAIL;
+      // return USBD_FAIL;
     }
     break;
   }
-  case UVC_GET_INFO:
-    DEBUG_PRINTF("UVC_Control_FS(): UVC_GET_INFO, this is probably wrong...\r\n");
-    pbuf[0] = 0x3;
-    break;
+
   default:
-    DEBUG_PRINTF("FAIL: UVC_Control_FS() unknown %x\r\n", cmd);
+    DEBUG_PRINTF("FAIL: UVC_VS_ControlSet() unknown %x\r\n", cmd);
     return USBD_FAIL;
   }
 

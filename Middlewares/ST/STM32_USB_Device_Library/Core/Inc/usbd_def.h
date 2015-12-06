@@ -70,6 +70,8 @@
 #define  USBD_IDX_CONFIG_STR                            0x04 
 #define  USBD_IDX_INTERFACE_STR                         0x05 
 
+#define  USB_REQ_READ_MASK                              0x80
+
 #define  USB_REQ_TYPE_STANDARD                          0x00
 #define  USB_REQ_TYPE_CLASS                             0x20
 #define  USB_REQ_TYPE_VENDOR                            0x40
