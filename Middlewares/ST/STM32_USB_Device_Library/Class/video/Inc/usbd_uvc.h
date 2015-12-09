@@ -93,7 +93,7 @@ enum _vs_fmt_size {
     'Y',  '1',  '6',  ' ', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
 #define VS_FMT_GUID_YUYV \
-    'Y',  'U',  'Y',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
+    'U',  'Y',  'V',  'Y', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
 
 #define VS_FMT_GUID_NV12 \
     'N',  'V',  '1',  '2', 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71
@@ -152,6 +152,63 @@ typedef struct
   __IO uint32_t RxState;    
 }
 USBD_UVC_HandleTypeDef; 
+
+#if 0
+struct uvc_input_terminal_desc {
+  uint8_t bLength;
+  uint8_t bDescriptorType; /* : CS_INTERFACE */
+  uint8_t bDescriptorSubtype; /* VC_INPUT_TERMINAL descriptor subtype */
+  uint8_t bTerminalID; /* Constant uniquely identifying the Terminal within the video function.
+    This value is used in all requests to address this Terminal. */
+  uint8_t[2] wTerminalType; /* ITT_MEDIA_TRANSPORT_INPUT */
+  uint8_t bAssocTerminal; /* ID of the Output Terminal to which this Input  Terminal is associated. */
+  uint8_t iTerminal; /* */
+  uint8_t bControlSize; /* Size of the bmControls field, in bytes: n=1 */
+  uint8_t[1] bmControls; /*
+    A bit set to 1 indicates that the mentioned Control is supported for the video stream.
+    D0: Transport Control
+    D1: Absolute Track Number Control
+    D2: Media Information
+    D3: Time Code Information D4...(n*8-1): Reserved
+  */
+  uint8_t bTransportModeSize; /* Size of the bmTransportModes field, in bytes: m=4 */
+  uint8_t[4] bmTransportModes; /*
+    A bit set to 1 indicates that the mentioned Transport mode is supported.
+    D0: Play Forward
+    D1: Pause
+    D2: Rewind
+    D3: Fast Forward
+    D4: High Speed Rewind
+    D5: Stop
+    D6: Eject
+    D7: Play Next Frame
+    D8: Play Slowest Forward
+    D9: Play Slow Forward 4
+    D10: Play Slow Forward 3
+    D11: Play Slow Forward 2
+    D12: Play Slow Forward 1
+    D13: Play X1
+    D14: Play Fast Forward 1
+    D15: Play Fast Forward 2
+    D16: Play Fast Forward 3
+    D17: Play Fast Forward 4
+    D18: Play Fastest Forward
+    D19: Play Previous Frame
+    D20: Play Slowest Reverse
+    D21: Play Slow Reverse 4
+    D22: Play Slow Reverse 3
+    D23: Play Slow Reverse 2
+    D24: Play Slow Reverse 1
+    D25: Play X1 Reverse
+    D26: Play Fast Reverse 1
+    D27: Play Fast Reverse 2
+    D28: Play Fast Reverse 3
+    D29: Play Fast Reverse 4
+    D30: Play Fastest Reverse
+    D31: Record StateStart
+    */
+};
+#endif
 
 /**
   * @}
