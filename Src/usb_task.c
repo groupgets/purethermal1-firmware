@@ -19,6 +19,13 @@
 extern volatile uint8_t uvc_stream_status;
 extern struct uvc_streaming_control videoCommitControl;
 
+static int overlay_mode = 0;
+
+void change_overlay_mode(void)
+{
+	overlay_mode = (overlay_mode+1) % 2;
+}
+
 static int last_frame_count;
 #ifdef Y16
 static lepton_buffer *last_buffer;
@@ -226,29 +233,35 @@ PT_THREAD( usb_task(struct pt *pt))
 		if (((last_frame_count % 1800) > 0)   && ((last_frame_count % 1800) < 150)  )
 		{
 #ifdef SPLASHSCREEN_OVERLAY 
-			draw_splash(255, 0);
+			if(overlay_mode == 1)
+			{
+				draw_splash(255, 0);
+			}
 #endif
 		}
 		else
 		{
 
 #ifdef TMP007_OVERLAY 
-			temperature = get_last_mili_celisius()/1000;
-
-			if(temperature < 0)
+			if(overlay_mode == 1)
 			{
-				UG_PutChar('-',0,51,10000,0);
-				temperature = -temperature;
-			}
-			else if(((temperature/100)%10) != 0 ) 
-			{
-				UG_PutChar((temperature/100)%10 + '0',0,51,255,0);
-			}
+				temperature = get_last_mili_celisius()/1000;
 
-			UG_PutChar((temperature/10)%10 + '0',8,51,255,0);
-			UG_PutChar(temperature%10 + '0',16,51,255,0);
-			UG_PutChar(248,24,51,255,0);
-			UG_PutChar('C',32,51,255,0);
+				if(temperature < 0)
+				{
+					UG_PutChar('-',0,51,10000,0);
+					temperature = -temperature;
+				}
+				else if(((temperature/100)%10) != 0 ) 
+				{
+					UG_PutChar((temperature/100)%10 + '0',0,51,255,0);
+				}
+
+				UG_PutChar((temperature/10)%10 + '0',8,51,255,0);
+				UG_PutChar(temperature%10 + '0',16,51,255,0);
+				UG_PutChar(248,24,51,255,0);
+				UG_PutChar('C',32,51,255,0);
+			}
 #endif
 		}
 
