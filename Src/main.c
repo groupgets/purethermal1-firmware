@@ -73,6 +73,7 @@ UART_HandleTypeDef huart2;
 static struct pt lepton_task_pt;
 static struct pt usb_task_pt;
 static struct pt uart_task_pt;
+static struct pt button_task_pt;
 
 /* USER CODE END PV */
 
@@ -121,6 +122,8 @@ int main(void)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 2 */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
+
 
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
@@ -165,6 +168,8 @@ int main(void)
 	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
 	  PT_SCHEDULE(usb_task(&usb_task_pt));
 	  PT_SCHEDULE(uart_task(&uart_task_pt));
+	  PT_SCHEDULE(button_task(&button_task_pt));
+
   }
   /* USER CODE END 3 */
 
@@ -351,7 +356,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA4 */
   GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  //GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB1 */
@@ -371,13 +376,13 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB6 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
