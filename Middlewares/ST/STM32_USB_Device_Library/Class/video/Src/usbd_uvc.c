@@ -772,25 +772,39 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
   
   if((pdev->pUserData != NULL) && (hcdc->CmdOpCode != 0xFF))
   {
-    switch (hcdc->CmdIndex)
+    uint8_t address = (hcdc->CmdIndex >> 0) & 0xff;
+    uint8_t entity_id = (hcdc->CmdIndex >> 8) & 0xff;
+
+    if (entity_id == 0)
     {
-    case USB_UVC_VCIF_NUM:
-      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VC_CtrlSet(hcdc->CmdOpCode,
+      switch (address)
+      {
+      case USB_UVC_VCIF_NUM:
+        ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VC_CtrlSet(hcdc->CmdOpCode,
+                                                          (uint8_t *)hcdc->data,
+                                                          hcdc->CmdLength,
+                                                          hcdc->CmdIndex,
+                                                          hcdc->CmdValue);
+        break;
+      case USB_UVC_VSIF_NUM:
+        ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
+                                                          (uint8_t *)hcdc->data,
+                                                          hcdc->CmdLength,
+                                                          hcdc->CmdIndex,
+                                                          hcdc->CmdValue);
+        break;
+      default:
+        DEBUG_PRINTF("Setup (set) unknown wIndex/interface target %d\r\n", hcdc->CmdIndex);
+        ret = USBD_FAIL;
+      }
+    }
+    else
+    {
+      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlSet(hcdc->CmdOpCode,
                                                         (uint8_t *)hcdc->data,
                                                         hcdc->CmdLength,
                                                         hcdc->CmdIndex,
                                                         hcdc->CmdValue);
-      break;
-    case USB_UVC_VSIF_NUM:
-      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
-                                                        (uint8_t *)hcdc->data,
-                                                        hcdc->CmdLength,
-                                                        hcdc->CmdIndex,
-                                                        hcdc->CmdValue);
-      break;
-    default:
-      DEBUG_PRINTF("Setup (set) unknown wIndex/interface target %d\r\n", hcdc->CmdIndex);
-      ret = USBD_FAIL;
     }
 
     hcdc->CmdOpCode = 0xFF; 

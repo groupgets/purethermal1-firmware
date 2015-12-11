@@ -339,45 +339,16 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
     {
       struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
       DEBUG_PRINTF("probe\r\n");
-      DEBUG_PRINTF("from host:\r\n");
-      print_vc(rtnBuf);
-      if (cmd == UVC_GET_DEF)
-      {
-        memcpy(rtnBuf,
-          &(struct uvc_streaming_control) {
-            .bmHint = 0x00,
-            .bFormatIndex = VS_FMT_INDEX(YUYV),
-            .bFrameIndex = 0x01,
-            .dwFrameInterval = 0, 
-            .wKeyFrameRate = 0,
-            .wPFrameRate = 0,
-            .wCompQuality = 0,
-            .wCompWindowSize = 0,
-            .wDelay = 0,
-            .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
-            .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
-            .dwClockFrequency = 0,
-            .bmFramingInfo = 0,
-            .bPreferedVersion = 0,
-            .bMinVersion = 0,
-            .bMaxVersion = 0,
-          }, length);
-      }
-      else if (cmd == UVC_GET_CUR)
-      {
-        memcpy(rtnBuf, &videoProbeControl, MIN(sizeof(struct uvc_streaming_control), length));
-      }
-      else
-      {
-        rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
-        rtnBuf->dwFrameInterval = INTERVAL;
-        rtnBuf->wKeyFrameRate = 0;
-        rtnBuf->wPFrameRate = 0;
-        rtnBuf->wCompQuality = 0;
-        rtnBuf->wCompWindowSize = 0;
-        rtnBuf->wDelay = 0;
 
-        switch(rtnBuf->bFormatIndex) {
+      memset(rtnBuf, 0, length);
+      rtnBuf->bFormatIndex = videoProbeControl.bFormatIndex;
+      rtnBuf->bFrameIndex = videoProbeControl.bFrameIndex;
+      rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
+      rtnBuf->dwFrameInterval = INTERVAL;
+
+      if (cmd == UVC_GET_DEF || cmd == UVC_GET_MIN)
+      {
+        switch(videoProbeControl.bFormatIndex) {
         case VS_FMT_INDEX(NV12):
         case VS_FMT_INDEX(YU12):
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
@@ -385,35 +356,55 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
         case VS_FMT_INDEX(GREY):
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
           break;
-        case VS_FMT_INDEX(YUYV):
         case VS_FMT_INDEX(Y16):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
+          break;
+        case VS_FMT_INDEX(YUYV):
         default:
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
           break;
         }
       }
-
-      DEBUG_PRINTF("returning:\r\n");
-      print_vc(rtnBuf);
+      else if (cmd == UVC_GET_MAX)
+      {
+        switch(videoProbeControl.bFormatIndex) {
+        case VS_FMT_INDEX(NV12):
+        case VS_FMT_INDEX(YU12):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
+          break;
+        case VS_FMT_INDEX(GREY):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
+          break;
+        case VS_FMT_INDEX(Y16):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
+          break;
+        case VS_FMT_INDEX(YUYV):
+        default:
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
+          break;
+        }
+      }
+      else
+      {
+        rtnBuf->bmHint = videoProbeControl.bmHint;
+        rtnBuf->dwMaxVideoFrameSize = videoProbeControl.dwMaxVideoFrameSize;
+      }
     }
     else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
       DEBUG_PRINTF("commit\r\n");
-      //print_vc(&videoCommitControl);
 
-  	  //Commit Request
+      // Commit Request
       memcpy(pbuf, &videoCommitControl, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else
     {
       DEBUG_PRINTF("FAIL? (cs_value = %d)\r\n", cs_value);
-      // return USBD_FAIL;
+      return USBD_FAIL;
     }
-    break;
 
-  case UVC_GET_INFO:
-    DEBUG_PRINTF("UVC_VS_ControlGet(): UVC_GET_INFO, this is probably wrong...\r\n");
-    pbuf[0] = 0x3;
+    DEBUG_PRINTF("returning:\r\n");
+    print_vc((struct uvc_streaming_control*)pbuf);
     break;
 
   default:
@@ -442,52 +433,27 @@ static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
     if (rtnBuf->bFormatIndex > VS_NUM_FORMATS)
     {
       DEBUG_PRINTF("\r\nBogus bFormatIndex value, ignoring\r\n");
-      break;
-    }
-
-    rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
-    rtnBuf->dwFrameInterval = INTERVAL;
-    rtnBuf->wKeyFrameRate = 0;
-    rtnBuf->wPFrameRate = 0;
-    rtnBuf->wCompQuality = 0;
-    rtnBuf->wCompWindowSize = 0;
-    rtnBuf->wDelay = 0;
-
-    switch(rtnBuf->bFormatIndex) {
-    case VS_FMT_INDEX(NV12):
-    case VS_FMT_INDEX(YU12):
-      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
-      break;
-    case VS_FMT_INDEX(GREY):
-      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
-      break;
-    case VS_FMT_INDEX(YUYV):
-    case VS_FMT_INDEX(Y16):
-    default:
-      rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
-      break;
+      return USBD_FAIL;
     }
 
     if(cs_value == UVC_VS_PROBE_CONTROL || cs_value == UVC_VS_STILL_PROBE_CONTROL)
     {
       DEBUG_PRINTF("probe\r\n");
-      //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
-
       memcpy(&videoProbeControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
       DEBUG_PRINTF("commit\r\n");
-      //print_vc((USBD_UVC_VideoControlTypeDef*)pbuf);
-
       memcpy(&videoCommitControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else
     {
       DEBUG_PRINTF("FAIL? value = %d\r\n", value);
-
-      // return USBD_FAIL;
+      return USBD_FAIL;
     }
+
+    DEBUG_PRINTF("received:\r\n");
+    print_vc((struct uvc_streaming_control*)pbuf);
     break;
   }
 
