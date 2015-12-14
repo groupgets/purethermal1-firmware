@@ -359,6 +359,12 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
         case VS_FMT_INDEX(Y16):
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
           break;
+        case VS_FMT_INDEX(BGR3):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(BGR3));
+          break;
+        case VS_FMT_INDEX(RGB565):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(RGB565));
+          break;
         case VS_FMT_INDEX(YUYV):
         default:
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
@@ -377,6 +383,12 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
           break;
         case VS_FMT_INDEX(Y16):
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
+          break;
+        case VS_FMT_INDEX(BGR3):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(BGR3));
+          break;
+        case VS_FMT_INDEX(RGB565):
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(RGB565));
           break;
         case VS_FMT_INDEX(YUYV):
         default:
