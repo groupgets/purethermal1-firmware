@@ -39,6 +39,9 @@
 #define DEBUG_PRINTF(...)
 #endif
 
+// #define UVC_VC_DEBUG
+// #define UVC_VS_DEBUG
+
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
   */
@@ -137,6 +140,7 @@ __ALIGN_BEGIN struct uvc_streaming_control videoProbeControl __ALIGN_END =
   .bMaxVersion = 0,
 };
 
+#ifdef UVC_VS_DEBUG
 void print_vc(struct uvc_streaming_control* vc)
 {
   DEBUG_PRINTF("bmHint 0x%x\r\n", vc->bmHint);                      // 2
@@ -158,6 +162,7 @@ void print_vc(struct uvc_streaming_control* vc)
   DEBUG_PRINTF("bMaxVersion %d\r\n", vc->bMaxVersion);
 #endif
 }
+#endif
 
 /**
   * @}
@@ -239,6 +244,7 @@ static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
+#ifdef UVC_VC_DEBUG
   DEBUG_PRINTF("UVC_VC_ControlGet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
 
   DEBUG_PRINTF("UVC_VC_ControlGet(cs=%d): ", cs_value);
@@ -251,6 +257,7 @@ static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
     case UVC_GET_INFO: DEBUG_PRINTF("UVC_GET_INFO "); break;
     default: DEBUG_PRINTF("UNKNOWN "); break;
   }
+#endif
 
   switch (cmd)
   {
@@ -278,6 +285,10 @@ static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
     return USBD_FAIL;
   }
 
+#ifdef UVC_VC_DEBUG
+  DEBUG_PRINTF("\r\n");
+#endif
+
   return (USBD_OK);
   /* USER CODE END 5 */
 }
@@ -287,12 +298,16 @@ static int8_t UVC_VC_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
+#ifdef UVC_VC_DEBUG
   DEBUG_PRINTF("UVC_VC_ControlSet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+#endif
 
   switch (cmd)
   {
   case UVC_SET_CUR:
+#ifdef UVC_VC_DEBUG
     DEBUG_PRINTF("UVC_VC_ControlSet()\r\n");
+#endif
     break;
   default:
     DEBUG_PRINTF("FAIL: UVC_VC_ControlSet() unknown %x\r\n", cmd);
@@ -317,7 +332,9 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
+#ifdef UVC_VS_DEBUG
   DEBUG_PRINTF("UVC_VS_ControlGet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+#endif
 
   switch (cmd)
   {
@@ -326,6 +343,7 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   case UVC_GET_MIN:
   case UVC_GET_MAX:
 
+#ifdef UVC_VS_DEBUG
     DEBUG_PRINTF("UVC_VS_ControlGet(): ");
     switch (cmd) {
       case UVC_GET_DEF: DEBUG_PRINTF("UVC_GET_DEF "); break;
@@ -334,11 +352,15 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       case UVC_GET_MAX: DEBUG_PRINTF("UVC_GET_MAX "); break;
       default: DEBUG_PRINTF("UNKNOWN "); break;
     }
+#endif
 
     if(cs_value == UVC_VS_PROBE_CONTROL || cs_value == UVC_VS_STILL_PROBE_CONTROL)
     {
       struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
+
+#ifdef UVC_VS_DEBUG
       DEBUG_PRINTF("probe\r\n");
+#endif
 
       memset(rtnBuf, 0, length);
 
@@ -382,7 +404,9 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
     }
     else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
+#ifdef UVC_VS_DEBUG
       DEBUG_PRINTF("commit\r\n");
+#endif
 
       // Commit Request
       memcpy(pbuf, &videoCommitControl, MIN(sizeof(struct uvc_streaming_control), length));
@@ -393,8 +417,10 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       return USBD_FAIL;
     }
 
+#ifdef UVC_VS_DEBUG
     DEBUG_PRINTF("returning:\r\n");
     print_vc((struct uvc_streaming_control*)pbuf);
+#endif
     break;
 
   default:
@@ -411,13 +437,17 @@ static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
+#ifdef UVC_VS_DEBUG
   DEBUG_PRINTF("UVC_VS_ControlSet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+#endif
 
   switch (cmd)
   {
   case UVC_SET_CUR:
   {
+#ifdef UVC_VS_DEBUG
     DEBUG_PRINTF("UVC_VS_ControlSet(): UVC_SET_CUR ");
+#endif
     struct uvc_streaming_control *rtnBuf = (struct uvc_streaming_control*)pbuf;
 
     if (rtnBuf->bFormatIndex > VS_NUM_FORMATS)
@@ -428,12 +458,16 @@ static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
 
     if(cs_value == UVC_VS_PROBE_CONTROL || cs_value == UVC_VS_STILL_PROBE_CONTROL)
     {
+#ifdef UVC_VS_DEBUG
       DEBUG_PRINTF("probe\r\n");
+#endif
       memcpy(&videoProbeControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
     {
+#ifdef UVC_VS_DEBUG
       DEBUG_PRINTF("commit\r\n");
+#endif
       memcpy(&videoCommitControl, pbuf, MIN(sizeof(struct uvc_streaming_control), length));
     }
     else
@@ -442,8 +476,10 @@ static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       return USBD_FAIL;
     }
 
+#ifdef UVC_VS_DEBUG
     DEBUG_PRINTF("received:\r\n");
     print_vc((struct uvc_streaming_control*)pbuf);
+#endif
     break;
   }
 

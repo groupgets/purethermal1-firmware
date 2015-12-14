@@ -70,6 +70,8 @@
 #define DEBUG_PRINTF(...)
 #endif
 
+// #define UVC_SETUP_REQ_DEBUG
+
 volatile uint8_t uvc_stream_status = 0;
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
@@ -573,12 +575,14 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       uint8_t address = (req->wIndex >> 0) & 0xff;
       uint8_t entity_id = (req->wIndex >> 8) & 0xff;
 
+#ifdef UVC_SETUP_REQ_DEBUG
       DEBUG_PRINTF("Setup USB_REQ_TYPE_CLASS read=%d recipient=%d (0=dev,1=intf,2=ep)\r\n",
         ((req->bmRequest & USB_REQ_READ_MASK) == USB_REQ_READ_MASK),
         req->bmRequest & USB_REQ_RECIPIENT_MASK);
 
       DEBUG_PRINTF(" wValue=%x: address=%d entity_id=%d (0=ep)\r\n",
         req->wIndex, address, entity_id);
+#endif
 
       if (req->bmRequest & USB_REQ_READ_MASK)
       {
