@@ -111,8 +111,8 @@ typedef struct _lepton_buffer {
 } lepton_buffer;
 
 typedef struct __attribute__((packed)) _yuv422 {
-  uint8_t y;
   uint8_t uv;
+  uint8_t y;
 } yuv422_t;
 
 typedef yuv422_t yuv422_row_t[FRAME_LINE_LENGTH];

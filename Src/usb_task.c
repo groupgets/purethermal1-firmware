@@ -31,6 +31,7 @@ static int last_frame_count;
 static lepton_buffer *last_buffer;
 #else
 static yuv422_buffer_t *last_buffer;
+static lepton_buffer *last_buffer_rgb;
 #endif
 
 #ifdef USART_DEBUG
@@ -222,6 +223,7 @@ PT_THREAD( usb_task(struct pt *pt))
 #else
 		PT_WAIT_UNTIL(pt, get_lepton_buffer_yuv(NULL) != last_frame_count);
 		last_frame_count = get_lepton_buffer_yuv(&last_buffer);
+		get_lepton_buffer(&last_buffer_rgb);
 #endif
 		WHITE_LED_TOGGLE;
 
@@ -292,7 +294,6 @@ PT_THREAD( usb_task(struct pt *pt))
       switch (videoCommitControl.bFormatIndex)
       {
         // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
-        default:
         case VS_FMT_INDEX(NV12):
         case VS_FMT_INDEX(YU12):
         {
@@ -421,6 +422,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
+        default:
         case VS_FMT_INDEX(YUYV):
         {
 #ifdef Y16
@@ -445,6 +447,54 @@ PT_THREAD( usb_task(struct pt *pt))
             uvc_xmit_row++;
           }
 #endif
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        case VS_FMT_INDEX(BGR3):
+        {
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              rgb_t rgb = last_buffer_rgb->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              packet[count++] = rgb.b;
+              packet[count++] = rgb.g;
+              packet[count++] = rgb.r;
+            }
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        case VS_FMT_INDEX(RGB565):
+        {
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              rgb_t rgb = last_buffer_rgb->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              uint16_t val =
+                ((rgb.r >> 3) << 11) |
+                ((rgb.g >> 2) <<  5) |
+                ((rgb.b >> 3) <<  0);
+
+              packet[count++] = (val >> 0) & 0xff;
+              packet[count++] = (val >> 8) & 0xff;
+            }
+            uvc_xmit_row++;
+          }
 
           // image is done
           if (uvc_xmit_row == IMAGE_NUM_LINES)
