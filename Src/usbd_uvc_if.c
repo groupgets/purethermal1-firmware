@@ -341,37 +341,16 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       DEBUG_PRINTF("probe\r\n");
 
       memset(rtnBuf, 0, length);
+
       rtnBuf->bFormatIndex = videoProbeControl.bFormatIndex;
       rtnBuf->bFrameIndex = videoProbeControl.bFrameIndex;
       rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
       rtnBuf->dwFrameInterval = INTERVAL;
 
-      if (cmd == UVC_GET_DEF || cmd == UVC_GET_MIN)
-      {
-        switch(videoProbeControl.bFormatIndex) {
-        case VS_FMT_INDEX(NV12):
-        case VS_FMT_INDEX(YU12):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
-          break;
-        case VS_FMT_INDEX(GREY):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
-          break;
-        case VS_FMT_INDEX(Y16):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
-          break;
-        case VS_FMT_INDEX(BGR3):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(BGR3));
-          break;
-        case VS_FMT_INDEX(RGB565):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(RGB565));
-          break;
-        case VS_FMT_INDEX(YUYV):
-        default:
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
-          break;
-        }
-      }
-      else if (cmd == UVC_GET_MAX)
+      if (cmd == UVC_GET_DEF ||
+          cmd == UVC_GET_MIN ||
+          cmd == UVC_GET_MAX ||
+          cmd == UVC_GET_CUR)
       {
         switch(videoProbeControl.bFormatIndex) {
         case VS_FMT_INDEX(NV12):
@@ -398,8 +377,7 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       }
       else
       {
-        rtnBuf->bmHint = videoProbeControl.bmHint;
-        rtnBuf->dwMaxVideoFrameSize = videoProbeControl.dwMaxVideoFrameSize;
+        return USBD_FAIL;
       }
     }
     else if (cs_value == UVC_VS_COMMIT_CONTROL || cs_value == UVC_VS_STILL_COMMIT_CONTROL)
