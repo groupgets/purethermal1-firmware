@@ -118,4 +118,4 @@ Refer to project wiki
 
 ## License
 
-TODO
+This firmware is licensed under The MIT License (MIT), see `LICENSE` file for details.
