@@ -45,7 +45,19 @@ Then you need to add this location to your path. Add to your .bashrc, or every t
 
 #### Windows
 
-TODO
+Toolchain
+https://launchpad.net/gcc-arm-embedded
+
+Msys
+http://www.mingw.org/wiki/msys 
+-or- install MINGW with MSYS. 
+http://sourceforge.net/projects/mingw/files/latest/download?source=files
+
+Command Line directions for building and updating the firmware:
+Install Above software.
+Add to your path, MSYS `/bin` and Toolchain arm gcc `/bin` folders. 
+
+    make
 
 
 ### Clone and Build
@@ -64,6 +76,11 @@ or
 
 ## Installing the Firmware
 
+To put the device in boot loader mode:
+Plug in USB Cable
+Power on device first with ON/OFF button press
+While holding the BOOT0 button, press the RST button, Release the RST first, then release the BOOT0 button
+
 ### OS X
 
 Install dfu-util via Homebrew
@@ -72,12 +89,26 @@ Install dfu-util via Homebrew
 
 Then run:
 
-    ./flash.sh
+    ./scripts.flash.sh
 
 
 ### Windows
 
-See the document "GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf"
+DfuSe USB drivers. 
+http://www.st.com/web/en/catalog/tools/FM147/CL1794/SC961/SS1533/PF257916#
+
+To unstall DFU drivers, may need to use the device manager to select the st drivers
+
+extract `win32_dfu.zip` to the current folder.
+
+    win32_dfu\bin2dfu --i main.bin --a 0x08000000 --o main.dfu
+    win32_dfu\DfuSeCommand -c -d --fn main.dfu
+
+-or- use
+
+    ./scripts/make_and_flash.bat
+
+Also, see the document "GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf"
 
 
 ## For More Information
