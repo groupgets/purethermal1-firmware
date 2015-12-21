@@ -11,8 +11,7 @@
 #include "LEPTON_SYS.h"
 #include "LEPTON_AGC.h"
 #include "LEPTON_VID.h"
-
-#include "oem_sdk_shim.h"
+#include "LEPTON_OEM.h"
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -335,13 +334,20 @@ HAL_StatusTypeDef enable_telemetry(void)
 
 HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
 {
-  HAL_StatusTypeDef result;
+  LEP_RESULT result;
+  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
 
-  result = set_video_output_format(&hport_desc, VIDEO_OUTPUT_FORMAT_RGB888);
-  if (result != HAL_OK) {
-    DEBUG_PRINTF("Could not set video output mode %d\r\n", result);
+  LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
+  DEBUG_PRINTF("Current format: %d\r\n", fmt);
+
+  result = LEP_SetOemVideoOutputFormat(&hport_desc, LEP_VIDEO_OUTPUT_FORMAT_RGB888);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set output format %d\r\n", result);
     return HAL_ERROR;
   }
+
+  LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
+  DEBUG_PRINTF("New format: %d\r\n", fmt);
 
   result = LEP_SetVidPcolorLut(&hport_desc, pcolor_lut);
   if (result != LEP_OK) {

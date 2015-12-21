@@ -50,7 +50,6 @@ LIBINC += -IMiddlewares/Third_Party/LwIP/src/netif/ppp
 LIBINC += -IDrivers/CMSIS/Include
 LIBINC += -IDrivers/CMSIS/Device/ST/STM32F4xx/Include
 LIBINC += -IMiddlewares/lepton_sdk/Inc
-LIBINC += -IMiddlewares/lepton_sdk_oem
 
 
 LIBS := ./$(LIBDIR)/STM32F4xx_HAL_Driver/libstm32fw.a
@@ -60,7 +59,6 @@ LIBS += ./$(MDLDIR)/Third_Party/LwIP/lwip.a
 LIBS += ./$(MDLDIR)/ST/STM32_USB_Device_Library/libstm32usbdev.a
 LIBS += ./$(MDLDIR)/ST/STM32_USB_Host_Library/libstm32usbhost.a
 LIBS += ./$(MDLDIR)/lepton_sdk/libleptonsdk.a
-LIBS += ./$(MDLDIR)/lepton_sdk_oem/libleptonsdkoem.a
 	   
 	   
 LIBS += -lm
