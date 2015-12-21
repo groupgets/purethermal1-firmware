@@ -31,12 +31,12 @@
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
-#include <stdint.h>
 #include "stm32f4xx_hal.h"
 #include "usb_device.h"
 
 /* USER CODE BEGIN Includes */
 
+#include <stdint.h>
 #include "pt.h"
 #include "lepton.h"
 #include "lepton_i2c.h"
@@ -45,10 +45,10 @@
 #include "usbd_uvc_if.h"
 DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
-/* USER CODE END Includes */
-
 #include "tasks.h"
 #include "project_config.h"
+
+/* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
 CRC_HandleTypeDef hcrc;
@@ -325,7 +325,6 @@ void MX_DMA_Init(void)
      PB1   ------> S_TIM3_CH4
      PB10   ------> S_TIM2_CH3
      PB6   ------> S_TIM4_CH1
-     PB7   ------> S_TIM4_CH2
 */
 void MX_GPIO_Init(void)
 {
@@ -356,7 +355,7 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA4 */
   GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  //GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB1 */
@@ -375,13 +374,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB5 */
+  /*Configure GPIO pins : PB5 PB7 */
   GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB6 PB7 */
+  /*Configure GPIO pin : PB6 */
   GPIO_InitStruct.Pin = GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
