@@ -128,7 +128,7 @@ or use:
 
     scripts/make_and_flash.bat
 
-Also, see the document "GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf"
+Also, see the document [GroupGets PureThermal 1 Firmware Installation Guide for Windows OS](https://files.groupgets.com/purethermal/GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf)
 
 
 ## For More Information
