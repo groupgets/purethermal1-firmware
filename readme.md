@@ -114,6 +114,9 @@ or use:
 DfuSe USB drivers. 
 http://www.st.com/web/en/catalog/tools/FM147/CL1794/SC961/SS1533/PF257916#
 
+win32 DFU tools
+https://files.groupgets.com/purethermal/win32_dfu.zip
+
 To unstall DFU drivers, may need to use the device manager to select the st drivers
 
 extract `win32_dfu.zip` to the current folder.
