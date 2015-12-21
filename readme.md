@@ -133,7 +133,7 @@ Also, see the document [GroupGets PureThermal 1 Firmware Installation Guide for 
 
 ## For More Information
 
-Refer to project wiki
+Refer to [PureThermal 1 development wiki](https://github.com/groupgets/purethermal1-firmware/wiki).
 
 
 ## License
