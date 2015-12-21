@@ -57,13 +57,11 @@ Command Line directions for building and updating the firmware:
 Install Above software.
 Add to your path, MSYS `/bin` and Toolchain arm gcc `/bin` folders. 
 
-    make
-
 
 ### Clone and Build
 
-    git clone git@bitbucket.org:groupgets/lepton-devboard.git
-    cd lepton-devboard
+    git clone https://github.com/groupgets/purethermal1-firmware
+    cd purethermal1-firmware
 
 If you wish, you can modify `Src/project_config.h` to customize your build. Then you can simply build:
 
@@ -81,6 +79,21 @@ Plug in USB Cable
 Power on device first with ON/OFF button press
 While holding the BOOT0 button, press the RST button, Release the RST first, then release the BOOT0 button
 
+### Linux
+
+Install dfu-util:
+
+    sudo apt-get install dfu-util
+
+Then run:
+
+    dfu-util -a 0 -D main.bin -s 0x08000000
+
+or use:
+
+    scripts/flash.sh
+
+
 ### OS X
 
 Install dfu-util via Homebrew
@@ -89,7 +102,11 @@ Install dfu-util via Homebrew
 
 Then run:
 
-    ./scripts.flash.sh
+    dfu-util -a 0 -D main.bin -s 0x08000000
+
+or use:
+
+    scripts/flash.sh
 
 
 ### Windows
@@ -104,9 +121,9 @@ extract `win32_dfu.zip` to the current folder.
     win32_dfu\bin2dfu --i main.bin --a 0x08000000 --o main.dfu
     win32_dfu\DfuSeCommand -c -d --fn main.dfu
 
--or- use
+or use:
 
-    ./scripts/make_and_flash.bat
+    scripts/make_and_flash.bat
 
 Also, see the document "GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf"
 
