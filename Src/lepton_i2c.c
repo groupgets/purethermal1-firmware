@@ -5,8 +5,6 @@
 #include "lepton_i2c.h"
 #include "project_config.h"
 
-#define I2C_TIMEOUT (10000)
-
 #include "LEPTON_SDK.h"
 #include "LEPTON_SYS.h"
 #include "LEPTON_AGC.h"
@@ -26,123 +24,6 @@
 
 extern I2C_HandleTypeDef hi2c1;
 LEP_CAMERA_PORT_DESC_T hport_desc;
-
-uint16_t read_reg(unsigned int reg)
-{
-	int reading = 0;
-	uint8_t data[2];
-	HAL_StatusTypeDef status;
-
-	data[0] = (reg >> 8 & 0xff);
-	data[1] = (reg & 0xff);            // sends one byte
-	HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,2,I2C_TIMEOUT);
-
-	if( (status = HAL_I2C_Master_Receive(&hi2c1,LEPTON_ADDRESS,data,2,I2C_TIMEOUT)) == HAL_OK)
-	{
-		reading =  (data[0]<<8 | (data[1]));
-	}
-	else
-	{
-		DEBUG_PRINTF("HAL_I2C_Master_Receive error %d\n\r",status);
-	}
-	return reading;
-}
-
-HAL_StatusTypeDef lepton_read_word(unsigned int reg,uint16_t * word)
-{
-	uint8_t data[2];
-	HAL_StatusTypeDef status;
-
-	data[0] = (reg >> 8 & 0xff);
-	data[1] = (reg & 0xff);            // sends one byte
-	HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,2,I2C_TIMEOUT);
-
-	if( (status = HAL_I2C_Master_Receive(&hi2c1,LEPTON_ADDRESS,data,2,I2C_TIMEOUT)) == HAL_OK)
-	{
-		*word =  (data[0]<<8 | (data[1]));
-	}
-	else
-	{
-		DEBUG_PRINTF("HAL_I2C_Master_Receive error %d\n\r",status);
-	}
-	return status;
-}
-
-
-HAL_StatusTypeDef lepton_wait_status(void )
-{
-	int timeout = 100;
-	HAL_StatusTypeDef status = HAL_OK;
-
-	while (read_reg(STATUS_REG) & 0x01)
-	{
-		if(timeout--==0)
-		{
-			DEBUG_PRINTF("error busy timeout!\n\r");
-			break;
-			status = HAL_TIMEOUT;
-		}
-	}
-
-	return status;
-}
-
-HAL_StatusTypeDef lepton_write_word(unsigned int reg,uint16_t word)
-{
-	uint8_t data[4];
-
-	data[0] = (reg >> 8 & 0xff);
-	data[1] = (reg & 0xff);            // sends one byte
-
-	data[2] = (word >> 8 & 0xff);
-	data[3] = (word & 0xff);            // sends one byte
-
-	return HAL_I2C_Master_Transmit(&hi2c1,LEPTON_ADDRESS,data,4,I2C_TIMEOUT);
-}
-
-HAL_StatusTypeDef lepton_read_data(uint8_t * data)
-{
-	int i;
-	uint16_t payload_length;
-	HAL_StatusTypeDef retrunval = 0;
-
-	lepton_wait_status();
-
-	payload_length = read_reg(DATA_LENGTH_REG);
-
-	if((payload_length > 0) && (payload_length < 35) )
-	{
-		retrunval = HAL_I2C_Master_Receive(&hi2c1,LEPTON_ADDRESS,data,payload_length,I2C_TIMEOUT);
-	}
-	return retrunval;
-}
-
-HAL_StatusTypeDef lepton_read_command(unsigned int moduleID, unsigned int commandID,uint8_t * data )
-{
-	HAL_StatusTypeDef status;
-	status |= lepton_wait_status();
-	//status |= lepton_write_word(DATA_LENGTH_REG,0X01);
-	status |= lepton_write_word(COMMAND_REG, (moduleID<<8) | (((commandID ) & 0xfc) | (GET & 0x3)));
-	status |= lepton_wait_status();
-	status |= lepton_read_data(data);
-	return status;
-}
-
-HAL_StatusTypeDef lepton_write_command_reg(unsigned int moduleID, unsigned int commandID,uint16_t reg )
-{
-	HAL_StatusTypeDef status = 0; 
-	status |= lepton_wait_status();
-	status |= lepton_write_word(DATA_0_REG,reg);
-	status |= lepton_write_word(DATA_LENGTH_REG,0X01);
-	status |= lepton_write_word(COMMAND_REG, (moduleID<<8) | (commandID | SET));
-	status |= lepton_wait_status();
-	return status;
-}
-
-HAL_StatusTypeDef lepton_command(unsigned int moduleID, unsigned int commandID, unsigned int command)
-{
-	return lepton_write_word(COMMAND_REG, (moduleID<<8) | ((commandID) | command));
-}
 
 static HAL_StatusTypeDef print_cust_serial_number()
 {

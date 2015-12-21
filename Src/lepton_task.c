@@ -53,19 +53,7 @@ uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
 void init_lepton_state(void);
 void init_lepton_state(void)
 {
-/*
-	  DEBUG_PRINTF("SYS Telemetry Enable State\n\r");
-  status = lepton_command(SYS, 0x18 >> 2 , SET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
 
-   DEBUG_PRINTF("SYS Telemetry Location\n\r");
-  status = lepton_command(SYS, 0x1C >> 2 , SET);
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-  status = read_data();
-  if(status != HAL_OK) { DEBUG_PRINTF("ERROR: %d\n\r",status); }
-*/
 }
 
 static float k_to_c(uint16_t unitsKelvin)
