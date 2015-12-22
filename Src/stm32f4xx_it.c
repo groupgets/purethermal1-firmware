@@ -37,6 +37,8 @@
 
 /* USER CODE BEGIN 0 */
 
+extern TIM_HandleTypeDef htim2;
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -44,6 +46,8 @@ extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 extern DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 extern DMA_HandleTypeDef hdma_spi2_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
+extern DMA_HandleTypeDef hdma_tim1_up;
+extern TIM_HandleTypeDef htim4;
 
 /******************************************************************************/
 /*            Cortex-M4 Processor Interruption and Exception Handlers         */ 
@@ -114,6 +118,23 @@ void DMA1_Stream4_IRQHandler(void)
 }
 
 /**
+* @brief This function handles TIM4 global interrupt.
+*/
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  // HAL_TIM_DMABurst_WriteStart(&htim2, TIM_DMABASE_CCR3, TIM_DMA_UPDATE, values, TIM_DMABURSTLENGTH_5TRANSFERS);
+  // HAL_TIM_OC_Start_DMA(&htim2, TIM_CHANNEL_3, (uint32_t[]) { 10, 20, 30, 40, 50 }, 5);
+
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
 * @brief This function handles EXTI Line[15:10] interrupts.
 */
 void EXTI15_10_IRQHandler(void)
@@ -153,6 +174,20 @@ void OTG_FS_IRQHandler(void)
   /* USER CODE BEGIN OTG_FS_IRQn 1 */
 
   /* USER CODE END OTG_FS_IRQn 1 */
+}
+
+/**
+* @brief This function handles DMA2 Stream5 global interrupt.
+*/
+void DMA2_Stream5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA2_Stream5_IRQn 0 */
+
+  /* USER CODE END DMA2_Stream5_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_tim1_up);
+  /* USER CODE BEGIN DMA2_Stream5_IRQn 1 */
+
+  /* USER CODE END DMA2_Stream5_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
