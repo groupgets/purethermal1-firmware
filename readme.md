@@ -1,6 +1,7 @@
-# Pure Thermal 1 Reference Firmware
+# PureThermal 1 Reference Firmware
 
-The Pure Thermal 1 is an embedded development platform for the FLIR Lepton thermal imager, created by
+The [PureThermal 1](https://groupgets.com/manufacturers/groupgets-labs/products/pure-thermal-1-flir-lepton-dev-kit)
+is an embedded development platform for the FLIR Lepton thermal imager, created by
 GroupGets Labs. It is based around the STM32F4, a powerful ARM Cortex-M MCU by ST Microelectronics, and its
 various IO capabilities and open source firmware to make it easy integrate a FLIR Lepton into any environment.
 
