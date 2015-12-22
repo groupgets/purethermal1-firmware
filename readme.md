@@ -136,6 +136,11 @@ Also, see the document [GroupGets PureThermal 1 Firmware Installation Guide for 
 Refer to [PureThermal 1 development wiki](https://github.com/groupgets/purethermal1-firmware/wiki).
 
 
-## License
+## Licensing and Support
 
 This firmware is licensed under The MIT License (MIT), see `LICENSE` file for details.
+
+Inquiries for support should be directed at this project's maintainers, GroupGets, LLC (GroupGets), and not FLIR
+Systems, Inc. (FLIR). Additional FLIR-provided source code is being released by GroupGets to this project under the
+express written consent of FLIR, and covered by the project's license, with the expectation that no warranties
+or support of any kind will be provided by FLIR.
