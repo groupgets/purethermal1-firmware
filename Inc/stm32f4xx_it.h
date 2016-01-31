@@ -49,9 +49,9 @@ void NMI_Handler(void);
 void SysTick_Handler(void);
 void DMA1_Stream3_IRQHandler(void);
 void DMA1_Stream4_IRQHandler(void);
-void TIM4_IRQHandler(void);
 void EXTI15_10_IRQHandler(void);
 void DMA2_Stream0_IRQHandler(void);
+void DMA2_Stream1_IRQHandler(void);
 void OTG_FS_IRQHandler(void);
 void DMA2_Stream5_IRQHandler(void);
 

@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 #include "pt.h"
+#include "pt-sem.h"
 #include "lepton.h"
 #include "lepton_i2c.h"
 #include "tmp007_i2c.h"
@@ -60,10 +61,9 @@ DMA_HandleTypeDef hdma_spi2_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
 TIM_HandleTypeDef htim1;
-TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
-TIM_HandleTypeDef htim4;
 DMA_HandleTypeDef hdma_tim1_up;
+DMA_HandleTypeDef hdma_tim1_ch1;
 
 UART_HandleTypeDef huart2;
 
@@ -81,6 +81,12 @@ static struct pt usb_task_pt;
 static struct pt uart_task_pt;
 static struct pt button_task_pt;
 
+static struct pt video_task_pt;
+static uint32_t line = 0;
+static struct pt_sem gpDataSem;
+__ALIGN_BEGIN uint16_t gpData[455] __ALIGN_END = { 0 };
+__ALIGN_BEGIN uint16_t gpData2[455] __ALIGN_END = { 0 };
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,9 +97,7 @@ static void MX_CRC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
-static void MX_TIM4_Init(void);
 static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
@@ -104,13 +108,105 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 
+PT_THREAD( video_task(struct pt *pt))
+{
+	PT_BEGIN(pt);
+
+  static int i;
+  static uint16_t* lptr;
+
+	while (1)
+	{
+    PT_SEM_WAIT(pt, &gpDataSem);
+
+    lptr = (line % 2) == 0 ? gpData : gpData2;
+
+    for (i=(38+18+11); i<(38+18+11+375); i++)
+    {
+      if ((i - (38+18+11)) > (line % 375))
+      {
+        if (i & 1) {
+          lptr[i] |= GPIO_PIN_1;
+        }
+
+        if (i & 2) {
+          lptr[i] |= GPIO_PIN_6;
+        }
+
+        if (i & 4) {
+          lptr[i] |= GPIO_PIN_10;
+        }
+      }
+      else
+      {
+        lptr[i] = GPIO_PIN_0;
+      }
+    }
+  }
+
+  PT_END(pt);
+}
+
+
+void reset_tim1(void)
+{
+  DMA_HandleTypeDef *hdma = htim1.hdma[TIM_DMA_ID_UPDATE];
+
+  htim1.Instance->CR1 &= ~TIM_CR1_CEN;
+
+  __HAL_TIM_SET_COUNTER(&htim1, 0);
+
+  // Disable the peripheral
+  hdma->Instance->CR &= ~DMA_SxCR_EN;
+
+  // Configure DMA Stream data length
+  hdma->Instance->NDTR = 455;
+
+  // Configure DMA Stream destination address
+  hdma->Instance->PAR = (uint32_t)&GPIOB->ODR;
+
+  // Configure DMA Stream source address
+  hdma->Instance->M0AR = (uint32_t)((line++ % 2) == 0 ? gpData : gpData2);
+
+  // Enable the transfer complete interrupt and dma peripheral
+  hdma->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
+
+  // enable tim1 dma
+  htim1.Instance->DIER |= TIM_DMA_UPDATE;
+
+  // enable tim1
+  // htim1.Instance->CR1 |= TIM_CR1_CEN;
+
+  // htim1 enable will be triggered by tim3 update
+
+  PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
+}
+
 /* USER CODE END 0 */
 
 int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  int i;
 
+  // IRE = 0
+  memset(gpData, GPIO_PIN_0, sizeof(gpData));
+
+  // SYNC
+  for (i=0; i<34; i++)
+  {
+    gpData[i] &= ~GPIO_PIN_0;
+  }
+
+  // color burst
+  for (i=38; i<(38+18); i++)
+  {
+    if ((i % 2) == 0)
+      gpData[i] |= GPIO_PIN_6;
+  }
+
+  memcpy(gpData2, gpData, sizeof(gpData));
 
   /* USER CODE END 1 */
 
@@ -129,9 +225,7 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_TIM1_Init();
-  MX_TIM2_Init();
   MX_TIM3_Init();
-  MX_TIM4_Init();
   MX_USART2_UART_Init();
   MX_USB_DEVICE_Init();
 
@@ -168,6 +262,20 @@ int main(void)
   PT_INIT(&lepton_task_pt);
   PT_INIT(&usb_task_pt);
   PT_INIT(&uart_task_pt);
+  PT_INIT(&video_task_pt);
+
+  PT_SEM_INIT(&gpDataSem, 0);
+
+  // only generate update on overflow
+  htim1.Instance->CR1 &= ~TIM_CR1_URS;
+  htim3.Instance->CR1 &= ~TIM_CR1_URS;
+
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMADelayPulseCplt;
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferErrorCallback = TIM_DMAError;
+
+  reset_tim1();
+
+  __HAL_TIM_ENABLE(&htim3);
 
   /* USER CODE END 2 */
 
@@ -179,10 +287,11 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
-	  PT_SCHEDULE(usb_task(&usb_task_pt));
-	  PT_SCHEDULE(uart_task(&uart_task_pt));
-	  PT_SCHEDULE(button_task(&button_task_pt));
+    // PT_SCHEDULE(lepton_task(&lepton_task_pt));
+    // PT_SCHEDULE(usb_task(&usb_task_pt));
+    // PT_SCHEDULE(uart_task(&uart_task_pt));
+    // PT_SCHEDULE(button_task(&button_task_pt));
+    PT_SCHEDULE(video_task(&video_task_pt));
 
   }
   /* USER CODE END 3 */
@@ -216,7 +325,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0);
+  HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3);
 
   HAL_RCC_EnableCSS();
 
@@ -285,7 +394,7 @@ void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 8;
+  htim1.Init.Period = 14;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   HAL_TIM_Base_Init(&htim1);
@@ -296,10 +405,10 @@ void MX_TIM1_Init(void)
   HAL_TIM_OC_Init(&htim1);
 
   sSlaveConfig.SlaveMode = TIM_SLAVEMODE_TRIGGER;
-  sSlaveConfig.InputTrigger = TIM_TS_ITR3;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR2;
   HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig);
 
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig);
 
@@ -313,7 +422,7 @@ void MX_TIM1_Init(void)
   HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig);
 
   sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
+  sConfigOC.Pulse = 3;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -323,102 +432,26 @@ void MX_TIM1_Init(void)
 
 }
 
-/* TIM2 init function */
-void MX_TIM2_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_SlaveConfigTypeDef sSlaveConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-
-  htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
-  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 0;
-  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  HAL_TIM_Base_Init(&htim2);
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig);
-
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_DISABLE;
-  sSlaveConfig.InputTrigger = TIM_TS_ITR3;
-  HAL_TIM_SlaveConfigSynchronization(&htim2, &sSlaveConfig);
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig);
-
-}
-
 /* TIM3 init function */
 void MX_TIM3_Init(void)
 {
 
   TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_SlaveConfigTypeDef sSlaveConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
-  TIM_OC_InitTypeDef sConfigOC;
 
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 0;
+  htim3.Init.Period = 3700;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   HAL_TIM_Base_Init(&htim3);
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig);
 
-  HAL_TIM_OC_Init(&htim3);
-
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
-  sSlaveConfig.InputTrigger = TIM_TS_ITR3;
-  HAL_TIM_SlaveConfigSynchronization(&htim3, &sSlaveConfig);
-
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
-
-  sConfigOC.OCMode = TIM_OCMODE_ACTIVE;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3);
-
-  HAL_TIM_OC_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4);
-
-}
-
-/* TIM4 init function */
-void MX_TIM4_Init(void)
-{
-
-  TIM_ClockConfigTypeDef sClockSourceConfig;
-  TIM_MasterConfigTypeDef sMasterConfig;
-  TIM_OC_InitTypeDef sConfigOC;
-
-  htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 0;
-  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 3048;
-  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  HAL_TIM_Base_Init(&htim4);
-
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig);
-
-  HAL_TIM_OC_Init(&htim4);
-
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_ENABLE;
-  HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig);
-
-  sConfigOC.OCMode = TIM_OCMODE_ACTIVE;
-  sConfigOC.Pulse = 226;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  HAL_TIM_OC_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1);
+  HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig);
 
 }
 
@@ -462,7 +495,7 @@ void MX_DMA_Init(void)
   hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
   hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
   hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
-  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_MEDIUM;
+  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_VERY_HIGH;
   hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
   hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
   hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;
@@ -476,6 +509,8 @@ void MX_DMA_Init(void)
   HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
   HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
 
@@ -520,11 +555,11 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  /*Configure GPIO pins : PB0 PB1 PB10 PB6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB5 PB7 */
