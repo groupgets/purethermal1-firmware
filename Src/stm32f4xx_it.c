@@ -37,8 +37,7 @@
 
 /* USER CODE BEGIN 0 */
 
-extern TIM_HandleTypeDef htim2;
-extern uint16_t *gpData;
+#define WHITE_LED_TOGGLE  (HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_6))
 
 /* USER CODE END 0 */
 
@@ -156,6 +155,8 @@ void DMA2_Stream1_IRQHandler(void)
   /* USER CODE END DMA2_Stream1_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_tim1_ch1);
   /* USER CODE BEGIN DMA2_Stream1_IRQn 1 */
+
+  // WHITE_LED_TOGGLE;
 
   /* USER CODE END DMA2_Stream1_IRQn 1 */
 }

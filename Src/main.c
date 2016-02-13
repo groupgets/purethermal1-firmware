@@ -86,6 +86,7 @@ static uint32_t line = 0;
 static struct pt_sem gpDataSem;
 __ALIGN_BEGIN uint16_t gpData[455] __ALIGN_END = { 0 };
 __ALIGN_BEGIN uint16_t gpData2[455] __ALIGN_END = { 0 };
+__ALIGN_BEGIN uint32_t arrData[455] __ALIGN_END = { 0 };
 
 /* USER CODE END PV */
 
@@ -123,6 +124,8 @@ PT_THREAD( video_task(struct pt *pt))
 
     for (i=(38+18+11); i<(38+18+11+375); i++)
     {
+      arrData[38+18+11] = 14 - (line % 7);
+
       if ((i - (38+18+11)) > (line % 375))
       {
         if (i & 1) {
@@ -151,6 +154,7 @@ PT_THREAD( video_task(struct pt *pt))
 void reset_tim1(void)
 {
   DMA_HandleTypeDef *hdma = htim1.hdma[TIM_DMA_ID_UPDATE];
+  DMA_HandleTypeDef *hdma_2 = htim1.hdma[TIM_DMA_ID_CC1];
 
   htim1.Instance->CR1 &= ~TIM_CR1_CEN;
 
@@ -158,24 +162,26 @@ void reset_tim1(void)
 
   // Disable the peripheral
   hdma->Instance->CR &= ~DMA_SxCR_EN;
+  hdma_2->Instance->CR &= ~DMA_SxCR_EN;
 
   // Configure DMA Stream data length
   hdma->Instance->NDTR = 455;
+  hdma_2->Instance->NDTR = 455;
 
   // Configure DMA Stream destination address
   hdma->Instance->PAR = (uint32_t)&GPIOB->ODR;
+  hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
 
   // Configure DMA Stream source address
   hdma->Instance->M0AR = (uint32_t)((line++ % 2) == 0 ? gpData : gpData2);
+  hdma_2->Instance->M0AR = (uint32_t)arrData;
 
   // Enable the transfer complete interrupt and dma peripheral
   hdma->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
+  hdma_2->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
 
   // enable tim1 dma
-  htim1.Instance->DIER |= TIM_DMA_UPDATE;
-
-  // enable tim1
-  // htim1.Instance->CR1 |= TIM_CR1_CEN;
+  htim1.Instance->DIER |= TIM_DMA_UPDATE | TIM_DMA_CC1;
 
   // htim1 enable will be triggered by tim3 update
 
@@ -207,6 +213,11 @@ int main(void)
   }
 
   memcpy(gpData2, gpData, sizeof(gpData));
+
+  for (i=0; i<455; i++)
+  {
+    arrData[i] = 14;
+  }
 
   /* USER CODE END 1 */
 
@@ -270,10 +281,24 @@ int main(void)
   htim1.Instance->CR1 &= ~TIM_CR1_URS;
   htim3.Instance->CR1 &= ~TIM_CR1_URS;
 
+  /* Enable the Output compare channel */
+  TIM_CCxChannelCmd(htim1.Instance, TIM_CHANNEL_1, TIM_CCx_ENABLE);
+  
+  if(IS_TIM_ADVANCED_INSTANCE(htim1.Instance) != RESET)
+  {
+    /* Enable the main output */
+    __HAL_TIM_MOE_ENABLE(&htim1);
+  }
+
   htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMADelayPulseCplt;
   htim1.hdma[TIM_DMA_ID_UPDATE]->XferErrorCallback = TIM_DMAError;
 
+  htim1.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = TIM_DMADelayPulseCplt;
+  htim1.hdma[TIM_DMA_ID_CC1]->XferErrorCallback = TIM_DMAError;
+
   reset_tim1();
+
+  WHITE_LED_TOGGLE;
 
   __HAL_TIM_ENABLE(&htim3);
 
