@@ -55,7 +55,9 @@ CRC_HandleTypeDef hcrc;
 
 I2C_HandleTypeDef hi2c1;
 
+SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_spi2_rx;
 DMA_HandleTypeDef hdma_spi2_tx;
 
@@ -88,6 +90,7 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_CRC_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
@@ -131,6 +134,7 @@ int main(void)
   MX_DMA_Init();
   MX_CRC_Init();
   MX_I2C1_Init();
+  MX_SPI1_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
@@ -287,6 +291,26 @@ static void MX_I2C1_Init(void)
   {
     Error_Handler();
   }
+
+}
+
+/* SPI1 init function */
+void MX_SPI1_Init(void)
+{
+
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLED;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLED;
+  hspi1.Init.CRCPolynomial = 10;
+  HAL_SPI_Init(&hspi1);
 
 }
 
@@ -465,8 +489,8 @@ static void MX_DMA_Init(void)
   hdma_memtomem_dma2_stream0.Init.Direction = DMA_MEMORY_TO_MEMORY;
   hdma_memtomem_dma2_stream0.Init.PeriphInc = DMA_PINC_ENABLE;
   hdma_memtomem_dma2_stream0.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+  hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
   hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
   hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_MEDIUM;
   hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
@@ -490,6 +514,8 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
 
 }
 
@@ -517,10 +543,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(LEPTON_GPIO3_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ESP_GPIO2_Pin ESP_GPIO0_Pin ESP_CH_PD_Pin SYSTEM_LED_Pin 
+  /*Configure GPIO pins : ESP_GPIO2_Pin ESP_GPIO0_Pin SYSTEM_LED_Pin 
                            ESP_RST_Pin LEPTON_PW_DWN_L_Pin LEPTON_RESET_L_Pin */
-  GPIO_InitStruct.Pin = ESP_GPIO2_Pin|ESP_GPIO0_Pin|ESP_CH_PD_Pin|SYSTEM_LED_Pin 
-                          |ESP_RST_Pin|LEPTON_PW_DWN_L_Pin|LEPTON_RESET_L_Pin;
+  GPIO_InitStruct.Pin = ESP_GPIO2_Pin|ESP_GPIO0_Pin|SYSTEM_LED_Pin 
+                          |LEPTON_PW_DWN_L_Pin|LEPTON_RESET_L_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
