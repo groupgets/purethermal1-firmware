@@ -84,6 +84,8 @@ static struct pt button_task_pt;
 static struct pt video_task_pt;
 static uint32_t line = 0;
 static struct pt_sem gpDataSem;
+__ALIGN_BEGIN uint16_t equalizing[455] __ALIGN_END = { 0 };
+__ALIGN_BEGIN uint16_t vsync[455] __ALIGN_END = { 0 };
 __ALIGN_BEGIN uint16_t gpData[455] __ALIGN_END = { 0 };
 __ALIGN_BEGIN uint16_t gpData2[455] __ALIGN_END = { 0 };
 __ALIGN_BEGIN uint32_t arrData[455] __ALIGN_END = { 0 };
@@ -108,6 +110,179 @@ static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN 0 */
 
+// #define FAKE_PROGRESSIVE
+#define VIDEO_NUM_LINES (263)
+#define SYNC (4)
+#define COLOR_AMPL (2)
+#define GPIO_VALUE_SIZE (16)
+static uint16_t GPIO_VALUES[GPIO_VALUE_SIZE] = { 0 };
+
+uint16_t* lu_sync[9] = {
+#ifdef FAKE_PROGRESSIVE
+  equalizing,
+  equalizing,
+  equalizing,
+  equalizing,
+  vsync,
+  equalizing,
+  equalizing,
+  equalizing,
+  equalizing
+#else
+  equalizing,
+  equalizing,
+  equalizing,
+  vsync,
+  vsync,
+  vsync,
+  equalizing,
+  equalizing,
+  equalizing
+#endif
+};
+
+static void build_line(uint16_t* lptr, int even)
+{
+  int i = 0;
+
+  for (; i<1; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  // IRE = 0
+  for (; i<5; i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  if (even)
+  {
+    // color burst
+    for (; i<(5+18); i++)
+    {
+      if ((i % 2) == 0)
+        lptr[i] = GPIO_VALUES[SYNC - COLOR_AMPL];
+      else
+        lptr[i] = GPIO_VALUES[SYNC + COLOR_AMPL];
+    }
+  }
+  else
+  {
+    for (; i<(5+18); i++)
+    {
+      if ((i % 2) == 0)
+        lptr[i] = GPIO_VALUES[SYNC + COLOR_AMPL];
+      else
+        lptr[i] = GPIO_VALUES[SYNC - COLOR_AMPL];
+    }
+  }
+
+  for (; i<422; i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  // SYNC, IRE = -40
+  for (; i<455; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+}
+
+static void build_vsync(uint16_t* lptr)
+{
+  int i = 0;
+
+#ifdef FAKE_PROGRESSIVE
+  for (; i<422; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  for (; i<455; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+#else
+  // for (; i<1; i++)
+  // {
+  //   lptr[i] = GPIO_VALUES[SYNC];
+  // }
+
+  // SYNC, IRE = -40
+  for (; i<(210-17); i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  // IRE = 0
+  for (; i<(210+17); i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  for (; i<422; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  for (; i<455; i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+#endif
+}
+
+static void build_prepost_equalizing(uint16_t* lptr)
+{
+  int i = 0;
+
+#ifdef FAKE_PROGRESSIVE
+  for (; i<1; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  for (; i<422; i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  for (; i<455; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+#else
+  for (; i<1; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  // SYNC, IRE = -40
+  for (; i<(210-17); i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  // IRE = 0
+  for (; i<(210+17); i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+
+  for (; i<422; i++)
+  {
+    lptr[i] = GPIO_VALUES[SYNC];
+  }
+
+  for (; i<455; i++)
+  {
+    lptr[i] = GPIO_VALUES[0];
+  }
+#endif
+}
 
 PT_THREAD( video_task(struct pt *pt))
 {
@@ -120,30 +295,20 @@ PT_THREAD( video_task(struct pt *pt))
 	{
     PT_SEM_WAIT(pt, &gpDataSem);
 
+    if (line < 9)
+      continue;
+
     lptr = (line % 2) == 0 ? gpData : gpData2;
 
-    for (i=(38+18+11); i<(38+18+11+375); i++)
+    for (i = (5+18+11); i < 412; i++)
     {
-      arrData[38+18+11] = 14 - (line % 7);
+      uint16_t value = SYNC + (i % (GPIO_VALUE_SIZE - SYNC));
+      // if ((i%2) == 0)
+      //   value -= COLOR_AMPL;
+      // else if ((value + COLOR_AMPL )< GPIO_VALUE_SIZE)
+      //   value += COLOR_AMPL;
 
-      if ((i - (38+18+11)) > (line % 375))
-      {
-        if (i & 1) {
-          lptr[i] |= GPIO_PIN_1;
-        }
-
-        if (i & 2) {
-          lptr[i] |= GPIO_PIN_6;
-        }
-
-        if (i & 4) {
-          lptr[i] |= GPIO_PIN_10;
-        }
-      }
-      else
-      {
-        lptr[i] = GPIO_PIN_0;
-      }
+      lptr[i] = GPIO_VALUES[value];
     }
   }
 
@@ -158,34 +323,44 @@ void reset_tim1(void)
 
   htim1.Instance->CR1 &= ~TIM_CR1_CEN;
 
-  __HAL_TIM_SET_COUNTER(&htim1, 0);
-
   // Disable the peripheral
   hdma->Instance->CR &= ~DMA_SxCR_EN;
-  hdma_2->Instance->CR &= ~DMA_SxCR_EN;
+  // hdma_2->Instance->CR &= ~DMA_SxCR_EN;
 
   // Configure DMA Stream data length
-  hdma->Instance->NDTR = 455;
-  hdma_2->Instance->NDTR = 455;
+  hdma->Instance->NDTR = 425;
+  // hdma_2->Instance->NDTR = (4+18+11+377+10)+2;
 
   // Configure DMA Stream destination address
   hdma->Instance->PAR = (uint32_t)&GPIOB->ODR;
-  hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
+  // hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
 
   // Configure DMA Stream source address
-  hdma->Instance->M0AR = (uint32_t)((line++ % 2) == 0 ? gpData : gpData2);
-  hdma_2->Instance->M0AR = (uint32_t)arrData;
+  if (line < 9)
+  {
+    hdma->Instance->M0AR = (uint32_t)lu_sync[line];
+  }
+  else
+  {
+    hdma->Instance->M0AR = (uint32_t)((line % 2) == 0 ? gpData : gpData2);
+    // hdma_2->Instance->M0AR = (uint32_t)arrData;
+  }
+
+  __HAL_TIM_SET_COUNTER(&htim1, 0);
 
   // Enable the transfer complete interrupt and dma peripheral
   hdma->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
-  hdma_2->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
+  // hdma_2->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
 
   // enable tim1 dma
-  htim1.Instance->DIER |= TIM_DMA_UPDATE | TIM_DMA_CC1;
+  // htim1.Instance->DIER |= TIM_DMA_UPDATE | TIM_DMA_CC1;
+  htim1.Instance->DIER |= TIM_DMA_UPDATE;
 
   // htim1 enable will be triggered by tim3 update
 
-  PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
+  line = ((line + 1) % VIDEO_NUM_LINES);
+
+  // PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
 }
 
 /* USER CODE END 0 */
@@ -196,23 +371,31 @@ int main(void)
   /* USER CODE BEGIN 1 */
   int i;
 
-  // IRE = 0
-  memset(gpData, GPIO_PIN_0, sizeof(gpData));
-
-  // SYNC
-  for (i=0; i<34; i++)
+  for (i = 0; i < 16; i++)
   {
-    gpData[i] &= ~GPIO_PIN_0;
+    GPIO_VALUES[i] = 0;
+
+    if (i & 1) {
+      GPIO_VALUES[i] |= GPIO_PIN_10;
+    }
+
+    if (i & 2) {
+      GPIO_VALUES[i] |= GPIO_PIN_6;
+    }
+
+    if (i & 4) {
+      GPIO_VALUES[i] |= GPIO_PIN_1;
+    }
+
+    if (i & 8) {
+      GPIO_VALUES[i] |= GPIO_PIN_0;
+    }
   }
 
-  // color burst
-  for (i=38; i<(38+18); i++)
-  {
-    if ((i % 2) == 0)
-      gpData[i] |= GPIO_PIN_6;
-  }
-
-  memcpy(gpData2, gpData, sizeof(gpData));
+  build_line(gpData, 1);
+  build_line(gpData2, 0);
+  build_prepost_equalizing(equalizing);
+  build_vsync(vsync);
 
   for (i=0; i<455; i++)
   {
@@ -313,9 +496,9 @@ int main(void)
   /* USER CODE BEGIN 3 */
 
     // PT_SCHEDULE(lepton_task(&lepton_task_pt));
-    // PT_SCHEDULE(usb_task(&usb_task_pt));
+    PT_SCHEDULE(usb_task(&usb_task_pt));
     // PT_SCHEDULE(uart_task(&uart_task_pt));
-    // PT_SCHEDULE(button_task(&button_task_pt));
+    PT_SCHEDULE(button_task(&button_task_pt));
     PT_SCHEDULE(video_task(&video_task_pt));
 
   }
@@ -467,7 +650,7 @@ void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 0;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 3700;
+  htim3.Init.Period = 3408;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   HAL_TIM_Base_Init(&htim3);
 
