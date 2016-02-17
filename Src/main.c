@@ -48,6 +48,10 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 #include "tasks.h"
 #include "project_config.h"
 
+#ifdef ENABLE_LCD_DISPLAY
+#include "lcd_display.h"
+#endif
+
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -79,6 +83,9 @@ UART_HandleTypeDef huart2;
 static struct pt lepton_task_pt;
 static struct pt usb_task_pt;
 static struct pt uart_task_pt;
+#ifdef ENABLE_LCD_DISPLAY
+static struct pt lcd_display_task_pt;
+#endif
 static struct pt button_task_pt;
 
 /* USER CODE END PV */
@@ -162,6 +169,11 @@ int main(void)
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
 
+#ifdef ENABLE_LCD_DISPLAY
+  lcd_init();
+  lcd_fill_screen(rgb_to_packed(11, 101, 255));
+#endif
+
   lepton_init();
 
   HAL_Delay(1000);
@@ -195,6 +207,9 @@ int main(void)
   PT_INIT(&lepton_task_pt);
   PT_INIT(&usb_task_pt);
   PT_INIT(&uart_task_pt);
+#ifdef ENABLE_LCD_DISPLAY
+  PT_INIT(&lcd_display_task_pt);
+#endif
 
   /* USER CODE END 2 */
 
@@ -209,6 +224,9 @@ int main(void)
 	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
 	  PT_SCHEDULE(usb_task(&usb_task_pt));
 	  PT_SCHEDULE(uart_task(&uart_task_pt));
+#ifdef ENABLE_LCD_DISPLAY
+	  PT_SCHEDULE(lcd_display_task(&lcd_display_task_pt));
+#endif
 	  PT_SCHEDULE(button_task(&button_task_pt));
 
   }
