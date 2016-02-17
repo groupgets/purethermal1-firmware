@@ -23,7 +23,12 @@
 
 extern SPI_HandleTypeDef hspi2;
 
+#ifdef ENABLE_LCD_DISPLAY
+// not enough memory for acquisition buffering and lcd buffer
+#define RING_SIZE (2)
+#else
 #define RING_SIZE (4)
+#endif
 lepton_buffer lepton_buffers[RING_SIZE];
 
 lepton_buffer* get_next_lepton_buffer()

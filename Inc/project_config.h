@@ -7,6 +7,11 @@
 #define USART_DEBUG
 #define THERMAL_DATA_UART
 #endif
+
+/* enable ST7734 160x128 TFT LCD output */
+#define ENABLE_LCD_DISPLAY
+#define USE_LCD_ST7735
+
 #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
 #define ENABLE_LEPTON_AGC
