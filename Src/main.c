@@ -83,6 +83,7 @@ static struct pt button_task_pt;
 
 static struct pt video_task_pt;
 static uint32_t line = 0;
+static uint32_t field = 0;
 static struct pt_sem gpDataSem;
 __ALIGN_BEGIN uint16_t equalizing[455] __ALIGN_END = { 0 };
 __ALIGN_BEGIN uint16_t vsync[455] __ALIGN_END = { 0 };
@@ -302,7 +303,13 @@ PT_THREAD( video_task(struct pt *pt))
 
     for (i = (5+18+11); i < 412; i++)
     {
-      uint16_t value = SYNC + (i % (GPIO_VALUE_SIZE - SYNC));
+      uint16_t value;
+
+      if (field == 1)
+        value = SYNC + (i % (GPIO_VALUE_SIZE - SYNC));
+      else
+        value = SYNC;
+
       // if ((i%2) == 0)
       //   value -= COLOR_AMPL;
       // else if ((value + COLOR_AMPL )< GPIO_VALUE_SIZE)
@@ -327,8 +334,19 @@ void reset_tim1(void)
   hdma->Instance->CR &= ~DMA_SxCR_EN;
   // hdma_2->Instance->CR &= ~DMA_SxCR_EN;
 
+  if ((field == 0 && line == 262) || (field == 1 && line == 8))
+  {
+    hdma->Instance->NDTR = 180;
+    htim3.Instance->ARR = 1704;
+  }
+  else
+  {
+    hdma->Instance->NDTR = 425;
+    htim3.Instance->ARR = 3408;
+  }
+
   // Configure DMA Stream data length
-  hdma->Instance->NDTR = 425;
+  // hdma->Instance->NDTR = 425;
   // hdma_2->Instance->NDTR = (4+18+11+377+10)+2;
 
   // Configure DMA Stream destination address
@@ -359,8 +377,10 @@ void reset_tim1(void)
   // htim1 enable will be triggered by tim3 update
 
   line = ((line + 1) % VIDEO_NUM_LINES);
+  if (line == 0)
+    field = ((field + 1) % 2);
 
-  // PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
+  PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
 }
 
 /* USER CODE END 0 */
@@ -463,6 +483,7 @@ int main(void)
   // only generate update on overflow
   htim1.Instance->CR1 &= ~TIM_CR1_URS;
   htim3.Instance->CR1 &= ~TIM_CR1_URS;
+  htim3.Instance->CR1 |= TIM_CR1_ARPE;
 
   /* Enable the Output compare channel */
   TIM_CCxChannelCmd(htim1.Instance, TIM_CHANNEL_1, TIM_CCx_ENABLE);
