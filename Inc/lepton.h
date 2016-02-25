@@ -25,7 +25,14 @@ typedef enum {
   LEPTON_STATUS_OK = 0,
   LEPTON_STATUS_TRANSFERRING = 1,
   LEPTON_STATUS_RESYNC = 2,
+  LEPTON_STATUS_CONTINUE = 4,
 } lepton_status;
+
+typedef enum {
+  LEPTON_XFER_STATE_START = 0,
+  LEPTON_XFER_STATE_SYNC = 1,
+  LEPTON_XFER_STATE_DATA = 2,
+} lepton_xfer_state;
 
 typedef struct __attribute__((packed)) _telemetry_data_l2 {
 

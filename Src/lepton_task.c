@@ -95,13 +95,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		if (complete_lepton_transfer(current_buffer) != LEPTON_STATUS_OK)
 		{
-			if (current_buffer->status | LEPTON_STATUS_RESYNC)
+			if (current_buffer->status == LEPTON_STATUS_RESYNC)
 			{
 				if (current_frame_count != 0)
 					DEBUG_PRINTF("Synchronization lost, status: %d\r\n", current_buffer->status);
 				HAL_Delay(250);
 			}
-			else
+			else if (current_buffer->status != LEPTON_STATUS_CONTINUE)
 			{
 				DEBUG_PRINTF("Transfer failed, status: %d\r\n", current_buffer->status);
 			}
