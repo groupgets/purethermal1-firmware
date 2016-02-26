@@ -89,16 +89,12 @@ static uint32_t line = 0;
 static uint32_t field = 0;
 static uint32_t frame = 0;
 static struct pt_sem gpDataSem;
-__ALIGN_BEGIN uint16_t equalizing[455] __ALIGN_END = { 0 };
-#ifdef INTERLACE
-__ALIGN_BEGIN uint16_t vsync_1[455] __ALIGN_END = { 0 };
-__ALIGN_BEGIN uint16_t vsync_2[455] __ALIGN_END = { 0 };
-#else
+
 __ALIGN_BEGIN uint16_t vsync[455] __ALIGN_END = { 0 };
-#endif
+__ALIGN_BEGIN uint16_t burstline[2][455] __ALIGN_END = { 0 };
+
 __ALIGN_BEGIN uint16_t gpData[2][455] __ALIGN_END = { 0 };
-__ALIGN_BEGIN uint16_t gpData2[2][455] __ALIGN_END = { 0 };
-__ALIGN_BEGIN uint32_t arrData[455] __ALIGN_END = { 0 };
+__ALIGN_BEGIN uint32_t arrData[2][455] __ALIGN_END = { 0 };
 
 /* USER CODE END PV */
 
@@ -120,54 +116,18 @@ static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN 0 */
 
-#ifndef INTERLACE
-#define VIDEO_NUM_LINES (263)
-#else
+// #ifndef INTERLACE
+// #define VIDEO_NUM_LINES (263)
+// #else
+#define FIELD_NUM_LINES (263)
 #define VIDEO_NUM_LINES (526)
-#endif
+// #endif
 #define SYNC (4)
 #define COLOR_AMPL (2)
 #define GPIO_VALUE_SIZE (16)
 static uint16_t GPIO_VALUES[GPIO_VALUE_SIZE] = { 0 };
 
-#ifdef INTERLACE
-uint16_t* lu_sync_1[9] = {
-  equalizing,
-  equalizing,
-  equalizing,
-  vsync_1,
-  vsync_1,
-  vsync_1,
-  equalizing,
-  equalizing,
-  equalizing
-};
-uint16_t* lu_sync_2[9] = {
-  equalizing,
-  equalizing,
-  equalizing,
-  vsync_2,
-  vsync_2,
-  vsync_2,
-  equalizing,
-  equalizing,
-  equalizing
-};
-#else
-uint16_t* lu_sync[9] = {
-  equalizing,
-  equalizing,
-  equalizing,
-  vsync,
-  vsync,
-  vsync,
-  equalizing,
-  equalizing,
-  equalizing
-};
-#endif
-
-static void build_line(uint16_t* lptr, int even)
+static inline void build_line(uint16_t* lptr, int even)
 {
   int i = 0;
 
@@ -182,6 +142,7 @@ static void build_line(uint16_t* lptr, int even)
     lptr[i] = GPIO_VALUES[SYNC];
   }
 
+#ifdef VIDEO_COLOR
   if (even)
   {
     // color burst
@@ -203,6 +164,7 @@ static void build_line(uint16_t* lptr, int even)
         lptr[i] = GPIO_VALUES[SYNC - COLOR_AMPL];
     }
   }
+#endif
 
   for (; i<455; i++)
   {
@@ -211,189 +173,65 @@ static void build_line(uint16_t* lptr, int even)
 
 }
 
-#ifdef INTERLACE
-static void build_vsync_1(uint16_t* lptr)
+static inline void build_vsync(uint16_t* lptr)
 {
   int i = 0;
 
-  // SYNC, IRE = -40
-  for (; i<194; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  for (; i<228; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<421; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  for (; i<455; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-}
-
-static void build_vsync_2(uint16_t* lptr)
-{
-  int i = 0;
-
-  // IRE = 0
-  for (; i<(34+178); i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<428; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  for (; i<455; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-}
-#else
-static void build_vsync(uint16_t* lptr)
-{
-  int i = 0;
-
-#ifdef FAKE_PROGRESSIVE
   for (; i<34; i++)
   {
     lptr[i] = GPIO_VALUES[SYNC];
   }
 
   // IRE = 0
-  for (; i<(34+5); i++)
+  for (; i<(455); i++)
   {
     lptr[i] = GPIO_VALUES[0];
   }
-#else
-  // for (; i<1; i++)
-  // {
-  //   lptr[i] = GPIO_VALUES[SYNC];
-  // }
-
-  // SYNC, IRE = -40
-  for (; i<167; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  // IRE = 0
-  for (; i<200; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<396; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  for (; i<428; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<455; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-#endif
-}
-#endif
-
-static void build_prepost_equalizing(uint16_t* lptr)
-{
-  int i = 0;
-#ifdef INTERLACE
-
-  for (; i<17; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  // SYNC, IRE = -40
-  for (; i<227; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<244; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  // SYNC, IRE = -40
-  for (; i<455; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-#else
-  // for (; i<1; i++)
-  // {
-  //   lptr[i] = GPIO_VALUES[0];
-  // }
-
-  // SYNC, IRE = -40
-  for (; i<210; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  // IRE = 0
-  for (; i<228; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-
-  for (; i<428; i++)
-  {
-    lptr[i] = GPIO_VALUES[SYNC];
-  }
-
-  for (; i<455; i++)
-  {
-    lptr[i] = GPIO_VALUES[0];
-  }
-#endif
 }
 
 PT_THREAD( video_task(struct pt *pt))
 {
 	PT_BEGIN(pt);
 
-  static int i;
+  static uint16_t i;
   static uint16_t* lptr;
+  static uint16_t field_line;
 
-	while (1)
-	{
+  while (1)
+  {
     PT_SEM_WAIT(pt, &gpDataSem);
 
-    // if (line < 9)
-    //   continue;
+    if (line == 0)
+      frame++;
 
-    lptr = (line % 2) == 0 ? gpData[frame % 2] : gpData2[frame % 2];
+    lptr = gpData[line % 2];
+    field_line = line % FIELD_NUM_LINES;
 
-    for (i = (34+5+17+11); i < (424); i++)
+    if (field_line < 3) {
+      // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, vsync, lptr, 455);
+      memcpy(lptr, vsync, sizeof(uint16_t) * 455);
+      continue;
+    }
+    else if (field_line < 5 || field_line >= (FIELD_NUM_LINES - 3))
     {
-      int16_t value;
+      // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, burstline, lptr, 455);
+      memcpy(lptr, burstline[line % 2], sizeof(uint16_t) * 455);
+      continue;
+    }
+    //   build_line(lptr, 0);//(0 + frame) % 2);
+    // else if (line == 7)
+    //   build_line(lptr, 0);//(1 + frame) % 2);
 
-      // if (field == 1)
-      if (line > 20)
+#ifdef VIDEO_TEST_PATTERN
+    if (field_line > 20)
+    {
+      for (i = 34+5+17+11; i < (444); i++)
       {
-        value = SYNC + 4;//((i >> 4) % (GPIO_VALUE_SIZE - SYNC));
+        uint16_t value;
 
-        if ((frame%2) == 1)
+        value = SYNC + 4; //((i >> 4) % (GPIO_VALUE_SIZE - SYNC)); //SYNC + 4;
+
+        if ((line % 2) == 0)
         {
           if ((i%2) == 1)
             value += 2;
@@ -408,20 +246,57 @@ PT_THREAD( video_task(struct pt *pt))
             value += 2;
         }
 
-        if (i > 100 && i < 150)
-          value = SYNC + 6;
+        // if (i > 100 && i < 150)
+        //   value = SYNC + 6;
 
-        if (value >= GPIO_VALUE_SIZE)
-          value = GPIO_VALUE_SIZE - 1;
-        else if (value < 0)
-          value = 0;
+        // if (value >= GPIO_VALUE_SIZE)
+        //   value = GPIO_VALUE_SIZE - 1;
+        // else if (value < 0)
+        //   value = 0;
+
+        lptr[i] = GPIO_VALUES[value];
       }
-      else
-        value = SYNC;
+    }
+#else
+    // GPIO_VALUES[val >> 4]
 
-      lptr[i] = GPIO_VALUES[value];
+    if (field_line > 25)
+    {
+      lepton_buffer *last_buffer;
+      uint16_t lepton_row;
+#ifdef Y16
+      uint16_t *image_data;
+#else
+      rgb_t *image_data;
+#endif
+      get_lepton_buffer(&last_buffer);
+
+      lepton_row = (((field_line - 20) >> 2) % IMAGE_NUM_LINES);
+#ifdef Y16
+      image_data = last_buffer->lines[IMAGE_OFFSET_LINES + lepton_row].data.image_data;
+#else
+      image_data = last_buffer->lines[IMAGE_OFFSET_LINES + lepton_row].data.image_data;
+#endif
+
+      lptr = lptr + 34+5+17+11;
+
+      for (i = 0; i < 80; i++)
+      {
+#ifdef Y16
+        uint16_t val = image_data[i];
+        uint16_t gpio_val = GPIO_VALUES[(val / 20) + 3]; //GPIO_VALUES[y1 + 4];
+#else
+        rgb_t val = image_data[i];
+        uint16_t gpio_val = GPIO_VALUES[((val.r + val.b + val.g) / 64) + 4]; //GPIO_VALUES[y1 + 4];
+#endif
+        *lptr++ = gpio_val;
+        *lptr++ = gpio_val;
+        *lptr++ = gpio_val;
+        *lptr++ = gpio_val;
+      }
     }
 
+#endif
     // if (field == 0 && line == 262)
     // {
     //   lptr[200] = GPIO_VALUES[0];
@@ -431,91 +306,55 @@ PT_THREAD( video_task(struct pt *pt))
   PT_END(pt);
 }
 
-
 void reset_tim1(void)
 {
   DMA_HandleTypeDef *hdma = htim1.hdma[TIM_DMA_ID_UPDATE];
   DMA_HandleTypeDef *hdma_2 = htim1.hdma[TIM_DMA_ID_CC1];
 
-  htim1.Instance->CR1 &= ~TIM_CR1_CEN;
-  htim1.Instance->DIER &= ~TIM_DMA_UPDATE;
+  // htim1.Instance->CR1 &= ~TIM_CR1_CEN;
+  // htim1.Instance->DIER &= ~TIM_DMA_UPDATE;
 
   // Disable the peripheral
-  hdma->Instance->CR &= ~(DMA_IT_TC | DMA_SxCR_EN);
+  // hdma->Instance->CR &= ~(DMA_IT_TC | DMA_SxCR_EN);
   // hdma_2->Instance->CR &= ~DMA_SxCR_EN;
 
-#ifdef INTERLACE
-  if (line == 262 || line == 270)
-  {
-    hdma->Instance->NDTR = 150;
-    htim3.Instance->ARR = 1706;
-  }
-  else
-#endif
-  {
-    hdma->Instance->NDTR = 425;
-    // htim3.Instance->ARR = 3408;
-    if ((line % 2) == 0)
-      htim3.Instance->ARR = 3412;
-    else
-      htim3.Instance->ARR = 3411;
-    // htim3.Instance->ARR = 3412;
-  }
-
   // Configure DMA Stream data length
-  // hdma->Instance->NDTR = 425;
-  // hdma_2->Instance->NDTR = (4+18+11+377+10)+2;
+  hdma->Instance->NDTR = 910;
+  hdma_2->Instance->NDTR = 910;
 
   // Configure DMA Stream destination address
   hdma->Instance->PAR = (uint32_t)&GPIOB->ODR;
-  // hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
+  hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
 
   // Configure DMA Stream source address
-#ifndef INTERLACE
-  if (line >= 3 && line < 6)
-  {
-    // hdma->Instance->M0AR = (uint32_t)
-    hdma->Instance->M0AR = (uint32_t)vsync;
-  }
-  else
-  {
-    hdma->Instance->M0AR = (uint32_t)((line % 2) == 0 ? gpData[frame % 2] : gpData2[frame % 2]);
-    // hdma->Instance->M0AR = (uint32_t)((line % 2) == 0 ? gpData : gpData2);
-    // hdma_2->Instance->M0AR = (uint32_t)arrData;
-  }
-#else
-  if (line < 9)
-  {
-    hdma->Instance->M0AR = (uint32_t)lu_sync_1[line];
-    field = 0;
-  }
-  else if (line >= 263 && line < 272)
-  {
-    hdma->Instance->M0AR = (uint32_t)lu_sync_1[line-263];
-    field = 1;
-  }
-  else
-  {
-    hdma->Instance->M0AR = (uint32_t)((line % 2) == 0 ? gpData[frame % 2] : gpData2[frame % 2]);
-    // hdma_2->Instance->M0AR = (uint32_t)arrData;
-  }
-#endif
-
-  __HAL_TIM_SET_COUNTER(&htim1, 0);
+  hdma->Instance->M0AR = (uint32_t)gpData;
+  hdma_2->Instance->M0AR = (uint32_t)arrData;
 
   // Enable the transfer complete interrupt and dma peripheral
-  hdma->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
-  // hdma_2->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN);
+  hdma->Instance->CR |= (DMA_IT_TC | DMA_IT_HT | DMA_SxCR_EN | DMA_SxCR_CIRC);
+  hdma_2->Instance->CR |= (DMA_SxCR_EN | DMA_SxCR_CIRC);
 
   // enable tim1 dma
-  // htim1.Instance->DIER |= TIM_DMA_UPDATE | TIM_DMA_CC1;
   htim1.Instance->DIER |= TIM_DMA_UPDATE;
+  // htim1.Instance->DIER |= TIM_DMA_CC1;
+}
 
-  // htim1 enable will be triggered by tim3 update
+void TIM_DMATxFullCplt(DMA_HandleTypeDef *hdma)
+{
+  TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
+
+  // htim->State= HAL_TIM_STATE_READY;
 
   line = ((line + 1) % VIDEO_NUM_LINES);
-  if (line == 0)
-    frame++;
+
+  PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
+}
+
+void TIM_DMATxHalfCplt(DMA_HandleTypeDef *hdma)
+{
+  TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
+
+  line = ((line + 1) % VIDEO_NUM_LINES);
 
   PT_SEM_SIGNAL(&lepton_task_pt, &gpDataSem);
 }
@@ -549,22 +388,30 @@ int main(void)
     }
   }
 
-  build_line(gpData[0], 0);
-  build_line(gpData[1], 1);
-  build_line(gpData2[0], 0);
-  build_line(gpData2[1], 1);
-  build_prepost_equalizing(equalizing);
-#ifdef INTERLACE
-  build_vsync_1(vsync_1);
-  build_vsync_2(vsync_2);
-#else
+  build_line(burstline[0], 0);
+  build_line(burstline[1], 1);
   build_vsync(vsync);
-#endif
 
   for (i=0; i<455; i++)
   {
-    arrData[i] = 14;
+    arrData[0][i] = 14;
+    arrData[1][i] = 14;
   }
+
+  for (i=0; i<28; i++)
+  {
+    int arr_idx = 70 + i * 14;
+    arrData[0][arr_idx] = arrData[0][arr_idx] - 1;
+    arrData[1][arr_idx] = arrData[1][arr_idx] - 1;
+  }
+
+  arrData[0][445] = arrData[0][445] + 28;
+  arrData[1][445] = arrData[1][445] + 28;
+
+  // we'll build the first two lines
+  build_vsync(gpData[0]);
+  build_vsync(gpData[1]);
+  line = 1;
 
   /* USER CODE END 1 */
 
@@ -626,6 +473,7 @@ int main(void)
 
   // only generate update on overflow
   htim1.Instance->CR1 |= TIM_CR1_URS;
+  htim1.Instance->CR1 |= TIM_CR1_ARPE;
   htim3.Instance->CR1 |= TIM_CR1_URS;
   htim3.Instance->CR1 |= TIM_CR1_ARPE;
 
@@ -638,17 +486,17 @@ int main(void)
     __HAL_TIM_MOE_ENABLE(&htim1);
   }
 
-  htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMADelayPulseCplt;
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMATxFullCplt;
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferHalfCpltCallback = TIM_DMATxHalfCplt;
   htim1.hdma[TIM_DMA_ID_UPDATE]->XferErrorCallback = TIM_DMAError;
 
-  htim1.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = TIM_DMADelayPulseCplt;
-  htim1.hdma[TIM_DMA_ID_CC1]->XferErrorCallback = TIM_DMAError;
-
+#ifdef VIDEO_OUTPUT
   reset_tim1();
 
   WHITE_LED_TOGGLE;
 
-  __HAL_TIM_ENABLE(&htim3);
+  __HAL_TIM_ENABLE(&htim1);
+#endif
 
   /* USER CODE END 2 */
 
@@ -660,12 +508,14 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-    // PT_SCHEDULE(lepton_task(&lepton_task_pt));
+    PT_SCHEDULE(lepton_task(&lepton_task_pt));
+#ifdef VIDEO_OUTPUT
+    PT_SCHEDULE(video_task(&video_task_pt));
+#else
     PT_SCHEDULE(usb_task(&usb_task_pt));
     // PT_SCHEDULE(uart_task(&uart_task_pt));
     PT_SCHEDULE(button_task(&button_task_pt));
-    PT_SCHEDULE(video_task(&video_task_pt));
-
+#endif
   }
   /* USER CODE END 3 */
 
@@ -777,7 +627,7 @@ void MX_TIM1_Init(void)
 
   HAL_TIM_OC_Init(&htim1);
 
-  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_TRIGGER;
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_DISABLE; //TIM_SLAVEMODE_TRIGGER;
   sSlaveConfig.InputTrigger = TIM_TS_ITR2;
   HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig);
 
@@ -868,7 +718,7 @@ void MX_DMA_Init(void)
   hdma_memtomem_dma2_stream0.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
   hdma_memtomem_dma2_stream0.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
   hdma_memtomem_dma2_stream0.Init.Mode = DMA_NORMAL;
-  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_VERY_HIGH;
+  hdma_memtomem_dma2_stream0.Init.Priority = DMA_PRIORITY_HIGH;
   hdma_memtomem_dma2_stream0.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
   hdma_memtomem_dma2_stream0.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
   hdma_memtomem_dma2_stream0.Init.MemBurst = DMA_MBURST_SINGLE;

@@ -456,6 +456,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
+#ifndef Y16
         case VS_FMT_INDEX(BGR3):
         {
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
@@ -504,6 +505,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
+#endif
       }
 
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);

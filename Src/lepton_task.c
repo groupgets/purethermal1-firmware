@@ -116,6 +116,18 @@ PT_THREAD( lepton_task(struct pt *pt))
 		current_frame_count++;
 #endif
 
+#ifdef VIDEO_OUTPUT
+#ifdef Y16
+		if (completed_frame_count != current_frame_count)
+#else
+		if ((current_frame_count % 3) == 0)
+#endif
+		{
+			completed_buffer = current_buffer;
+			completed_frame_count = current_frame_count;
+			WHITE_LED_TOGGLE;
+		}
+#else
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
 			DEBUG_PRINTF("fps: %lu, last end line: %d, frame #%lu, buffer %p\r\n",
@@ -152,6 +164,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 			);
 #endif
 		}
+#endif // VIDEO_OUTPUT
 	}
 	PT_END(pt);
 }

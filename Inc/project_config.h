@@ -10,7 +10,8 @@
 #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
 #define ENABLE_LEPTON_AGC
-// #define Y16
+#define Y16
+#define VIDEO_OUTPUT
 
 #ifndef Y16
 // Values from LEP_PCOLOR_LUT_E in Middlewares/lepton_sdk/Inc/LEPTON_VID.h

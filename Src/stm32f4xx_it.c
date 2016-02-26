@@ -186,8 +186,6 @@ void DMA2_Stream5_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_tim1_up);
   /* USER CODE BEGIN DMA2_Stream5_IRQn 1 */
 
-  reset_tim1();
-
   /* USER CODE END DMA2_Stream5_IRQn 1 */
 }
 
