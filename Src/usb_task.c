@@ -156,17 +156,24 @@ static void draw_splash(int min, int max)
 }
 
 #ifndef ENABLE_LEPTON_AGC
-static void get_min_max(lepton_buffer *buffer, int * min, int * max)
+#ifdef Y16
+static void get_min_max(lepton_buffer *buffer, uint16_t * min, uint16_t * max)
+#else
+static void get_min_max(yuv422_buffer_t *buffer, uint16_t * min, uint16_t * max)
+#endif
 {
 	int i,j;
-	int val;
 	*min= 0xffff;
 	*max= 0;
-	for (j = 0; j < 60; j++)
+	for (j = 0; j < IMAGE_NUM_LINES; j++)
 	{
-		for (i = 0; i < 80; i++)
+		for (i = 0; i < FRAME_LINE_LENGTH; i++)
 		{
-			val = buffer->lines[j].data.image_data[i];
+#ifdef Y16
+			uint16_t val = buffer->lines[j].data.image_data[i];
+#else
+			uint8_t val = buffer->data[j][i].y;
+#endif
 
 			if( val > *max )
 			{
@@ -180,20 +187,31 @@ static void get_min_max(lepton_buffer *buffer, int * min, int * max)
 	}
 }
 
-static void scale_image_8bit(lepton_buffer *buffer, int min, int max)
+#ifdef Y16
+static void scale_image_8bit(lepton_buffer *buffer, uint16_t min, uint16_t max)
+#else
+static void scale_image_8bit(yuv422_buffer_t *buffer, uint16_t min, uint16_t max)
+#endif
 {
 	int i,j;
-	int val;
 
-	for (j = 0; j < 60; j++)
+	for (j = 0; j < IMAGE_NUM_LINES; j++)
 	{
-		for (i = 0; i < 80; i++)
+		for (i = 0; i < FRAME_LINE_LENGTH; i++)
 		{
-			val = buffer->lines[j].data.image_data[i];
+#ifdef Y16
+			uint16_t val = buffer->lines[j].data.image_data[i];
 			val -= min;
 			val = (( val * 255) / (max-min));
 
 			buffer->lines[j].data.image_data[i] = val;
+#else
+			uint8_t val = buffer->data[j][i].y;
+			val -= min;
+			val = (( val * 255) / (max-min));
+
+			buffer->data[j][i].y = val;
+#endif
 		}
 	}
 }
@@ -203,6 +221,9 @@ PT_THREAD( usb_task(struct pt *pt))
 {
 	static int temperature;
 	static uint16_t count = 0, i;
+#ifndef ENABLE_LEPTON_AGC
+	static uint16_t current_min, current_max;
+#endif
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
@@ -228,8 +249,17 @@ PT_THREAD( usb_task(struct pt *pt))
 		WHITE_LED_TOGGLE;
 
 #ifndef ENABLE_LEPTON_AGC
-		get_min_max(last_buffer, &current_min, &current_max);
-		scale_image_8bit(last_buffer, current_min, current_max);
+		switch (videoCommitControl.bFormatIndex)
+		{
+		case VS_FMT_INDEX(Y16):
+			// leave the data alone
+			break;
+		default:
+			// do our hoky linear agc for 8-bit types
+			get_min_max(last_buffer, &current_min, &current_max);
+			scale_image_8bit(last_buffer, current_min, current_max);
+			break;
+		}
 #endif
 
 		if (((last_frame_count % 1800) > 0)   && ((last_frame_count % 1800) < 150)  )
