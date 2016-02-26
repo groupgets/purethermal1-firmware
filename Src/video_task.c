@@ -312,6 +312,7 @@ void init_video()
     phase_data[1][i] = 14;
   }
 
+#ifdef VIDEO_TEST_PATTERN
   for (i=0; i<28; i++)
   {
     int arr_idx = 70 + i * 14;
@@ -321,6 +322,7 @@ void init_video()
 
   phase_data[0][445] = phase_data[0][445] + 28;
   phase_data[1][445] = phase_data[1][445] + 28;
+#endif
 
   // we'll build the first two lines
   build_vsync(vid_data[0]);
