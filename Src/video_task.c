@@ -21,8 +21,15 @@ __ALIGN_BEGIN uint16_t burstline[2][455] __ALIGN_END = { { 0 } };
 __ALIGN_BEGIN uint16_t vid_data[2][455] __ALIGN_END = { { 0 } };
 __ALIGN_BEGIN uint32_t phase_data[2][455] __ALIGN_END = { { 0 } };
 
-#define FIELD_NUM_LINES (263)
-#define VIDEO_NUM_LINES (526)
+#define VIDEO_FRAME_NUM_LINES (526)
+#define VIDEO_FIELD_NUM_LINES (263)
+
+#define VIDEO_FIRST_VISIBLE_LINE (23)
+#define VIDEO_VISIBLE_LINES (240)
+#define VIDEO_VISIBLE_COLS (320)
+
+#define VIDEO_IMAGE_VERTICAL_UPSAMPLE (VIDEO_VISIBLE_LINES / IMAGE_NUM_LINES)
+#define VIDEO_IMAGE_HORIZONTAL_UPSAMPLE (VIDEO_VISIBLE_COLS / FRAME_LINE_LENGTH)
 
 #define SYNC (4)
 #define COLOR_AMPL (2)
@@ -105,14 +112,14 @@ PT_THREAD( video_task(struct pt *pt))
       frame++;
 
     lptr = vid_data[line % 2];
-    field_line = line % FIELD_NUM_LINES;
+    field_line = line % VIDEO_FIELD_NUM_LINES;
 
     if (field_line < 3) {
       // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, vsync, lptr, 455);
       memcpy(lptr, vsync, sizeof(uint16_t) * 455);
       continue;
     }
-    else if (field_line < 5 || field_line >= (FIELD_NUM_LINES - 3))
+    else if (field_line < 5 || field_line >= (VIDEO_FIELD_NUM_LINES - 3))
     {
       // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, burstline, lptr, 455);
       memcpy(lptr, burstline[line % 2], sizeof(uint16_t) * 455);
@@ -156,7 +163,8 @@ PT_THREAD( video_task(struct pt *pt))
     }
 #else
 
-    if (field_line > 22)
+    if (field_line >= VIDEO_FIRST_VISIBLE_LINE &&
+        field_line < (VIDEO_FIRST_VISIBLE_LINE + VIDEO_VISIBLE_LINES))
     {
       lepton_buffer *last_buffer;
       uint16_t lepton_row;
@@ -167,7 +175,7 @@ PT_THREAD( video_task(struct pt *pt))
 #endif
       get_lepton_buffer(&last_buffer);
 
-      lepton_row = (((field_line - 20) >> 2) % IMAGE_NUM_LINES);
+      lepton_row = (field_line - VIDEO_FIRST_VISIBLE_LINE) / VIDEO_IMAGE_VERTICAL_UPSAMPLE;
 #ifdef Y16
       image_data = last_buffer->lines[IMAGE_OFFSET_LINES + lepton_row].data.image_data;
 #else
@@ -176,8 +184,10 @@ PT_THREAD( video_task(struct pt *pt))
 
       lptr = lptr + 34+5+17+11+25;
 
-      for (i = 0; i < 80; i++)
+      for (i = 0; i < FRAME_LINE_LENGTH; i++)
       {
+        int j = VIDEO_IMAGE_HORIZONTAL_UPSAMPLE;
+
 #ifdef Y16
         uint16_t val = image_data[i];
         uint16_t gpio_val = GPIO_VALUES[(val / 20) + 3];
@@ -185,10 +195,10 @@ PT_THREAD( video_task(struct pt *pt))
         rgb_t val = image_data[i];
         uint16_t gpio_val = GPIO_VALUES[((val.r + val.b + val.g) / 64) + 4];
 #endif
-        *lptr++ = gpio_val;
-        *lptr++ = gpio_val;
-        *lptr++ = gpio_val;
-        *lptr++ = gpio_val;
+
+        do {
+          *lptr++ = gpio_val;
+        } while (--j);
       }
     }
 
@@ -203,7 +213,7 @@ void TIM_DMATxFullCplt(DMA_HandleTypeDef *hdma)
   // TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
   // htim->State= HAL_TIM_STATE_READY;
 
-  line = ((line + 1) % VIDEO_NUM_LINES);
+  line = ((line + 1) % VIDEO_FRAME_NUM_LINES);
 
   PT_SEM_SIGNAL(&lepton_task_pt, &sem_vid_next_line);
 }
@@ -212,7 +222,7 @@ void TIM_DMATxHalfCplt(DMA_HandleTypeDef *hdma)
 {
   // TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
 
-  line = ((line + 1) % VIDEO_NUM_LINES);
+  line = ((line + 1) % VIDEO_FRAME_NUM_LINES);
 
   PT_SEM_SIGNAL(&lepton_task_pt, &sem_vid_next_line);
 }
