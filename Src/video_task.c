@@ -7,6 +7,23 @@
 #include "tasks.h"
 #include "project_config.h"
 
+//*****************************************************************************
+//
+// PT1 video output notes
+//
+// If you have a PT1 board from groupget round 2 or earlier, your board needs
+// a resistor modification to do this. Round 2 boards also have the video
+// connector soldered on upside down. Round 1 boards are green, round 2 boards
+// are blue. Round 3 fixes these issues, and if you were on this group buy or
+// if you purchased from the store starting in Mar 2016, you're good. These
+// boards are also blue.
+//
+// See the development wiki for information about how to test and modify your
+// board to make video output function:
+// https://github.com/groupgets/purethermal1-firmware/wiki/NTSC-Video-Out
+//
+//*****************************************************************************
+
 extern TIM_HandleTypeDef htim1;
 extern DMA_HandleTypeDef hdma_tim1_up;
 extern DMA_HandleTypeDef hdma_tim1_ch1;
