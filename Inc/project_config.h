@@ -5,7 +5,7 @@
 #undef THERMAL_DATA_UART
 #else
 #define USART_DEBUG
-#define THERMAL_DATA_UART
+// #define THERMAL_DATA_UART
 #endif
 #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
