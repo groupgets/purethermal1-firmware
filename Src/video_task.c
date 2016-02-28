@@ -38,6 +38,8 @@ __ALIGN_BEGIN uint16_t burstline[2][455] __ALIGN_END = { { 0 } };
 __ALIGN_BEGIN uint16_t vid_data[2][455] __ALIGN_END = { { 0 } };
 __ALIGN_BEGIN uint32_t phase_data[2][455] __ALIGN_END = { { 0 } };
 
+static uint16_t *next_vid_line, *next_phase_line;
+
 #define VIDEO_FRAME_NUM_LINES (526)
 #define VIDEO_FIELD_NUM_LINES (263)
 
@@ -128,24 +130,21 @@ PT_THREAD( video_task(struct pt *pt))
     if (line == 0)
       frame++;
 
-    lptr = vid_data[line % 2];
     field_line = line % VIDEO_FIELD_NUM_LINES;
 
     if (field_line < 3) {
-      // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, vsync, lptr, 455);
-      memcpy(lptr, vsync, sizeof(uint16_t) * 455);
-      continue;
+      next_vid_line = vsync;
     }
     else if (field_line < 5 || field_line >= (VIDEO_FIELD_NUM_LINES - 3))
     {
-      // HAL_DMA_Start_IT(&hdma_memtomem_dma2_stream0, burstline, lptr, 455);
-      memcpy(lptr, burstline[line % 2], sizeof(uint16_t) * 455);
-      continue;
+      next_vid_line = burstline[line % 2];
     }
 
 #ifdef VIDEO_TEST_PATTERN
-    if (field_line > 20)
+    else if (field_line > 20)
     {
+      lptr = next_line = vid_data[line % 2];
+
       for (i = 34+5+17+11; i < (444); i++)
       {
         uint16_t value;
@@ -180,8 +179,8 @@ PT_THREAD( video_task(struct pt *pt))
     }
 #else
 
-    if (field_line >= VIDEO_FIRST_VISIBLE_LINE &&
-        field_line < (VIDEO_FIRST_VISIBLE_LINE + VIDEO_VISIBLE_LINES))
+    else if (field_line >= VIDEO_FIRST_VISIBLE_LINE &&
+             field_line < (VIDEO_FIRST_VISIBLE_LINE + VIDEO_VISIBLE_LINES))
     {
       lepton_buffer *last_buffer;
       uint16_t lepton_row;
@@ -199,6 +198,7 @@ PT_THREAD( video_task(struct pt *pt))
       image_data = last_buffer->lines[IMAGE_OFFSET_LINES + lepton_row].data.image_data;
 #endif
 
+      lptr = next_vid_line = vid_data[line % 2];
       lptr = lptr + 34+5+17+11+25;
 
       for (i = 0; i < FRAME_LINE_LENGTH; i++)
@@ -225,23 +225,36 @@ PT_THREAD( video_task(struct pt *pt))
   PT_END(pt);
 }
 
-void TIM_DMATxFullCplt(DMA_HandleTypeDef *hdma)
+void TIM_DMA_VidM0Cplt(DMA_HandleTypeDef *hdma)
 {
-  // TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
-  // htim->State= HAL_TIM_STATE_READY;
+  // update m0ar with the next line up
+  htim1.hdma[TIM_DMA_ID_UPDATE]->Instance->M0AR = (uint32_t)next_vid_line;
 
+  // kick off the next line computation
   line = ((line + 1) % VIDEO_FRAME_NUM_LINES);
-
   PT_SEM_SIGNAL(&lepton_task_pt, &sem_vid_next_line);
 }
 
-void TIM_DMATxHalfCplt(DMA_HandleTypeDef *hdma)
+void TIM_DMA_VidM1Cplt(DMA_HandleTypeDef *hdma)
 {
-  // TIM_HandleTypeDef* htim = ( TIM_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
+  // update m1ar with the next line up
+  htim1.hdma[TIM_DMA_ID_UPDATE]->Instance->M1AR = (uint32_t)next_vid_line;
 
+  // kick off the next line computation
   line = ((line + 1) % VIDEO_FRAME_NUM_LINES);
-
   PT_SEM_SIGNAL(&lepton_task_pt, &sem_vid_next_line);
+}
+
+void TIM_DMA_PhaseM0Cplt(DMA_HandleTypeDef *hdma)
+{
+  // update m0ar with the next line up
+  htim1.hdma[TIM_DMA_ID_CC1]->Instance->M0AR = (uint32_t)next_phase_line;
+}
+
+void TIM_DMA_PhaseM1Cplt(DMA_HandleTypeDef *hdma)
+{
+  // update m1ar with the next line up
+  htim1.hdma[TIM_DMA_ID_CC1]->Instance->M1AR = (uint32_t)next_phase_line;
 }
 
 static void setup_timers_and_dma(void)
@@ -249,32 +262,28 @@ static void setup_timers_and_dma(void)
   DMA_HandleTypeDef *hdma = htim1.hdma[TIM_DMA_ID_UPDATE];
   DMA_HandleTypeDef *hdma_2 = htim1.hdma[TIM_DMA_ID_CC1];
 
-  // htim1.Instance->CR1 &= ~TIM_CR1_CEN;
-  // htim1.Instance->DIER &= ~TIM_DMA_UPDATE;
-
-  // Disable the peripheral
-  // hdma->Instance->CR &= ~(DMA_IT_TC | DMA_SxCR_EN);
-  // hdma_2->Instance->CR &= ~DMA_SxCR_EN;
-
   // Configure DMA Stream data length
-  hdma->Instance->NDTR = 910;
-  hdma_2->Instance->NDTR = 910;
+  hdma->Instance->NDTR = 455;
+  hdma_2->Instance->NDTR = 455;
 
   // Configure DMA Stream destination address
   hdma->Instance->PAR = (uint32_t)&GPIOB->ODR;
   hdma_2->Instance->PAR = (uint32_t)&htim1.Instance->ARR;
 
   // Configure DMA Stream source address
-  hdma->Instance->M0AR = (uint32_t)vid_data;
-  hdma_2->Instance->M0AR = (uint32_t)phase_data;
+  hdma->Instance->M0AR = (uint32_t)vsync;
+  hdma->Instance->M1AR = (uint32_t)vsync;
+
+  hdma_2->Instance->M0AR = (uint32_t)phase_data[0];
+  hdma_2->Instance->M1AR = (uint32_t)phase_data[1];
 
   // Enable the transfer complete interrupt and dma peripheral
-  hdma->Instance->CR |= (DMA_IT_TC | DMA_IT_HT | DMA_SxCR_EN | DMA_SxCR_CIRC);
-  hdma_2->Instance->CR |= (DMA_SxCR_EN | DMA_SxCR_CIRC);
+  hdma->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN | DMA_SxCR_CIRC | DMA_SxCR_DBM);
+  hdma_2->Instance->CR |= (DMA_IT_TC | DMA_SxCR_EN | DMA_SxCR_CIRC | DMA_SxCR_DBM);
 
   // enable tim1 dma
   htim1.Instance->DIER |= TIM_DMA_UPDATE;
-  // htim1.Instance->DIER |= TIM_DMA_CC1;
+  htim1.Instance->DIER |= TIM_DMA_CC1;
 
   // only generate update on overflow
   htim1.Instance->CR1 |= TIM_CR1_URS;
@@ -289,9 +298,13 @@ static void setup_timers_and_dma(void)
     __HAL_TIM_MOE_ENABLE(&htim1);
   }
 
-  htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMATxFullCplt;
-  htim1.hdma[TIM_DMA_ID_UPDATE]->XferHalfCpltCallback = TIM_DMATxHalfCplt;
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferCpltCallback = TIM_DMA_VidM0Cplt;
+  htim1.hdma[TIM_DMA_ID_UPDATE]->XferM1CpltCallback = TIM_DMA_VidM1Cplt;
   htim1.hdma[TIM_DMA_ID_UPDATE]->XferErrorCallback = TIM_DMAError;
+
+  htim1.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = TIM_DMA_PhaseM0Cplt;
+  htim1.hdma[TIM_DMA_ID_CC1]->XferM1CpltCallback = TIM_DMA_PhaseM1Cplt;
+  htim1.hdma[TIM_DMA_ID_CC1]->XferErrorCallback = TIM_DMAError;
 }
 
 void init_video()
@@ -319,6 +332,8 @@ void init_video()
     }
   }
 
+  build_line(vid_data[0], 0);
+  build_line(vid_data[1], 1);
   build_line(burstline[0], 0);
   build_line(burstline[1], 1);
   build_vsync(vsync);
@@ -341,10 +356,8 @@ void init_video()
   phase_data[1][445] = phase_data[1][445] + 28;
 #endif
 
-  // we'll build the first two lines
-  build_vsync(vid_data[0]);
-  build_vsync(vid_data[1]);
-  line = 1;
+  next_vid_line = vsync;
+  next_phase_line = phase_data[0];
 
   PT_SEM_INIT(&sem_vid_next_line, 0);
 
