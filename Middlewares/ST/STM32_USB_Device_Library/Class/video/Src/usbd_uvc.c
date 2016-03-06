@@ -185,7 +185,7 @@ USBD_ClassTypeDef  USBD_UVC =
 
 DECLARE_UVC_HEADER_DESCRIPTOR(1);
 DECLARE_UVC_FRAME_UNCOMPRESSED(1);
-DECLARE_UVC_EXTENSION_UNIT_DESCRIPTOR(1, 2);
+DECLARE_UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4);
 DECLARE_UVC_INPUT_HEADER_DESCRIPTOR(1, VS_NUM_FORMATS);
 
 struct uvc_vs_frame_format_desc {
@@ -202,7 +202,7 @@ struct usbd_uvc_cfg {
   struct UVC_HEADER_DESCRIPTOR(1) ucv_vc_header;
   struct uvc_camera_terminal_descriptor uvc_vc_input_terminal;
   struct uvc_processing_unit_descriptor uvc_vc_processing_unit;
-  struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 2) uvc_vc_extension_unit;
+  struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4) uvc_vc_xu_lep_agc;
   struct uvc_output_terminal_descriptor uvc_vc_output_terminal;
   struct usb_endpoint_descriptor uvc_vc_ep;
   struct uvc_control_endpoint_descriptor uvc_vc_cs_ep;
@@ -271,7 +271,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, ucv_vc_header) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_extension_unit) +
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_output_terminal), // header+units+terminals
     .dwClockFrequency = 0x005B8D80,          // 6.000000 MHz
     .bInCollection = 0x01,                   // 1 one streaming interface
@@ -284,7 +284,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal), // Descriptor size
     .bDescriptorType = UVC_CS_INTERFACE,       // 36 (INTERFACE)
     .bDescriptorSubType = UVC_VC_INPUT_TERMINAL, // 2 (INPUT_TERMINAL)
-    .bTerminalID = 0x01,                       // 1 ID of this Terminal
+    .bTerminalID = UVC_VC_INPUT_TERMINAL_ID,   // 1 ID of this Terminal
     .wTerminalType = UVC_ITT_CAMERA,           // 0x0201 Camera Sensor
     .bAssocTerminal = 0x00,                    // 0 no Terminal associated
     .iTerminal = 0x00,                         // 0 no description available
@@ -301,7 +301,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit), // Descriptor size
     .bDescriptorType = 0x24,                   // Class specific interface desc type
     .bDescriptorSubType = 0x05,                // Processing Unit Descriptor type
-    .bUnitID = 0x02,                           // ID of this terminal
+    .bUnitID = UVC_VC_CONTROL_PU_ID,           // ID of this terminal
     .bSourceID = 0x01,                         // Source ID : 1 : Conencted to input terminal
     .wMaxMultiplier = 0,                       // Digital multiplier
     .bControlSize = 0x03,                      // Size of controls field for this terminal : 2 bytes
@@ -310,23 +310,23 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
   },
 
   /* Extension Unit Descriptor */
-  .uvc_vc_extension_unit = {
+  .uvc_vc_xu_lep_agc = {
     .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_extension_unit), // Descriptor size
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc), // Descriptor size
     .bDescriptorType = 0x24,                     // Class specific interface desc type
     .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = 0x03,                             // ID of this terminal
+    .bUnitID = UVC_VC_CONTROL_XU_ID,             // ID of this terminal
     .guidExtensionCode = {                       // 16 byte GUID
-      0xFF,0xFF,0xFF,0xFF,
-      0xFF,0xFF,0xFF,0xFF,
-      0xFF,0xFF,0xFF,0xFF,
-      0xFF,0xFF,0xFF,0xFF
+      'p','t','1','-',
+      'l','e','p','-',
+      '0','0','0','0',
+      '0','0','0','0'
     },
     .bNumControls = 0x00,                        // Number of controls in this terminal
     .bNrInPins = 0x01,                           // Number of input pins in this terminal
     .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x02,                        // Size of controls field for this terminal : 3 bytes
-    .bmControls = { 0x00, 0x00 },                // No controls supported
+    .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
+    .bmControls = { 0x00, 0x00, 0x00, 0x00 },    // Registers 0x00 to 0x48
     .iExtension = 0x00,                          // String desc index : Not used
   },
 
@@ -335,7 +335,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
     .bLength = UVC_DT_OUTPUT_TERMINAL_SIZE,      // 9
     .bDescriptorType = UVC_CS_INTERFACE,         // 36 (INTERFACE)
     .bDescriptorSubType = UVC_VC_OUTPUT_TERMINAL, // 3 (OUTPUT_TERMINAL)
-    .bTerminalID = 0x04,                         // 2 ID of this Terminal
+    .bTerminalID = UVC_VC_OUTPUT_TERMINAL_ID,    // 2 ID of this Terminal
     .wTerminalType = UVC_TT_STREAMING,           // 0x0101 USB streaming terminal
     .bAssocTerminal = 0x00,                      // 0 no Terminal assiciated
     .bSourceID = 0x03,                           // 1 input pin connected to output pin unit 1
@@ -590,32 +590,18 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       {
         USBD_LL_FlushEP (pdev,USB_ENDPOINT_OUT(0));
 
-        if (entity_id == 0)
+        if (address == USB_UVC_VSIF_NUM)
         {
-          switch (address)
-          {
-          case USB_UVC_VCIF_NUM:
-            ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VC_CtrlGet(req->bRequest,
-                                                              (uint8_t *)hcdc->data,
-                                                              req->wLength,
-                                                              req->wIndex,
-                                                              req->wValue);
-            break;
-          case USB_UVC_VSIF_NUM:
-            ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlGet(req->bRequest,
-                                                              (uint8_t *)hcdc->data,
-                                                              req->wLength,
-                                                              req->wIndex,
-                                                              req->wValue);
-            break;
-          default:
-            DEBUG_PRINTF("Setup (get) unknown interface address %d\r\n", address);
-            ret = USBD_FAIL;
-          }
+          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlGet(req->bRequest,
+                                                            (uint8_t *)hcdc->data,
+                                                            req->wLength,
+                                                            req->wIndex,
+                                                            req->wValue);
         }
         else
         {
-          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlGet(req->bRequest,
+          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlGet(entity_id,
+                                                            req->bRequest,
                                                             (uint8_t *)hcdc->data,
                                                             req->wLength,
                                                             req->wIndex,
@@ -793,32 +779,18 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
     uint8_t address = (hcdc->CmdIndex >> 0) & 0xff;
     uint8_t entity_id = (hcdc->CmdIndex >> 8) & 0xff;
 
-    if (entity_id == 0)
+    if (address == USB_UVC_VSIF_NUM)
     {
-      switch (address)
-      {
-      case USB_UVC_VCIF_NUM:
-        ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VC_CtrlSet(hcdc->CmdOpCode,
-                                                          (uint8_t *)hcdc->data,
-                                                          hcdc->CmdLength,
-                                                          hcdc->CmdIndex,
-                                                          hcdc->CmdValue);
-        break;
-      case USB_UVC_VSIF_NUM:
-        ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
-                                                          (uint8_t *)hcdc->data,
-                                                          hcdc->CmdLength,
-                                                          hcdc->CmdIndex,
-                                                          hcdc->CmdValue);
-        break;
-      default:
-        DEBUG_PRINTF("Setup (set) unknown wIndex/interface target %d\r\n", hcdc->CmdIndex);
-        ret = USBD_FAIL;
-      }
+      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
+                                                        (uint8_t *)hcdc->data,
+                                                        hcdc->CmdLength,
+                                                        hcdc->CmdIndex,
+                                                        hcdc->CmdValue);
     }
     else
     {
-      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlSet(hcdc->CmdOpCode,
+      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlSet(entity_id,
+                                                        hcdc->CmdOpCode,
                                                         (uint8_t *)hcdc->data,
                                                         hcdc->CmdLength,
                                                         hcdc->CmdIndex,

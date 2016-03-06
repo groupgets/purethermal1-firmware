@@ -174,8 +174,8 @@ void print_vc(struct uvc_streaming_control* vc)
 static int8_t UVC_Init_FS     (void);
 static int8_t UVC_DeInit_FS   (void);
 static int8_t UVC_Control        (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
-static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
-static int8_t UVC_VC_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_Receive_FS  (uint8_t* pbuf, uint32_t *Len);
@@ -185,8 +185,6 @@ USBD_UVC_ItfTypeDef USBD_Interface_fops_FS =
   .Init = UVC_Init_FS,
   .DeInit = UVC_DeInit_FS,
   .Control = UVC_Control,
-  .VC_CtrlGet = UVC_VC_ControlGet,
-  .VC_CtrlSet = UVC_VC_ControlSet,
   .VS_CtrlGet = UVC_VS_ControlGet,
   .VS_CtrlSet = UVC_VS_ControlSet,
   .ControlGet = UVC_VC_ControlGet,
@@ -239,13 +237,13 @@ static int8_t UVC_Control  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_
   * @param  length: Number of data to be sent (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
 #ifdef UVC_VC_DEBUG
-  DEBUG_PRINTF("UVC_VC_ControlGet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+  DEBUG_PRINTF("UVC_VC_ControlGet(entity_id=%d,cmd=%x,pbuf=%p,length=%x, index=%x,value=%x)\r\n", entity_id, cmd, pbuf, length, idx, value);
 
   DEBUG_PRINTF("UVC_VC_ControlGet(cs=%d): ", cs_value);
   switch (cmd) {
@@ -259,30 +257,48 @@ static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   }
 #endif
 
-  switch (cmd)
+  switch (entity_id)
   {
-  case UVC_GET_MIN:
-    pbuf[0] = 0;
+  case UVC_VC_CONTROL_XU_ID:
+    DEBUG_PRINTF("UVC_VC_CONTROL_XU_ID: ");
+
+    while (length--)
+    {
+      *pbuf++ = 0;
+    }
+
     break;
-  case UVC_GET_DEF:
-  case UVC_GET_CUR:
-    pbuf[0] = 128;
+
+  case UVC_VC_CONTROL_PU_ID:
+    DEBUG_PRINTF("UVC_VC_CONTROL_PU_ID: ");
+
+    switch (cmd)
+    {
+    case UVC_GET_MIN:
+      pbuf[0] = 0;
+      break;
+    case UVC_GET_DEF:
+    case UVC_GET_CUR:
+      pbuf[0] = 128;
+      break;
+    case UVC_GET_MAX:
+      pbuf[0] = 255;
+      break;
+    case UVC_GET_RES:
+      pbuf[0] = 1;
+      break;
+    case UVC_GET_LEN:
+      pbuf[0] = 2;
+      break;
+    case UVC_GET_INFO:
+      pbuf[0] = UVC_CONTROL_CAP_GET | UVC_CONTROL_CAP_DISABLED;
+      break;
+    default:
+      DEBUG_PRINTF("FAIL: UVC_VC_ControlGet() unknown %x\r\n", cmd);
+      return USBD_FAIL;
+    }
+
     break;
-  case UVC_GET_MAX:
-    pbuf[0] = 255;
-    break;
-  case UVC_GET_RES:
-    pbuf[0] = 1;
-    break;
-  case UVC_GET_LEN:
-    pbuf[0] = 2;
-    break;
-  case UVC_GET_INFO:
-    pbuf[0] = UVC_CONTROL_CAP_GET | UVC_CONTROL_CAP_DISABLED;
-    break;
-  default:
-    DEBUG_PRINTF("FAIL: UVC_VC_ControlGet() unknown %x\r\n", cmd);
-    return USBD_FAIL;
   }
 
 #ifdef UVC_VC_DEBUG
@@ -293,13 +309,13 @@ static int8_t UVC_VC_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
   /* USER CODE END 5 */
 }
 
-static int8_t UVC_VC_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
 
 #ifdef UVC_VC_DEBUG
-  DEBUG_PRINTF("UVC_VC_ControlSet(cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", cmd, pbuf, length, idx, value);
+  DEBUG_PRINTF("UVC_VC_ControlSet(entity_id=%d, cmd=%x,pbuf=%p,length=%x,index=%x,value=%x)\r\n", entity_id, cmd, pbuf, length, idx, value);
 #endif
 
   switch (cmd)
