@@ -32,6 +32,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_uvc_if.h"
+#include "lepton_i2c.h"
+
+#include "LEPTON_SDK.h"
+#include "LEPTON_SYS.h"
+#include "LEPTON_AGC.h"
+#include "LEPTON_VID.h"
+#include "LEPTON_OEM.h"
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -41,6 +48,8 @@
 
 // #define UVC_VC_DEBUG
 // #define UVC_VS_DEBUG
+
+extern LEP_CAMERA_PORT_DESC_T hport_desc;
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -229,6 +238,45 @@ static int8_t UVC_Control  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_
   return USBD_OK;
 }
 
+static int8_t VC_LEP_GetAttribute (uint16_t module_base, uint16_t offset, uint8_t* pbuf, uint16_t length)
+{
+  LEP_RESULT result = LEP_GetAttribute(&hport_desc,
+                                      ( LEP_COMMAND_ID )(module_base + offset),
+                                      ( LEP_ATTRIBUTE_T_PTR )pbuf,
+                                      length >> 1);
+  return result;
+}
+
+static int8_t VC_LEP_SetAttribute (uint16_t module_base, uint16_t offset, uint8_t* pbuf, uint16_t length)
+{
+  LEP_RESULT result = LEP_SetAttribute(&hport_desc,
+                                      ( LEP_COMMAND_ID )(module_base + offset),
+                                      ( LEP_ATTRIBUTE_T_PTR )pbuf,
+                                      length >> 1);
+  return result;
+}
+
+static int8_t VC_LEP_GetAttributeLen (uint16_t module_base, uint16_t offset, uint8_t* pbuf)
+{
+  switch (module_base + offset)
+  {
+  case LEP_CID_AGC_ROI:
+  case LEP_CID_AGC_STATISTICS:
+    *pbuf = 8;
+    break;
+  case LEP_CID_AGC_ENABLE_STATE:
+  case LEP_CID_AGC_POLICY:
+  case LEP_CID_AGC_HEQ_SCALE_FACTOR:
+  case LEP_CID_AGC_CALC_ENABLE_STATE:
+    *pbuf = 4;
+    break;
+  default:
+    *pbuf = 2;
+    break;
+  }
+  return 0;
+}
+
 /**
   * @brief  UVC_Control_FS
   *         Manage the UVC class requests
@@ -252,6 +300,7 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
     case UVC_GET_MIN: DEBUG_PRINTF("UVC_GET_MIN "); break;
     case UVC_GET_MAX: DEBUG_PRINTF("UVC_GET_MAX "); break;
     case UVC_GET_RES: DEBUG_PRINTF("UVC_GET_RES "); break;
+    case UVC_GET_LEN: DEBUG_PRINTF("UVC_GET_LEN "); break;
     case UVC_GET_INFO: DEBUG_PRINTF("UVC_GET_INFO "); break;
     default: DEBUG_PRINTF("UNKNOWN "); break;
   }
@@ -262,10 +311,10 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
   case UVC_VC_CONTROL_XU_LEP_AGC_ID:
     DEBUG_PRINTF("UVC_VC_CONTROL_XU_LEP_AGC_ID: ");
 
-    while (length--)
-    {
-      *pbuf++ = 0;
-    }
+    if (cmd == UVC_GET_CUR)
+      VC_LEP_GetAttribute(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf, length);
+    else if (cmd == UVC_GET_LEN)
+      VC_LEP_GetAttributeLen(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf);
 
     break;
 
@@ -328,6 +377,16 @@ static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
   default:
     DEBUG_PRINTF("FAIL: UVC_VC_ControlSet() unknown %x\r\n", cmd);
     return USBD_FAIL;
+  }
+
+  switch (entity_id)
+  {
+  case UVC_VC_CONTROL_XU_LEP_AGC_ID:
+    DEBUG_PRINTF("UVC_VC_CONTROL_XU_LEP_AGC_ID: ");
+    VC_LEP_SetAttribute(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf, length);
+    break;
+  default:
+    break;
   }
 
   return (USBD_OK);
