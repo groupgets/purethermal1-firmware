@@ -122,7 +122,7 @@ enum _vs_fmt_size {
 
 #define UVC_VC_INPUT_TERMINAL_ID                      1
 #define UVC_VC_CONTROL_PU_ID                          2
-#define UVC_VC_CONTROL_XU_ID                          3
+#define UVC_VC_CONTROL_XU_LEP_AGC_ID                  3
 #define UVC_VC_OUTPUT_TERMINAL_ID                     4
 /**
   * @}

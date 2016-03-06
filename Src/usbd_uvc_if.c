@@ -259,8 +259,8 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
 
   switch (entity_id)
   {
-  case UVC_VC_CONTROL_XU_ID:
-    DEBUG_PRINTF("UVC_VC_CONTROL_XU_ID: ");
+  case UVC_VC_CONTROL_XU_LEP_AGC_ID:
+    DEBUG_PRINTF("UVC_VC_CONTROL_XU_LEP_AGC_ID: ");
 
     while (length--)
     {

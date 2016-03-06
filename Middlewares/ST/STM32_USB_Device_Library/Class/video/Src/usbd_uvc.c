@@ -315,18 +315,18 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc), // Descriptor size
     .bDescriptorType = 0x24,                     // Class specific interface desc type
     .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = UVC_VC_CONTROL_XU_ID,             // ID of this terminal
+    .bUnitID = UVC_VC_CONTROL_XU_LEP_AGC_ID,     // ID of this terminal
     .guidExtensionCode = {                       // 16 byte GUID
       'p','t','1','-',
       'l','e','p','-',
-      '0','0','0','0',
+      'a','g','c','-',
       '0','0','0','0'
     },
-    .bNumControls = 0x00,                        // Number of controls in this terminal
+    .bNumControls = 0x12,                        // Number of controls in this terminal
     .bNrInPins = 0x01,                           // Number of input pins in this terminal
     .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
     .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0x00, 0x00, 0x00, 0x00 },    // Registers 0x00 to 0x48
+    .bmControls = { 0xff, 0xff, 0x03, 0x00 },    // Registers 0x00 to 0x48
     .iExtension = 0x00,                          // String desc index : Not used
   },
 
