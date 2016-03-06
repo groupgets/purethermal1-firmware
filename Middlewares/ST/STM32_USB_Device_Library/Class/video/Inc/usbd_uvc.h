@@ -120,10 +120,17 @@ enum _vs_fmt_size {
 
 #define VIDEO_TOTAL_IF_NUM                            2
 
-#define UVC_VC_INPUT_TERMINAL_ID                      1
-#define UVC_VC_CONTROL_PU_ID                          2
-#define UVC_VC_CONTROL_XU_LEP_AGC_ID                  3
-#define UVC_VC_OUTPUT_TERMINAL_ID                     4
+typedef enum _vs_terminal_id {
+  VC_INPUT_TERMINAL_ID = 1,
+  VC_CONTROL_PU_ID,
+  VC_CONTROL_XU_LEP_AGC_ID,
+  VC_CONTROL_XU_LEP_OEM_ID,
+  VC_CONTROL_XU_LEP_RAD_ID,
+  VC_CONTROL_XU_LEP_SYS_ID,
+  VC_CONTROL_XU_LEP_VID_ID,
+  VC_OUTPUT_TERMINAL_ID
+} VC_TERMINAL_ID;
+
 /**
   * @}
   */ 
@@ -141,8 +148,8 @@ typedef struct _USBD_UVC_Itf
   int8_t (* Control)       (uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
   int8_t (* VS_CtrlGet)    (uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
   int8_t (* VS_CtrlSet)    (uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
-  int8_t (* ControlGet)    (uint8_t, uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
-  int8_t (* ControlSet)    (uint8_t, uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
+  int8_t (* ControlGet)    (VC_TERMINAL_ID, uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
+  int8_t (* ControlSet)    (VC_TERMINAL_ID, uint8_t, uint8_t * , uint16_t, uint16_t, uint16_t);
   int8_t (* Receive)       (uint8_t *, uint32_t *);  
 
 }USBD_UVC_ItfTypeDef;

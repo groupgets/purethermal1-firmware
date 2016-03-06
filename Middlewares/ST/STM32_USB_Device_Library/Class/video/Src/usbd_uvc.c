@@ -284,7 +284,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal), // Descriptor size
     .bDescriptorType = UVC_CS_INTERFACE,       // 36 (INTERFACE)
     .bDescriptorSubType = UVC_VC_INPUT_TERMINAL, // 2 (INPUT_TERMINAL)
-    .bTerminalID = UVC_VC_INPUT_TERMINAL_ID,   // 1 ID of this Terminal
+    .bTerminalID = VC_INPUT_TERMINAL_ID,   // 1 ID of this Terminal
     .wTerminalType = UVC_ITT_CAMERA,           // 0x0201 Camera Sensor
     .bAssocTerminal = 0x00,                    // 0 no Terminal associated
     .iTerminal = 0x00,                         // 0 no description available
@@ -301,7 +301,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit), // Descriptor size
     .bDescriptorType = 0x24,                   // Class specific interface desc type
     .bDescriptorSubType = 0x05,                // Processing Unit Descriptor type
-    .bUnitID = UVC_VC_CONTROL_PU_ID,           // ID of this terminal
+    .bUnitID = VC_CONTROL_PU_ID,           // ID of this terminal
     .bSourceID = 0x01,                         // Source ID : 1 : Conencted to input terminal
     .wMaxMultiplier = 0,                       // Digital multiplier
     .bControlSize = 0x03,                      // Size of controls field for this terminal : 2 bytes
@@ -315,7 +315,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc), // Descriptor size
     .bDescriptorType = 0x24,                     // Class specific interface desc type
     .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = UVC_VC_CONTROL_XU_LEP_AGC_ID,     // ID of this terminal
+    .bUnitID = VC_CONTROL_XU_LEP_AGC_ID,     // ID of this terminal
     .guidExtensionCode = {                       // 16 byte GUID
       'p','t','1','-',
       'l','e','p','-',
@@ -335,7 +335,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
     .bLength = UVC_DT_OUTPUT_TERMINAL_SIZE,      // 9
     .bDescriptorType = UVC_CS_INTERFACE,         // 36 (INTERFACE)
     .bDescriptorSubType = UVC_VC_OUTPUT_TERMINAL, // 3 (OUTPUT_TERMINAL)
-    .bTerminalID = UVC_VC_OUTPUT_TERMINAL_ID,    // 2 ID of this Terminal
+    .bTerminalID = VC_OUTPUT_TERMINAL_ID,    // 2 ID of this Terminal
     .wTerminalType = UVC_TT_STREAMING,           // 0x0101 USB streaming terminal
     .bAssocTerminal = 0x00,                      // 0 no Terminal assiciated
     .bSourceID = 0x03,                           // 1 input pin connected to output pin unit 1
@@ -389,7 +389,7 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_frames_formats),
     .bEndpointAddress = UVC_IN_EP,             // 0x83 EP 3 IN
     .bmInfo = 0x00,                            // 0 no dynamic format change supported
-    .bTerminalLink = 0x04,                     // 2 supplies terminal ID 2 (Output terminal)
+    .bTerminalLink = VC_OUTPUT_TERMINAL_ID,    // 2 supplies terminal ID 2 (Output terminal)
     .bStillCaptureMethod = 0x01,               // 1 Host captures from video stream
     .bTriggerSupport = 0x00,                   // 0 HW trigger supported for still image capture
     .bTriggerUsage = 0x00,                     // 0 HW trigger initiate a still image capture
@@ -575,7 +575,7 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       // TODO: what to do with recipient as endpoint?
 
       uint8_t address = (req->wIndex >> 0) & 0xff;
-      uint8_t entity_id = (req->wIndex >> 8) & 0xff;
+      VC_TERMINAL_ID entity_id = (VC_TERMINAL_ID)((req->wIndex >> 8) & 0xff);
 
 #ifdef UVC_SETUP_REQ_DEBUG
       DEBUG_PRINTF("Setup USB_REQ_TYPE_CLASS read=%d recipient=%d (0=dev,1=intf,2=ep)\r\n",

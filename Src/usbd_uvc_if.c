@@ -32,13 +32,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_uvc_if.h"
-#include "lepton_i2c.h"
-
-#include "LEPTON_SDK.h"
-#include "LEPTON_SYS.h"
-#include "LEPTON_AGC.h"
-#include "LEPTON_VID.h"
-#include "LEPTON_OEM.h"
+#include "usbd_uvc_lepton_xu.h"
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -48,8 +42,6 @@
 
 // #define UVC_VC_DEBUG
 // #define UVC_VS_DEBUG
-
-extern LEP_CAMERA_PORT_DESC_T hport_desc;
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -183,8 +175,8 @@ void print_vc(struct uvc_streaming_control* vc)
 static int8_t UVC_Init_FS     (void);
 static int8_t UVC_DeInit_FS   (void);
 static int8_t UVC_Control        (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
-static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
-static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
+static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_VS_ControlSet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t index, uint16_t value);
 static int8_t UVC_Receive_FS  (uint8_t* pbuf, uint32_t *Len);
@@ -238,45 +230,6 @@ static int8_t UVC_Control  (uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_
   return USBD_OK;
 }
 
-static int8_t VC_LEP_GetAttribute (uint16_t module_base, uint16_t offset, uint8_t* pbuf, uint16_t length)
-{
-  LEP_RESULT result = LEP_GetAttribute(&hport_desc,
-                                      ( LEP_COMMAND_ID )(module_base + offset),
-                                      ( LEP_ATTRIBUTE_T_PTR )pbuf,
-                                      length >> 1);
-  return result;
-}
-
-static int8_t VC_LEP_SetAttribute (uint16_t module_base, uint16_t offset, uint8_t* pbuf, uint16_t length)
-{
-  LEP_RESULT result = LEP_SetAttribute(&hport_desc,
-                                      ( LEP_COMMAND_ID )(module_base + offset),
-                                      ( LEP_ATTRIBUTE_T_PTR )pbuf,
-                                      length >> 1);
-  return result;
-}
-
-static int8_t VC_LEP_GetAttributeLen (uint16_t module_base, uint16_t offset, uint8_t* pbuf)
-{
-  switch (module_base + offset)
-  {
-  case LEP_CID_AGC_ROI:
-  case LEP_CID_AGC_STATISTICS:
-    *pbuf = 8;
-    break;
-  case LEP_CID_AGC_ENABLE_STATE:
-  case LEP_CID_AGC_POLICY:
-  case LEP_CID_AGC_HEQ_SCALE_FACTOR:
-  case LEP_CID_AGC_CALC_ENABLE_STATE:
-    *pbuf = 4;
-    break;
-  default:
-    *pbuf = 2;
-    break;
-  }
-  return 0;
-}
-
 /**
   * @brief  UVC_Control_FS
   *         Manage the UVC class requests
@@ -285,7 +238,7 @@ static int8_t VC_LEP_GetAttributeLen (uint16_t module_base, uint16_t offset, uin
   * @param  length: Number of data to be sent (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
-static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
@@ -308,17 +261,20 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
 
   switch (entity_id)
   {
-  case UVC_VC_CONTROL_XU_LEP_AGC_ID:
-    DEBUG_PRINTF("UVC_VC_CONTROL_XU_LEP_AGC_ID: ");
+  case VC_CONTROL_XU_LEP_AGC_ID:
+  case VC_CONTROL_XU_LEP_OEM_ID:
+  case VC_CONTROL_XU_LEP_RAD_ID:
+  case VC_CONTROL_XU_LEP_SYS_ID:
+  case VC_CONTROL_XU_LEP_VID_ID:
 
     if (cmd == UVC_GET_CUR)
-      VC_LEP_GetAttribute(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf, length);
+      VC_LEP_GetAttribute(entity_id, cs_value << 2, pbuf, length);
     else if (cmd == UVC_GET_LEN)
-      VC_LEP_GetAttributeLen(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf);
+      VC_LEP_GetAttributeLen(entity_id, cs_value << 2, pbuf);
 
     break;
 
-  case UVC_VC_CONTROL_PU_ID:
+  case VC_CONTROL_PU_ID:
     DEBUG_PRINTF("UVC_VC_CONTROL_PU_ID: ");
 
     switch (cmd)
@@ -348,6 +304,8 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
     }
 
     break;
+  default:
+    return USBD_FAIL;
   }
 
 #ifdef UVC_VC_DEBUG
@@ -358,7 +316,7 @@ static int8_t UVC_VC_ControlGet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
   /* USER CODE END 5 */
 }
 
-static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
+static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t* pbuf, uint16_t length, uint16_t idx, uint16_t value)
 { 
   /* USER CODE BEGIN 5 */
   uint8_t cs_value = (value >> 8) & 0xFF;
@@ -381,12 +339,17 @@ static int8_t UVC_VC_ControlSet  (uint8_t entity_id, uint8_t cmd, uint8_t* pbuf,
 
   switch (entity_id)
   {
-  case UVC_VC_CONTROL_XU_LEP_AGC_ID:
-    DEBUG_PRINTF("UVC_VC_CONTROL_XU_LEP_AGC_ID: ");
-    VC_LEP_SetAttribute(LEP_AGC_MODULE_BASE, cs_value << 2, pbuf, length);
+  case VC_CONTROL_XU_LEP_AGC_ID:
+  case VC_CONTROL_XU_LEP_OEM_ID:
+  case VC_CONTROL_XU_LEP_RAD_ID:
+  case VC_CONTROL_XU_LEP_SYS_ID:
+  case VC_CONTROL_XU_LEP_VID_ID:
+    VC_LEP_SetAttribute(entity_id, cs_value << 2, pbuf, length);
+    break;
+  case VC_CONTROL_PU_ID:
     break;
   default:
-    break;
+    return USBD_FAIL;
   }
 
   return (USBD_OK);
