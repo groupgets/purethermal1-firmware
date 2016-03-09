@@ -377,7 +377,7 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
-    VC_LEP_SetAttribute(entity_id, cs_value << 2, pbuf, length);
+    VC_LEP_SetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
     break;
   case VC_CONTROL_PU_ID:
     break;
