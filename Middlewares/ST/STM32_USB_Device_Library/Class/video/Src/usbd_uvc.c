@@ -277,6 +277,10 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc) +
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_oem) +
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_rad) +
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_sys) +
+      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_vid) +
       SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_output_terminal), // header+units+terminals
     .dwClockFrequency = 0x005B8D80,          // 6.000000 MHz
     .bInCollection = 0x01,                   // 1 one streaming interface
