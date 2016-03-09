@@ -270,7 +270,7 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
     if (cmd == UVC_GET_CUR)
       VC_LEP_GetAttribute(entity_id, cs_value << 2, pbuf, length);
     else if (cmd == UVC_GET_LEN)
-      VC_LEP_GetAttributeLen(entity_id, cs_value << 2, pbuf);
+      VC_LEP_GetAttributeLen(entity_id, cs_value << 2, (uint16_t*)pbuf);
 
     break;
 
