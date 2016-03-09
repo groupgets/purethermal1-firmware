@@ -266,16 +266,53 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
+#ifdef UVC_VC_DEBUG
+    DEBUG_PRINTF("UVC_VC_CONTROL_XU(%d)\r\n", entity_id);
+#endif
 
-    if (cmd == UVC_GET_CUR)
-      VC_LEP_GetAttribute(entity_id, cs_value << 2, pbuf, length);
-    else if (cmd == UVC_GET_LEN)
-      VC_LEP_GetAttributeLen(entity_id, cs_value << 2, (uint16_t*)pbuf);
+    switch (cmd)
+    {
+    case UVC_GET_MIN:
+      pbuf[0] = 0;
+      break;
+    case UVC_GET_DEF:
+    case UVC_GET_CUR:
+      VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
+      break;
+    case UVC_GET_MAX:
+      {
+        uint16_t len;
+        VC_LEP_GetAttributeLen(entity_id, (cs_value - 1) << 2, (uint16_t*)&len);
+        if (len == 2)
+          *((uint16_t*)pbuf) = 0xffff;
+        else if (len == 4)
+          *((uint32_t*)pbuf) = 0xffffffff;
+        else if (len == 8)
+          *((uint64_t*)pbuf) = 0xffffffffffffffff;
+        else
+          *pbuf = 0;
+      }
+      break;
+    case UVC_GET_RES:
+      pbuf[0] = 1;
+      break;
+    case UVC_GET_LEN:
+      VC_LEP_GetAttributeLen(entity_id, (cs_value - 1) << 2, (uint16_t*)pbuf);
+      break;
+    case UVC_GET_INFO:
+      pbuf[0] = UVC_CONTROL_CAP_GET | UVC_CONTROL_CAP_SET;
+      break;
+    default:
+      DEBUG_PRINTF("FAIL: UVC_VC_ControlGet() unknown %x\r\n", cmd);
+      return USBD_FAIL;
+    }
 
     break;
 
   case VC_CONTROL_PU_ID:
-    DEBUG_PRINTF("UVC_VC_CONTROL_PU_ID: ");
+#ifdef UVC_VC_DEBUG
+    DEBUG_PRINTF("UVC_VC_CONTROL_PU_ID\r\n");
+#endif
 
     switch (cmd)
     {
