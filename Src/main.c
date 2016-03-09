@@ -129,7 +129,6 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_USART2_UART_Init();
-  MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
@@ -160,6 +159,8 @@ int main(void)
   DEBUG_PRINTF("Initialized...\n\r");
 
   HAL_Delay(250);
+
+  MX_USB_DEVICE_Init();
 
   PT_INIT(&lepton_task_pt);
   PT_INIT(&usb_task_pt);
