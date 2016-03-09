@@ -273,6 +273,7 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
     switch (cmd)
     {
     case UVC_GET_MIN:
+      memset(pbuf, 0, length);
       pbuf[0] = 0;
       break;
     case UVC_GET_DEF:
@@ -280,26 +281,17 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
       VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
       break;
     case UVC_GET_MAX:
-      {
-        uint16_t len;
-        VC_LEP_GetAttributeLen(entity_id, (cs_value - 1) << 2, (uint16_t*)&len);
-        if (len == 2)
-          *((uint16_t*)pbuf) = 0xffff;
-        else if (len == 4)
-          *((uint32_t*)pbuf) = 0xffffffff;
-        else if (len == 8)
-          *((uint64_t*)pbuf) = 0xffffffffffffffff;
-        else
-          *pbuf = 0;
-      }
+      memset(pbuf, 0xff, length);
       break;
     case UVC_GET_RES:
+      memset(pbuf, 0, length);
       pbuf[0] = 1;
       break;
     case UVC_GET_LEN:
       VC_LEP_GetAttributeLen(entity_id, (cs_value - 1) << 2, (uint16_t*)pbuf);
       break;
     case UVC_GET_INFO:
+      memset(pbuf, 0, length);
       pbuf[0] = UVC_CONTROL_CAP_GET | UVC_CONTROL_CAP_SET;
       break;
     default:
