@@ -358,13 +358,17 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   {
   case UVC_SET_CUR:
 #ifdef UVC_VC_DEBUG
-    DEBUG_PRINTF("UVC_VC_ControlSet()\r\n");
+    DEBUG_PRINTF("UVC_VC_ControlSet(cs=%d): ", cs_value);
 #endif
     break;
   default:
     DEBUG_PRINTF("FAIL: UVC_VC_ControlSet() unknown %x\r\n", cmd);
     return USBD_FAIL;
   }
+
+#ifdef UVC_VC_DEBUG
+  DEBUG_PRINTF("UVC_VC_CONTROL_XU(%d)\r\n", entity_id);
+#endif
 
   switch (entity_id)
   {
