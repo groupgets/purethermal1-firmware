@@ -331,11 +331,11 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       'a','g','c','-',
       '0','0','0','0'
     },
-    .bNumControls = 0x12,                        // Number of controls in this terminal
+    .bNumControls = 0x13,                        // Number of controls in this terminal
     .bNrInPins = 0x01,                           // Number of input pins in this terminal
     .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
     .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xff, 0xff, 0x03, 0x00 },    // Registers 0x00 to 0x48
+    .bmControls = { 0xff, 0xff, 0x07, 0x00 },    // Registers 0x00 to 0x48
     .iExtension = 0x00,                          // String desc index : Not used
   },
 
@@ -373,11 +373,11 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       'r','a','d','-',
       '0','0','0','0'
     },
-    .bNumControls = 0x38,                        // Number of controls in this terminal
+    .bNumControls = 0x39,                        // Number of controls in this terminal
     .bNrInPins = 0x01,                           // Number of input pins in this terminal
     .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
     .bControlSize = 0x08,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 },    // Registers 0x00 to 0x48
+    .bmControls = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01 },    // Registers 0x00 to 0x48
     .iExtension = 0x00,                          // String desc index : Not used
   },
 
@@ -394,11 +394,11 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
       's','y','s','-',
       '0','0','0','0'
     },
-    .bNumControls = 0x11,                        // Number of controls in this terminal
+    .bNumControls = 0x12,                        // Number of controls in this terminal
     .bNrInPins = 0x01,                           // Number of input pins in this terminal
     .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
     .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xFF, 0xFF, 0x01, 0x00 },    // Registers 0x00 to 0x48
+    .bmControls = { 0xFF, 0xFF, 0x03, 0x00 },    // Registers 0x00 to 0x48
     .iExtension = 0x00,                          // String desc index : Not used
   },
 
