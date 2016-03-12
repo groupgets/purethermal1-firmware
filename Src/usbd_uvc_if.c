@@ -278,7 +278,10 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
       break;
     case UVC_GET_DEF:
     case UVC_GET_CUR:
-      VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
+      if (length == 1)
+        pbuf[0] = 0;
+      else
+        VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
       break;
     case UVC_GET_MAX:
       memset(pbuf, 0xff, length);
@@ -377,7 +380,10 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
-    VC_LEP_SetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
+    if (length == 1)
+      VC_LEP_RunCommand(entity_id, (cs_value - 1) << 2);
+    else
+      VC_LEP_SetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
     break;
   case VC_CONTROL_PU_ID:
     break;

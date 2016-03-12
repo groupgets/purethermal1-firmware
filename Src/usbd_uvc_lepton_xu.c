@@ -52,6 +52,15 @@ int8_t VC_LEP_SetAttribute (VC_TERMINAL_ID entity_id, uint16_t offset, uint8_t* 
   return result;
 }
 
+int8_t VC_LEP_RunCommand (VC_TERMINAL_ID entity_id, uint16_t offset)
+{
+  uint16_t module_base = vc_terminal_id_to_module_base(entity_id);
+
+  LEP_RESULT result = LEP_RunCommand(&hport_desc,
+                                      ( LEP_COMMAND_ID )(module_base + offset));
+  return result;
+}
+
 static int8_t getAttributeLen_AGC(uint16_t module_register, uint16_t *pbuf)
 {
   switch (module_register)
@@ -108,7 +117,7 @@ static int8_t getAttributeLen_OEM(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_OEM_LOW_POWER_MODE_2:
   case LEP_CID_OEM_BIT_TEST:
   case LEP_CID_OEM_USER_DEFAULTS_RESTORE:
-    *pbuf = 0;
+    *pbuf = 1;
     break;
   default:
     *pbuf = 2;
@@ -161,7 +170,7 @@ static int8_t getAttributeLen_RAD(uint16_t module_register, uint16_t *pbuf)
     *pbuf = 4;
     break;
   case LEP_CID_RAD_RUN_FFC:
-    *pbuf = 0;
+    *pbuf = 1;
     break;
   default:
     *pbuf = 2;
@@ -195,7 +204,7 @@ static int8_t getAttributeLen_SYS(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_SYS_PING:
   case LEP_CID_SYS_EXECTUE_FRAME_AVERAGE:
   case FLR_CID_SYS_RUN_FFC:
-    *pbuf = 0;
+    *pbuf = 1;
     break;
   default:
     *pbuf = 2;
