@@ -9,6 +9,8 @@
 #include "LEPTON_OEM.h"
 #include "LEPTON_RAD.h"
 
+#include <limits.h>
+
 extern LEP_CAMERA_PORT_DESC_T hport_desc;
 
 static uint16_t vc_terminal_id_to_module_base(VC_TERMINAL_ID entity_id)
@@ -257,6 +259,224 @@ int8_t VC_LEP_GetAttributeLen (VC_TERMINAL_ID entity_id, uint16_t offset, uint16
     return getAttributeLen_SYS(module_register, pbuf);
   case VC_CONTROL_XU_LEP_VID_ID:
     return getAttributeLen_VID(module_register, pbuf);
+  default:
+    return -1;
+  }
+}
+
+
+static int8_t getMaxValue_AGC(uint16_t module_register, void *pbuf, uint16_t len)
+{
+  switch (module_register)
+  {
+#if 0
+  case LEP_CID_AGC_ROI:
+  case LEP_CID_AGC_STATISTICS:
+    *((int64_t*)pbuf) = LLONG_MAX;
+    break;
+#endif
+  case LEP_CID_AGC_CALC_ENABLE_STATE:
+  case LEP_CID_AGC_ENABLE_STATE:
+    *((LEP_AGC_ENABLE_E_PTR)pbuf) = LEP_END_AGC_ENABLE - 1;
+    break;
+  case LEP_CID_AGC_POLICY:
+    *((LEP_AGC_POLICY_E_PTR)pbuf) = LEP_END_AGC_POLICY - 1;
+    break;
+  case LEP_CID_AGC_HEQ_SCALE_FACTOR:
+    *((LEP_AGC_HEQ_SCALE_FACTOR_E_PTR)pbuf) = LEP_AGC_END_SCALE_TO - 1;
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
+static int8_t getMaxValue_OEM(uint16_t module_register, void *pbuf, uint16_t len)
+{
+  switch (module_register)
+  {
+#if 0
+  case LEP_CID_OEM_FLIR_PART_NUMBER:
+  case LEP_CID_OEM_CUST_PART_NUMBER:
+    *pbuf = 32;
+    break;
+#endif
+  case LEP_CID_OEM_SOFTWARE_VERSION:
+    *((int64_t*)pbuf) = LLONG_MAX;
+    break;
+  case LEP_CID_OEM_VIDEO_OUTPUT_ENABLE:
+  case LEP_CID_OEM_VIDEO_OUTPUT_FORMAT:
+  case LEP_CID_OEM_VIDEO_OUTPUT_SOURCE:
+  case LEP_CID_OEM_VIDEO_OUTPUT_CHANNEL:
+  case LEP_CID_OEM_VIDEO_GAMMA_ENABLE:
+  case LEP_CID_OEM_STATUS:
+  case LEP_CID_OEM_POWER_MODE:
+  case LEP_CID_OEM_GPIO_MODE_SELECT:
+  case LEP_CID_OEM_GPIO_VSYNC_PHASE_DELAY:
+  case LEP_CID_OEM_USER_DEFAULTS: // also a command
+  case LEP_CID_OEM_THERMAL_SHUTDOWN_ENABLE_STATE:
+  case LEP_CID_OEM_SHUTTER_PROFILE_OBJ:
+  case LEP_CID_OEM_BAD_PIXEL_REPLACE_CONTROL:
+  case LEP_CID_OEM_TEMPORAL_FILTER_CONTROL:
+  case LEP_CID_OEM_COLUMN_NOISE_ESTIMATE_CONTROL:
+  case LEP_CID_OEM_PIXEL_NOISE_ESTIMATE_CONTROL:
+    *((int32_t*)pbuf) = LONG_MAX;
+    break;
+  case LEP_CID_OEM_POWER_DOWN:
+  case LEP_CID_OEM_STANDBY:
+  case LEP_CID_OEM_LOW_POWER_MODE_1:
+  case LEP_CID_OEM_LOW_POWER_MODE_2:
+  case LEP_CID_OEM_BIT_TEST:
+  case LEP_CID_OEM_USER_DEFAULTS_RESTORE:
+    *((uint8_t*)pbuf) = 1;
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
+static int8_t getMaxValue_RAD(uint16_t module_register, void *pbuf, uint16_t len)
+{
+  switch (module_register)
+  {
+#if 0
+  case LEP_CID_RAD_TFPA_LUT:
+  case LEP_CID_RAD_TAUX_LUT:
+    *pbuf = 512;
+    break;
+  case LEP_CID_RAD_RESPONSIVITY_VALUE_LUT:
+  case LEP_CID_RAD_TEQ_SHUTTER_LUT:
+  case LEP_CID_RAD_MLG_LUT:
+    *pbuf = 256;
+    break;
+  case LEP_CID_RAD_RBFO_INTERNAL:
+  case LEP_CID_RAD_RBFO_EXTERNAL:
+  case LEP_CID_RAD_RBFO_INTERNAL_LG:
+  case LEP_CID_RAD_RBFO_EXTERNAL_LG:
+  case LEP_CID_RAD_FLUX_LINEAR_PARAMS:
+    *pbuf = 16;
+    break;
+  case LEP_CID_AGC_ROI:
+  case LEP_CID_AGC_STATISTICS:
+  case LEP_CID_RAD_THOUSING_TCP:
+  case LEP_CID_RAD_SHUTTER_TCP:
+  case LEP_CID_RAD_LENS_TCP:
+  case LEP_CID_RAD_SPOTMETER_ROI:
+    *pbuf = 8;
+    break;
+#endif
+  case LEP_CID_RAD_TSHUTTER_MODE:
+  case LEP_CID_RAD_DEBUG_FLUX:
+  case LEP_CID_RAD_ENABLE_STATE:
+  case LEP_CID_RAD_TFPA_CTS_MODE:
+  case LEP_CID_RAD_TAUX_CTS_MODE:
+  case LEP_CID_RAD_RUN_STATUS:
+  case LEP_CID_RAD_TEQ_SHUTTER_FLUX:
+  case LEP_CID_RAD_MFFC_FLUX:
+  case LEP_CID_RAD_TLINEAR_ENABLE_STATE:
+  case LEP_CID_RAD_TLINEAR_RESOLUTION:
+  case LEP_CID_RAD_TLINEAR_AUTO_RESOLUTION:
+  case LEP_CID_RAD_ARBITRARY_OFFSET_MODE:
+  case LEP_CID_RAD_ARBITRARY_OFFSET_PARAMS:
+    *((int32_t*)pbuf) = LONG_MAX;
+    break;
+  case LEP_CID_RAD_RUN_FFC:
+    *((uint8_t*)pbuf) = 1;
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
+static int8_t getMaxValue_SYS(uint16_t module_register, void *pbuf, uint16_t len)
+{
+  switch (module_register)
+  {
+#if 0
+  case LEP_CID_SYS_CUST_SERIAL_NUMBER:
+  case LEP_CID_SYS_FFC_SHUTTER_MODE_OBJ:
+    *pbuf = 32;
+    break;
+  case LEP_CID_SYS_SCENE_STATISTICS:
+  case LEP_CID_SYS_SCENE_ROI:
+    *pbuf = 8;
+    break;
+#endif
+  case LEP_CID_SYS_CAM_STATUS:
+  case LEP_CID_SYS_FLIR_SERIAL_NUMBER:
+    *((int64_t*)pbuf) = LLONG_MAX;
+    break;
+  case LEP_CID_SYS_CAM_UPTIME:
+  case LEP_CID_SYS_TELEMETRY_ENABLE_STATE:
+  case LEP_CID_SYS_TELEMETRY_LOCATION:
+  case LEP_CID_SYS_NUM_FRAMES_TO_AVERAGE:
+  case LEP_CID_SYS_SHUTTER_POSITION:
+  case LEP_CID_SYS_FFC_STATUS:
+    *((int32_t*)pbuf) = LONG_MAX;
+    break;
+  case LEP_CID_SYS_PING:
+  case LEP_CID_SYS_EXECTUE_FRAME_AVERAGE:
+  case FLR_CID_SYS_RUN_FFC:
+    *((uint8_t*)pbuf) = 1;
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
+static int8_t getMaxValue_VID(uint16_t module_register, void *pbuf, uint16_t len)
+{
+  switch (module_register)
+  {
+#if 0
+  case LEP_CID_VID_LUT_TRANSFER:
+    *pbuf = 1024;
+    break;
+  case LEP_CID_VID_FOCUS_ROI:
+    *pbuf = 8;
+    break;
+#endif
+  case LEP_CID_VID_POLARITY_SELECT:
+  case LEP_CID_VID_LUT_SELECT:
+  case LEP_CID_VID_FOCUS_CALC_ENABLE:
+  case LEP_CID_VID_FOCUS_METRIC:
+  case LEP_CID_VID_FOCUS_THRESHOLD:
+  case LEP_CID_VID_SBNUC_ENABLE:
+  case LEP_CID_VID_FREEZE_ENABLE:
+    *((int32_t*)pbuf) = LONG_MAX;
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
+
+int8_t VC_LEP_GetMaxValue (VC_TERMINAL_ID entity_id, uint16_t offset, void* pbuf, uint16_t len)
+{
+  uint16_t module_register =
+      vc_terminal_id_to_module_base(entity_id) + offset;
+
+  switch (entity_id)
+  {
+  case VC_CONTROL_XU_LEP_AGC_ID:
+    return getMaxValue_AGC(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_OEM_ID:
+    return getMaxValue_OEM(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_RAD_ID:
+    return getMaxValue_RAD(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_SYS_ID:
+    return getMaxValue_SYS(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_VID_ID:
+    return getMaxValue_VID(module_register, pbuf, len);
   default:
     return -1;
   }
