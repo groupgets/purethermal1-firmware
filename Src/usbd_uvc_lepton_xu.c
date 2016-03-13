@@ -118,6 +118,7 @@ static int8_t getAttributeLen_OEM(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_OEM_LOW_POWER_MODE_1:
   case LEP_CID_OEM_LOW_POWER_MODE_2:
   case LEP_CID_OEM_BIT_TEST:
+  case LEP_CID_OEM_REBOOT:
   case LEP_CID_OEM_USER_DEFAULTS_RESTORE:
     *pbuf = 1;
     break;
@@ -328,6 +329,7 @@ static int8_t getMaxValue_OEM(uint16_t module_register, void *pbuf, uint16_t len
   case LEP_CID_OEM_LOW_POWER_MODE_1:
   case LEP_CID_OEM_LOW_POWER_MODE_2:
   case LEP_CID_OEM_BIT_TEST:
+  case LEP_CID_OEM_REBOOT:
   case LEP_CID_OEM_USER_DEFAULTS_RESTORE:
     *((uint8_t*)pbuf) = 1;
     break;
