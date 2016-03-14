@@ -397,19 +397,35 @@ static int8_t getMaxValue_RAD(uint16_t module_register, void *pbuf, uint16_t len
     break;
 #endif
   case LEP_CID_RAD_TSHUTTER_MODE:
-  case LEP_CID_RAD_DEBUG_FLUX:
-  case LEP_CID_RAD_ENABLE_STATE:
-  case LEP_CID_RAD_TFPA_CTS_MODE:
-  case LEP_CID_RAD_TAUX_CTS_MODE:
-  case LEP_CID_RAD_RUN_STATUS:
+    *((LEP_RAD_TS_MODE_E_PTR)pbuf) = LEP_RAD_TS_END_TS_MODE - 1;
+    break;
+  case LEP_CID_RAD_DEBUG_FLUX: // TODO: handle min
   case LEP_CID_RAD_TEQ_SHUTTER_FLUX:
   case LEP_CID_RAD_MFFC_FLUX:
+    *((LEP_INT32*)pbuf) = LONG_MAX;
+    break;
+  case LEP_CID_RAD_ENABLE_STATE:
   case LEP_CID_RAD_TLINEAR_ENABLE_STATE:
-  case LEP_CID_RAD_TLINEAR_RESOLUTION:
   case LEP_CID_RAD_TLINEAR_AUTO_RESOLUTION:
+    *((LEP_RAD_ENABLE_E_PTR)pbuf) = LEP_END_RAD_ENABLE - 1;
+    break;
+  case LEP_CID_RAD_TFPA_CTS_MODE:
+  case LEP_CID_RAD_TAUX_CTS_MODE:
+    *((LEP_RAD_TEMPERATURE_UPDATE_E_PTR)pbuf) = LEP_RAD_UPDATE_END - 1;
+    break;
+  case LEP_CID_RAD_RUN_STATUS:
+    *((LEP_RAD_STATUS_E_PTR)pbuf) = LEP_RAD_STATUS_END - 1;
+    break;
+  case LEP_CID_RAD_TLINEAR_RESOLUTION:
+    *((LEP_RAD_TLINEAR_RESOLUTION_E_PTR)pbuf) = LEP_RAD_END_RESOLUTION - 1;
+    break;
   case LEP_CID_RAD_ARBITRARY_OFFSET_MODE:
+    *((LEP_RAD_ARBITRARY_OFFSET_MODE_E_PTR)pbuf) = LEP_RAD_END_ARBITRARY_OFFSET_MODE - 1;
+    break;
   case LEP_CID_RAD_ARBITRARY_OFFSET_PARAMS:
-    *((int32_t*)pbuf) = LONG_MAX;
+    *((LEP_RAD_ARBITRARY_OFFSET_PARAMS_T_PTR)pbuf) = (LEP_RAD_ARBITRARY_OFFSET_PARAMS_T) {
+      0xffff, 0xffff
+    };
     break;
   case LEP_CID_RAD_RUN_FFC:
     *((uint8_t*)pbuf) = 1;
