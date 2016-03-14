@@ -456,12 +456,22 @@ static int8_t getMaxValue_SYS(uint16_t module_register, void *pbuf, uint16_t len
     *((int64_t*)pbuf) = LLONG_MAX;
     break;
   case LEP_CID_SYS_CAM_UPTIME:
+    *((LEP_SYS_UPTIME_NUMBER_T_PTR)pbuf) = ULONG_MAX;
+    break;
   case LEP_CID_SYS_TELEMETRY_ENABLE_STATE:
+    *((LEP_SYS_TELEMETRY_ENABLE_STATE_E_PTR)pbuf) = LEP_END_TELEMETRY_ENABLE_STATE - 1;
+    break;
   case LEP_CID_SYS_TELEMETRY_LOCATION:
+    *((LEP_SYS_TELEMETRY_LOCATION_E_PTR)pbuf) = LEP_END_TELEMETRY_LOCATION - 1;
+    break;
   case LEP_CID_SYS_NUM_FRAMES_TO_AVERAGE:
+    *((LEP_SYS_FRAME_AVERAGE_DIVISOR_E_PTR)pbuf) = LEP_SYS_END_FA_DIV - 1;
+    break;
   case LEP_CID_SYS_SHUTTER_POSITION:
-  case LEP_CID_SYS_FFC_STATUS:
-    *((int32_t*)pbuf) = LONG_MAX;
+    *((LEP_SYS_SHUTTER_POSITION_E_PTR)pbuf) = LEP_SYS_SHUTTER_POSITION_END - 1;
+    break;
+  case LEP_CID_SYS_FFC_STATUS: // TODO: handle min
+    *((LEP_SYS_STATUS_E_PTR)pbuf) = LEP_SYS_STATUS_END -1;
     break;
   case LEP_CID_SYS_PING:
   case LEP_CID_SYS_EXECTUE_FRAME_AVERAGE:
