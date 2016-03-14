@@ -498,13 +498,25 @@ static int8_t getMaxValue_VID(uint16_t module_register, void *pbuf, uint16_t len
     break;
 #endif
   case LEP_CID_VID_POLARITY_SELECT:
+    *((LEP_POLARITY_E_PTR)pbuf) = LEP_VID_END_POLARITY - 1;
+    break;
   case LEP_CID_VID_LUT_SELECT:
+    *((LEP_PCOLOR_LUT_E_PTR)pbuf) = LEP_VID_END_PCOLOR_LUT - 1;
+    break;
   case LEP_CID_VID_FOCUS_CALC_ENABLE:
+    *((LEP_VID_FOCUS_CALC_ENABLE_E_PTR)pbuf) = LEP_VID_END_FOCUS_CALC_ENABLE - 1;
+    break;
   case LEP_CID_VID_FOCUS_METRIC:
+    *((LEP_VID_FOCUS_METRIC_T_PTR)pbuf) = ULONG_MAX;
+    break;
   case LEP_CID_VID_FOCUS_THRESHOLD:
+    *((LEP_VID_FOCUS_METRIC_THRESHOLD_T_PTR)pbuf) = ULONG_MAX;
+    break;
   case LEP_CID_VID_SBNUC_ENABLE:
+    *((LEP_VID_SBNUC_ENABLE_E_PTR)pbuf) = LEP_VID_END_SBNUC_ENABLE - 1;
+    break;
   case LEP_CID_VID_FREEZE_ENABLE:
-    *((int32_t*)pbuf) = LONG_MAX;
+    *((LEP_VID_FREEZE_ENABLE_E_PTR)pbuf) = LEP_VID_END_FREEZE_ENABLE - 1;
     break;
   default:
     *((uint16_t*)pbuf) = USHRT_MAX;
