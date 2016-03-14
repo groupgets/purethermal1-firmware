@@ -58,6 +58,9 @@ int8_t VC_LEP_RunCommand (VC_TERMINAL_ID entity_id, uint16_t offset)
 {
   uint16_t module_base = vc_terminal_id_to_module_base(entity_id);
 
+  if ((module_base + offset) == (FLR_CID_SYS_RUN_FFC & 0xfffc))
+    offset = FLR_CID_SYS_RUN_FFC - module_base;
+
   LEP_RESULT result = LEP_RunCommand(&hport_desc,
                                       ( LEP_COMMAND_ID )(module_base + offset));
   return result;
@@ -206,7 +209,7 @@ static int8_t getAttributeLen_SYS(uint16_t module_register, uint16_t *pbuf)
     break;
   case LEP_CID_SYS_PING:
   case LEP_CID_SYS_EXECTUE_FRAME_AVERAGE:
-  case FLR_CID_SYS_RUN_FFC:
+  case (FLR_CID_SYS_RUN_FFC & 0xfffc):
     *pbuf = 1;
     break;
   default:
@@ -475,7 +478,7 @@ static int8_t getMaxValue_SYS(uint16_t module_register, void *pbuf, uint16_t len
     break;
   case LEP_CID_SYS_PING:
   case LEP_CID_SYS_EXECTUE_FRAME_AVERAGE:
-  case FLR_CID_SYS_RUN_FFC:
+  case (FLR_CID_SYS_RUN_FFC & 0xfffc):
     *((uint8_t*)pbuf) = 1;
     break;
   default:
