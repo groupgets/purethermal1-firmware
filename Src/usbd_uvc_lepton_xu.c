@@ -278,6 +278,11 @@ static int8_t getMaxValue_AGC(uint16_t module_register, void *pbuf, uint16_t len
   case LEP_CID_AGC_STATISTICS:
     *((int64_t*)pbuf) = LLONG_MAX;
     break;
+#else
+  case LEP_CID_AGC_ROI:
+  case LEP_CID_AGC_STATISTICS:
+    memset(pbuf, 0xff, len);
+    break;
 #endif
   case LEP_CID_AGC_CALC_ENABLE_STATE:
   case LEP_CID_AGC_ENABLE_STATE:
@@ -304,6 +309,11 @@ static int8_t getMaxValue_OEM(uint16_t module_register, void *pbuf, uint16_t len
   case LEP_CID_OEM_FLIR_PART_NUMBER:
   case LEP_CID_OEM_CUST_PART_NUMBER:
     *pbuf = 32;
+    break;
+#else
+  case LEP_CID_OEM_FLIR_PART_NUMBER:
+  case LEP_CID_OEM_CUST_PART_NUMBER:
+    memset(pbuf, 0xff, len);
     break;
 #endif
   case LEP_CID_OEM_SOFTWARE_VERSION:
@@ -398,6 +408,25 @@ static int8_t getMaxValue_RAD(uint16_t module_register, void *pbuf, uint16_t len
   case LEP_CID_RAD_SPOTMETER_ROI:
     *pbuf = 8;
     break;
+#else
+  case LEP_CID_RAD_TFPA_LUT:
+  case LEP_CID_RAD_TAUX_LUT:
+  case LEP_CID_RAD_RESPONSIVITY_VALUE_LUT:
+  case LEP_CID_RAD_TEQ_SHUTTER_LUT:
+  case LEP_CID_RAD_MLG_LUT:
+  case LEP_CID_RAD_RBFO_INTERNAL:
+  case LEP_CID_RAD_RBFO_EXTERNAL:
+  case LEP_CID_RAD_RBFO_INTERNAL_LG:
+  case LEP_CID_RAD_RBFO_EXTERNAL_LG:
+  case LEP_CID_RAD_FLUX_LINEAR_PARAMS:
+  case LEP_CID_AGC_ROI:
+  case LEP_CID_AGC_STATISTICS:
+  case LEP_CID_RAD_THOUSING_TCP:
+  case LEP_CID_RAD_SHUTTER_TCP:
+  case LEP_CID_RAD_LENS_TCP:
+  case LEP_CID_RAD_SPOTMETER_ROI:
+    memset(pbuf, 0xff, len);
+    break;
 #endif
   case LEP_CID_RAD_TSHUTTER_MODE:
     *((LEP_RAD_TS_MODE_E_PTR)pbuf) = LEP_RAD_TS_END_TS_MODE - 1;
@@ -453,6 +482,13 @@ static int8_t getMaxValue_SYS(uint16_t module_register, void *pbuf, uint16_t len
   case LEP_CID_SYS_SCENE_ROI:
     *pbuf = 8;
     break;
+#else
+  case LEP_CID_SYS_CUST_SERIAL_NUMBER:
+  case LEP_CID_SYS_FFC_SHUTTER_MODE_OBJ:
+  case LEP_CID_SYS_SCENE_STATISTICS:
+  case LEP_CID_SYS_SCENE_ROI:
+    memset(pbuf, 0xff, len);
+    break;
 #endif
   case LEP_CID_SYS_CAM_STATUS:
   case LEP_CID_SYS_FLIR_SERIAL_NUMBER:
@@ -498,6 +534,11 @@ static int8_t getMaxValue_VID(uint16_t module_register, void *pbuf, uint16_t len
     break;
   case LEP_CID_VID_FOCUS_ROI:
     *pbuf = 8;
+    break;
+#else
+  case LEP_CID_VID_LUT_TRANSFER:
+  case LEP_CID_VID_FOCUS_ROI:
+    memset(pbuf, 0xff, len);
     break;
 #endif
   case LEP_CID_VID_POLARITY_SELECT:
