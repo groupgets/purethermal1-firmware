@@ -11,7 +11,7 @@ OBJDUMP	= $(SYSTEM)objdump
 GDB     = $(SYSTEM)gdb
 SIZE    = $(SYSTEM)size
 
-CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=softfp -mfpu=fpv4-sp-d16
+CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 DEVICE_FAMILY = STM32F4xx
 STARTUP_FILE = stm32f4xx
