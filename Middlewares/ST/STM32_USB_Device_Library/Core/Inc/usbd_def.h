@@ -2,8 +2,8 @@
   ******************************************************************************
   * @file    usbd_def.h
   * @author  MCD Application Team
-  * @version V2.4.1
-  * @date    19-June-2015
+  * @version V2.4.2
+  * @date    11-December-2015
   * @brief   General defines for the usb device library 
   ******************************************************************************
   * @attention
@@ -69,8 +69,6 @@
 #define  USBD_IDX_SERIAL_STR                            0x03 
 #define  USBD_IDX_CONFIG_STR                            0x04 
 #define  USBD_IDX_INTERFACE_STR                         0x05 
-
-#define  USB_REQ_READ_MASK                              0x80
 
 #define  USB_REQ_TYPE_STANDARD                          0x00
 #define  USB_REQ_TYPE_CLASS                             0x20

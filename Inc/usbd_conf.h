@@ -4,7 +4,7 @@
   * @version        : v1.0_Cube
   * @brief          : Header for usbd_conf file.
   ******************************************************************************
-  * COPYRIGHT(c) 2015 STMicroelectronics
+  * COPYRIGHT(c) 2016 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -65,7 +65,7 @@
 /*---------- -----------*/
 #define USBD_SUPPORT_USER_STRING     0
 /*---------- -----------*/
-#define USBD_DEBUG_LEVEL     3
+#define USBD_DEBUG_LEVEL     2
 /*---------- -----------*/
 #define USBD_LPM_ENABLED     0
 /*---------- -----------*/

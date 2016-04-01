@@ -14,7 +14,7 @@ SIZE    = $(SYSTEM)size
 CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 DEVICE_FAMILY = STM32F4xx
-STARTUP_FILE = stm32f4xx
+STARTUP_FILE = stm32f411xe
 DEVICE_TYPE = STM32F411xE
 SYSTEM_FILE = stm32f4xx
 
