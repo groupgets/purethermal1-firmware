@@ -36,10 +36,9 @@
 
 # Project stuff
 .bin
-.cproject
 .depend
 .map
-.project
 .settings/
 .mxproject
 TrueSTUDIO/
+/Debug/
