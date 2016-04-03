@@ -23,7 +23,7 @@ CMSIS_DEVSUP = $(CMSIS)/Device/ST/$(DEVICE_FAMILY)/
 CMSIS_OPT = -D$(DEVICE_TYPE) -DUSE_HAL_DRIVER
 OTHER_OPT = "-D__weak=__attribute__((weak))" "-D__packed=__attribute__((__packed__))" 
 
-LDSCRIPT = Src/STM32f411CE_FLASH.ld
+LDSCRIPT = ./STM32F411CEUx_FLASH.ld
 
 SRCDIR := Src/
 INCDIR := Inc/
@@ -52,7 +52,7 @@ LIBS += -lm
   
 # INCLUDES = -I$(SRCDIR) $(LIBINC)
 INCLUDES = $(LIBINC)
-CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -O2 $(INCLUDES) -g -Wfatal-errors -std=c99
+CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -Os $(INCLUDES) -Wfatal-errors -std=c99
 ifdef USART_DEBUG
 	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
