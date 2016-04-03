@@ -137,6 +137,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
 
+  // reinitialize uart with speed from config
+  huart2.Init.BaudRate = USART_DEBUG_SPEED;
+  HAL_UART_Init(&huart2);
 
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
@@ -365,11 +368,7 @@ void MX_USART2_UART_Init(void)
 {
 
   huart2.Instance = USART2;
-#ifdef USART_DEBUG
-  huart2.Init.BaudRate = USART_DEBUG_SPEED;
-#else
-  huart2.Init.BaudRate = 921600;
-#endif
+  huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;

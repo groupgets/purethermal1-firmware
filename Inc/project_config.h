@@ -1,12 +1,10 @@
 #ifndef _PROJECT_CONFIG_H_
 #define _PROJECT_CONFIG_H_
 
-#ifdef USART_DEBUG // this happens by 'make USART_DEBUG=1'
-#undef THERMAL_DATA_UART
-#else
-#define USART_DEBUG
+
+// #define USART_DEBUG
 // #define THERMAL_DATA_UART
-#endif
+
 #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
 #define ENABLE_LEPTON_AGC
@@ -17,7 +15,10 @@
 #define PSUEDOCOLOR_LUT LEP_VID_FUSION_LUT
 #endif
 
-#ifndef USART_DEBUG_SPEED
+#ifdef USART_DEBUG // this happens by 'make USART_DEBUG=1' or when USART_DEBUG is enabled above
+#undef THERMAL_DATA_UART
+#define USART_DEBUG_SPEED (115200)
+#else
 #define USART_DEBUG_SPEED (921600)
 #endif
 
