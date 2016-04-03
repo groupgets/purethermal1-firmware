@@ -76,7 +76,7 @@ OBJS = $(sort \
  $(STARTUP_OBJ) \
  $(SYSTEM_OBJ))
 
-all: $(BIN) print_vars
+all: Inc/version.h $(BIN) print_vars
 
 reset:
 	$(OCD) -c init -c "reset run" -c shutdown
@@ -94,6 +94,13 @@ $(BIN): main.out
 	$(OBJDUMP) $(OBJDUMPFLAGS) main.out > main.list
 	$(SIZE) main.out
 	@echo Make finished
+
+Inc/version.h: .git/HEAD .git/index
+	echo "#ifndef VERSION_H" > $@
+	echo "#define VERSION_H" >> $@
+	echo "#define BUILD_GIT_SHA \"$(shell git describe --tags)\"" >> $@
+	echo "#define BUILD_DATE \"$(shell date "+%Y-%m-%d %H:%M:%S")\"" >> $@
+	echo "#endif" >> $@
 
 # TARGET = main
 # 
@@ -118,6 +125,7 @@ libclean: clean
 clean:
 	@$(MAKE) -C $(LIBDIR) clean
 	@$(MAKE) -C $(MDLDIR) clean
+	-rm Inc/version.h
 	-rm -f $(OBJS)
 	-rm -f main.list main.out main.hex main.map main.bin .depend
 

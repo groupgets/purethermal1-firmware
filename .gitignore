@@ -42,3 +42,6 @@
 .mxproject
 TrueSTUDIO/
 /Debug/
+
+# Generated files
+Inc/version.h
