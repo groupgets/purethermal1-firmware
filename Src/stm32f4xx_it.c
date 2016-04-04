@@ -4,7 +4,7 @@
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2015 STMicroelectronics
+  * COPYRIGHT(c) 2016 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -50,7 +50,7 @@ extern DMA_HandleTypeDef hdma_spi2_tx;
 /******************************************************************************/
 
 /**
-* @brief This function handles Non Maskable Interrupt.
+* @brief This function handles Non maskable interrupt.
 */
 void NMI_Handler(void)
 {
@@ -86,7 +86,7 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-* @brief This function handles DMA1 Stream3 global interrupt.
+* @brief This function handles DMA1 stream3 global interrupt.
 */
 void DMA1_Stream3_IRQHandler(void)
 {
@@ -100,7 +100,7 @@ void DMA1_Stream3_IRQHandler(void)
 }
 
 /**
-* @brief This function handles DMA1 Stream4 global interrupt.
+* @brief This function handles DMA1 stream4 global interrupt.
 */
 void DMA1_Stream4_IRQHandler(void)
 {
@@ -114,7 +114,7 @@ void DMA1_Stream4_IRQHandler(void)
 }
 
 /**
-* @brief This function handles EXTI Line[15:10] interrupts.
+* @brief This function handles EXTI line[15:10] interrupts.
 */
 void EXTI15_10_IRQHandler(void)
 {
@@ -128,7 +128,7 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /**
-* @brief This function handles DMA2 Stream0 global interrupt.
+* @brief This function handles DMA2 stream0 global interrupt.
 */
 void DMA2_Stream0_IRQHandler(void)
 {

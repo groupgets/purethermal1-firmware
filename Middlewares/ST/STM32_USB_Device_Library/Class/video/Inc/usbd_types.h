@@ -1,6 +1,8 @@
 #ifndef __USBD_TYPES_H
 #define __USBD_TYPES_H
 
+#define  USB_REQ_READ_MASK                              0x80
+
 /* USB_DT_CONFIG: Configuration descriptor information. */
 struct usb_config_descriptor {
 	uint8_t  bLength;

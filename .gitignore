@@ -36,10 +36,12 @@
 
 # Project stuff
 .bin
-.cproject
 .depend
 .map
-.project
 .settings/
 .mxproject
 TrueSTUDIO/
+/Debug/
+
+# Generated files
+Inc/version.h

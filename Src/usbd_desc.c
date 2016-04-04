@@ -5,7 +5,7 @@
   * @brief          : This file implements the USB Device descriptors
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2015 STMicroelectronics
+  * COPYRIGHT(c) 2016 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -56,21 +56,29 @@
 /** @defgroup USBD_DESC_Private_Defines
   * @{
   */ 
+#define USBD_VID     0x1e4e
+#define USBD_LANGID_STRING     1033
+#define USBD_MANUFACTURER_STRING     "GroupGets"
+#define USBD_PID_FS     0x0100
+#define USBD_PRODUCT_STRING_FS     "PureThermal 1"
+#define USBD_SERIALNUMBER_STRING_FS     "v1.0.0"
+#define USBD_CONFIGURATION_STRING_FS     "Video Streaming Configuration"
+#define USBD_INTERFACE_STRING_FS     "Video Streaming Interface"
 
-#define USBD_VID                          0x1e4e
-#define USBD_PID_FS                       0x0100
-#define USBD_LANGID_STRING                0x0409
-#define USBD_MANUFACTURER_STRING          "GroupGets"
-#define USBD_PRODUCT_STRING_FS            "PureThermal 1"
-/* USER CODE BEGIN SERIALNUMBER_STRING_FS */
-#define USBD_SERIALNUMBER_STRING_FS       "000000000001"
-/* USER CODE END SERIALNUMBER_STRING_FS */
-#define USBD_CONFIGURATION_STRING_FS      "Video Streaming Configuration"
-#define USBD_INTERFACE_STRING_FS          "Video Streaming Interface"
+#define USB_SIZ_BOS_DESC            0x0C
 
-#define USB_SIZ_BOS_DESC                  0x0C
+/* USER CODE BEGIN 0 */
 
+#undef USBD_SERIALNUMBER_STRING_FS
 
+#ifdef GIT_VERSION
+#include "version.h"
+#define USBD_SERIALNUMBER_STRING_FS "v" BUILD_GIT_SHA
+#else
+#define USBD_SERIALNUMBER_STRING_FS "v0.0.0"
+#endif
+
+/* USER CODE END 0*/
 /**
   * @}
   */ 
@@ -118,6 +126,7 @@ USBD_DescriptorsTypeDef FS_Desc =
 #if defined ( __ICCARM__ ) /*!< IAR Compiler */
   #pragma data_alignment=4   
 #endif
+/* USB Standard Device Descriptor */
 __ALIGN_BEGIN uint8_t USBD_FS_DeviceDesc[USB_LEN_DEV_DESC] __ALIGN_END =
   {
     0x12,                       /*bLength */
@@ -236,7 +245,14 @@ uint8_t *  USBD_FS_LangIDStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString ((uint8_t*)USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
+  if(speed == 0)
+  {   
+    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
+  }
+  else
+  {
+    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);    
+  }
   return USBD_StrDesc;
 }
 
@@ -249,7 +265,7 @@ uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *len
 */
 uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString ((uint8_t*)USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
+  USBD_GetString (USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
@@ -262,7 +278,14 @@ uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t
 */
 uint8_t *  USBD_FS_SerialStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString ((uint8_t*)USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);
+  if(speed  == USBD_SPEED_HIGH)
+  {    
+    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);
+  }
+  else
+  {
+    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);    
+  }
   return USBD_StrDesc;
 }
 
@@ -275,7 +298,14 @@ uint8_t *  USBD_FS_SerialStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_ConfigStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString ((uint8_t*)USBD_CONFIGURATION_STRING_FS, USBD_StrDesc, length);
+  if(speed  == USBD_SPEED_HIGH)
+  {  
+    USBD_GetString (USBD_CONFIGURATION_STRING_FS, USBD_StrDesc, length);
+  }
+  else
+  {
+    USBD_GetString (USBD_CONFIGURATION_STRING_FS, USBD_StrDesc, length); 
+  }
   return USBD_StrDesc;  
 }
 
@@ -288,7 +318,14 @@ uint8_t *  USBD_FS_ConfigStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_InterfaceStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString ((uint8_t*)USBD_INTERFACE_STRING_FS, USBD_StrDesc, length);
+  if(speed == 0)
+  {
+    USBD_GetString (USBD_INTERFACE_STRING_FS, USBD_StrDesc, length);
+  }
+  else
+  {
+    USBD_GetString (USBD_INTERFACE_STRING_FS, USBD_StrDesc, length);
+  }
   return USBD_StrDesc;  
 }
 #if (USBD_LPM_ENABLED == 1)
