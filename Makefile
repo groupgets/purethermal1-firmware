@@ -52,7 +52,7 @@ LIBS += -lm
   
 # INCLUDES = -I$(SRCDIR) $(LIBINC)
 INCLUDES = $(LIBINC)
-CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -Os $(INCLUDES) -Wfatal-errors -std=c99
+CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -Os $(INCLUDES) -Wfatal-errors -std=c99 -DGIT_VERSION
 ifdef USART_DEBUG
 	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
@@ -76,7 +76,7 @@ OBJS = $(sort \
  $(STARTUP_OBJ) \
  $(SYSTEM_OBJ))
 
-all: Inc/version.h $(BIN) print_vars
+all: $(BIN) print_vars
 
 reset:
 	$(OCD) -c init -c "reset run" -c shutdown
@@ -133,7 +133,7 @@ depend dep: .depend
 
 include .depend
 
-.depend: Src/*.c
+.depend: Src/*.c | Inc/version.h
 	$(CCDEP) $(CFLAGS) -MM $^ | sed -e 's@.*.o:@Src/&@' > .depend 
 
 .c.o:

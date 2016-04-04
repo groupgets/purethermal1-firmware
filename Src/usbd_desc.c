@@ -69,10 +69,13 @@
 
 /* USER CODE BEGIN 0 */
 
-#include "version.h"
-#ifdef BUILD_GIT_SHA
 #undef USBD_SERIALNUMBER_STRING_FS
-#define USBD_SERIALNUMBER_STRING_FS BUILD_GIT_SHA
+
+#ifdef GIT_VERSION
+#include "version.h"
+#define USBD_SERIALNUMBER_STRING_FS "v" BUILD_GIT_SHA
+#else
+#define USBD_SERIALNUMBER_STRING_FS "v0.0.0"
 #endif
 
 /* USER CODE END 0*/
