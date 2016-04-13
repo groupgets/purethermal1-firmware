@@ -11,6 +11,8 @@ OBJDUMP	= $(SYSTEM)objdump
 GDB     = $(SYSTEM)gdb
 SIZE    = $(SYSTEM)size
 
+OCD ?= openocd
+
 CPU = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
 DEVICE_FAMILY = STM32F4xx
@@ -83,11 +85,14 @@ reset:
 	#$(GDB) main.out <reset.gdb
 
 flash: $(BIN)
-	$(OCD) -c init -c "reset halt" \
-	               -c "flash write_image erase "$(BIN)" 0x08000000" \
-			       -c "reset run" \
-	               -c shutdown
-	
+	$(OCD) -f PureThermal1.cfg \
+	       -c "init" \
+	       -c "reset halt" \
+	       -c "flash write_image erase $(BIN) 0x08000000" \
+	       -c "reset run" \
+	       -c "shutdown" \
+	       || echo "ERROR: could not connect to target, please try again"
+
 $(BIN): main.out
 	$(OBJCOPY) $(OBJCOPYFLAGS) main.out $(BIN)
 	$(OBJCOPY) -O ihex main.out main.hex
