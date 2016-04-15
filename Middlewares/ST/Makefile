@@ -3,7 +3,7 @@ export
 
 CFLAGS := $(patsubst -I%,-I../../%,$(CFLAGS))
 
-SUBDIRS := $(shell ls -F|grep /|grep -v CVS)
+SUBDIRS := STM32_USB_Device_Library
 
 .PHONY: subdirs $(SUBDIRS)
 .PHONY: clean
