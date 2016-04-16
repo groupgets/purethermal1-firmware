@@ -45,3 +45,6 @@ TrueSTUDIO/
 
 # Generated files
 Inc/version.h
+
+# OpenOCD config is checked in, but we don't want more modifications accidentally
+PureThermal1.cfg

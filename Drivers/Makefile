@@ -3,7 +3,8 @@ export
 
 CFLAGS := $(patsubst -I%,-I../../%,$(CFLAGS))
 
-SUBDIRS := $(shell ls -F|grep /|grep -v CVS)
+SUBDIRS := CMSIS \
+           STM32F4xx_HAL_Driver
 
 .PHONY: subdirs $(SUBDIRS)
 .PHONY: clean

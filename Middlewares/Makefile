@@ -3,7 +3,8 @@ export
 
 CFLAGS := $(patsubst -I%,-I../%,$(CFLAGS))
 
-SUBDIRS := $(shell ls -F|grep /|grep -v CVS)
+SUBDIRS := ST \
+           lepton_sdk
 
 .PHONY: subdirs $(SUBDIRS)
 .PHONY: clean
