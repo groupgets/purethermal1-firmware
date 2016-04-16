@@ -601,8 +601,10 @@ uint8_t UVC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */
+  HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
   USBD_UVC_SetTxBuffer(hUsbDevice_0, Buf, Len);   
   result = USBD_UVC_TransmitPacket(hUsbDevice_0);
+  HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
   /* USER CODE END 7 */ 
   return result;
 }
