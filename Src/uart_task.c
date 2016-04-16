@@ -42,7 +42,6 @@ PT_THREAD( uart_task(struct pt *pt))
 	{
 #ifdef THERMAL_DATA_UART 
 		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame_count);
-		 WHITE_LED_TOGGLE;
 		 last_frame_count = get_lepton_buffer(&last_buffer);
 
 		 count = 0;

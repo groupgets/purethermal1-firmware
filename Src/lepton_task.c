@@ -144,6 +144,8 @@ PT_THREAD( lepton_task(struct pt *pt))
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
 
+			HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
+
 #ifndef Y16
 			PT_SPAWN(
 				pt,
