@@ -246,7 +246,6 @@ PT_THREAD( usb_task(struct pt *pt))
 		last_frame_count = get_lepton_buffer_yuv(&last_buffer);
 		get_lepton_buffer(&last_buffer_rgb);
 #endif
-		WHITE_LED_TOGGLE;
 
 #ifndef ENABLE_LEPTON_AGC
 		switch (videoCommitControl.bFormatIndex)
