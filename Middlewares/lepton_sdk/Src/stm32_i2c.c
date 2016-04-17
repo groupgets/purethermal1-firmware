@@ -61,9 +61,9 @@
 /******************************************************************************/
 /** LOCAL DEFINES                                                            **/
 /******************************************************************************/
-const LEP_INT32 ADDRESS_SIZE_BYTES = 2;
-const LEP_INT32 VALUE_SIZE_BYTES = 2;
-const LEP_INT32 COMM_TIMEOUT_MS = 500;
+#define ADDRESS_SIZE_BYTES          (2)
+#define MAX_TXRX_SIZE_BYTES         (1024)
+#define COMM_TIMEOUT_MS             (500)
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -80,6 +80,7 @@ const LEP_INT32 COMM_TIMEOUT_MS = 500;
 /******************************************************************************/
 
 extern I2C_HandleTypeDef hi2c1;
+LEP_UINT8 txrxdata[MAX_TXRX_SIZE_BYTES];
 
 /******************************************************************************/
 /** PRIVATE FUNCTION DECLARATIONS                                            **/
@@ -172,14 +173,13 @@ LEP_RESULT DEV_I2C_MasterReadData(LEP_UINT16  portID,               // User-defi
     HAL_StatusTypeDef hal_status;
     LEP_UINT16 bytesToRead = wordsToRead << 1;
     LEP_UINT16 wordsRead = wordsToRead;
-    LEP_UINT8* txdata = (LEP_UINT8*)malloc(sizeof(LEP_UINT8)*ADDRESS_SIZE_BYTES);
-    LEP_UINT8* rxdata = (LEP_UINT8*)malloc(sizeof(LEP_UINT8)*bytesToRead);
+    LEP_UINT8 txdata[ADDRESS_SIZE_BYTES];
     LEP_UINT16 *dataPtr;
     LEP_UINT16 *writePtr;
 
     *(LEP_UINT16*)txdata = REVERSE_ENDIENESS_UINT16(regAddress);
 
-    hal_status = HAL_I2C_Mem_Read(&hi2c1, deviceAddress << 1, regAddress, I2C_MEMADD_SIZE_16BIT, rxdata, bytesToRead, COMM_TIMEOUT_MS);
+    hal_status = HAL_I2C_Mem_Read(&hi2c1, deviceAddress << 1, regAddress, I2C_MEMADD_SIZE_16BIT, txrxdata, bytesToRead, COMM_TIMEOUT_MS);
     if (hal_status != HAL_OK) {
         DEBUG_PRINTF("DEV_I2C_MasterReadData::HAL_I2C_Mem_Read\r\n\t(deviceAddress=0x%02x, regAddress=0x%04x, bytesToRead=%d) failed: %d\r\n", deviceAddress, regAddress, bytesToRead, hal_status);
         goto finish_DEV_I2C_MasterReadData;
@@ -187,7 +187,7 @@ LEP_RESULT DEV_I2C_MasterReadData(LEP_UINT16  portID,               // User-defi
 
     *numWordsRead = (LEP_UINT16)(wordsRead);
 
-    dataPtr = (LEP_UINT16*)&rxdata[0];
+    dataPtr = (LEP_UINT16*)&txrxdata[0];
     writePtr = readDataPtr;
     while(wordsRead--){
         *writePtr++ = REVERSE_ENDIENESS_UINT16(*dataPtr);
@@ -195,9 +195,6 @@ LEP_RESULT DEV_I2C_MasterReadData(LEP_UINT16  portID,               // User-defi
     }
 
 finish_DEV_I2C_MasterReadData:
-
-    free(txdata);
-    free(rxdata);
 
     if(hal_status != HAL_OK)
     {
@@ -224,19 +221,18 @@ LEP_RESULT DEV_I2C_MasterWriteData(LEP_UINT16  portID,              // User-defi
 
     LEP_INT16 bytesOfDataToWrite = (wordsToWrite << 1);
     LEP_INT16 bytesToWrite = bytesOfDataToWrite + ADDRESS_SIZE_BYTES;
-    LEP_UINT8* txdata = (LEP_UINT8*)malloc(sizeof(LEP_UINT8)*(int)bytesToWrite);
     LEP_UINT16 *dataPtr;
     LEP_UINT16 *txPtr;
 
-    *(LEP_UINT16*)txdata = REVERSE_ENDIENESS_UINT16(regAddress);
+    *(LEP_UINT16*)txrxdata = REVERSE_ENDIENESS_UINT16(regAddress);
     dataPtr = (LEP_UINT16*)&writeDataPtr[0];
-    txPtr = (LEP_UINT16*)&txdata[ADDRESS_SIZE_BYTES]; //Don't overwrite the address bytes
+    txPtr = (LEP_UINT16*)&txrxdata[ADDRESS_SIZE_BYTES]; //Don't overwrite the address bytes
     while(wordsToWrite--){
         *txPtr++ = (LEP_UINT16)REVERSE_ENDIENESS_UINT16(*dataPtr);
         dataPtr++;
     }
 
-    hal_status = HAL_I2C_Master_Transmit(&hi2c1, deviceAddress << 1, txdata, bytesToWrite, COMM_TIMEOUT_MS);
+    hal_status = HAL_I2C_Master_Transmit(&hi2c1, deviceAddress << 1, txrxdata, bytesToWrite, COMM_TIMEOUT_MS);
     if (hal_status != HAL_OK) {
         DEBUG_PRINTF("DEV_I2C_MasterWriteData::HAL_I2C_Master_Transmit failed: %d\r\n", hal_status);
         goto finish_DEV_I2C_MasterWriteData;
@@ -245,8 +241,6 @@ LEP_RESULT DEV_I2C_MasterWriteData(LEP_UINT16  portID,              // User-defi
     *numWordsWritten = (bytesToWrite >> 1);
 
 finish_DEV_I2C_MasterWriteData:
-
-    free(txdata);
 
     if(hal_status != HAL_OK)
     {
