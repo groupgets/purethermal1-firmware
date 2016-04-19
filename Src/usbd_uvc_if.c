@@ -273,9 +273,9 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
     memset(pbuf, 0, length);
     switch (cmd)
     {
+    case UVC_GET_DEF:
     case UVC_GET_MIN:
       break;
-    case UVC_GET_DEF:
     case UVC_GET_CUR:
       if (length > 1)
         VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
