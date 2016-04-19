@@ -540,8 +540,14 @@ PT_THREAD( usb_task(struct pt *pt))
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
       // fflush(stdout);
 
+      int retries = 1000;
       while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
-        ;
+      {
+        if (--retries == 0) {
+//          DEBUG_PRINTF("UVC_Transmit_FS() failed (no one is acking)\r\n");
+          break;
+        }
+      }
 
       if (packet[1] & 0x2)
       {
