@@ -277,7 +277,7 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
     case UVC_GET_MIN:
       break;
     case UVC_GET_CUR:
-      if (length > 1 && length < 512)
+      if (length > 1)
         VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
       break;
     case UVC_GET_MAX:
