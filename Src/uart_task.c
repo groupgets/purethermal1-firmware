@@ -15,6 +15,7 @@
 #include "tasks.h"
 #include "project_config.h"
 
+#define LEPTON_USART_PORT (USART2)
 
 uint8_t lepton_raw[60*80*2];
 
@@ -33,8 +34,8 @@ PT_THREAD( uart_task(struct pt *pt))
 	static int count;
 	static int i,j;
 	static lepton_buffer *last_buffer;
-	static struct pt uart_lepton_send_pt;
-
+    static int n;
+    static uint8_t *ptr;
 
 	PT_BEGIN(pt);
 
@@ -61,7 +62,39 @@ PT_THREAD( uart_task(struct pt *pt))
 			 }
 		 }
 
-		 PT_SPAWN(pt,&uart_lepton_send_pt,uart_lepton_send(&uart_lepton_send,lepton_raw));
+		 n = 0;
+		 ptr = lepton_raw;
+
+		 while ((LEPTON_USART_PORT->SR & UART_FLAG_TC) == (uint16_t) RESET)
+		 {
+		   PT_YIELD(pt);
+		 }
+		 LEPTON_USART_PORT->DR =0xde;
+		 while ((LEPTON_USART_PORT->SR & UART_FLAG_TC) == (uint16_t) RESET)
+		 {
+		   PT_YIELD(pt);
+		 }
+		 LEPTON_USART_PORT->DR =0xad;
+		 while ((LEPTON_USART_PORT->SR & UART_FLAG_TC) == (uint16_t) RESET)
+		 {
+		   PT_YIELD(pt);
+		 }
+		 LEPTON_USART_PORT->DR =0xbe;
+		 while ((LEPTON_USART_PORT->SR & UART_FLAG_TC) == (uint16_t) RESET)
+		 {
+		   PT_YIELD(pt);
+		 }
+		 LEPTON_USART_PORT->DR = 0xef;
+		 //LEPTON_USART_PORT->DR = 0xed;
+
+		 for (n = 0; n < (60*80*2); n++)
+		 {
+		   while ((LEPTON_USART_PORT->SR & UART_FLAG_TC) == (uint16_t) RESET)
+		   {
+		     PT_YIELD(pt);
+		   }
+		   LEPTON_USART_PORT->DR = (*ptr++ );
+		 }
 
 #else
 		 PT_YIELD(pt);
