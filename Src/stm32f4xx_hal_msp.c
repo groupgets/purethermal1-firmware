@@ -38,6 +38,7 @@ extern DMA_HandleTypeDef hdma_spi2_rx;
 
 extern DMA_HandleTypeDef hdma_spi2_tx;
 
+extern void Error_Handler(void);
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
@@ -60,8 +61,12 @@ void HAL_MspInit(void)
   HAL_NVIC_SetPriority(BusFault_IRQn, 0, 0);
   /* UsageFault_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(UsageFault_IRQn, 0, 0);
+  /* SVCall_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(SVCall_IRQn, 0, 0);
   /* DebugMonitor_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DebugMonitor_IRQn, 0, 0);
+  /* PendSV_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(PendSV_IRQn, 0, 0);
   /* SysTick_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 
@@ -198,7 +203,10 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     hdma_spi2_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
     hdma_spi2_rx.Init.MemBurst = DMA_MBURST_SINGLE;
     hdma_spi2_rx.Init.PeriphBurst = DMA_PBURST_SINGLE;
-    HAL_DMA_Init(&hdma_spi2_rx);
+    if (HAL_DMA_Init(&hdma_spi2_rx) != HAL_OK)
+    {
+      Error_Handler();
+    }
 
     __HAL_LINKDMA(hspi,hdmarx,hdma_spi2_rx);
 
@@ -215,7 +223,10 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     hdma_spi2_tx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
     hdma_spi2_tx.Init.MemBurst = DMA_MBURST_SINGLE;
     hdma_spi2_tx.Init.PeriphBurst = DMA_PBURST_SINGLE;
-    HAL_DMA_Init(&hdma_spi2_tx);
+    if (HAL_DMA_Init(&hdma_spi2_tx) != HAL_OK)
+    {
+      Error_Handler();
+    }
 
     __HAL_LINKDMA(hspi,hdmatx,hdma_spi2_tx);
 

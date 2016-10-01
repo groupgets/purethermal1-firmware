@@ -38,6 +38,7 @@
 #include "usbd_core.h"
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
+void Error_Handler(void);
 
 /* External functions --------------------------------------------------------*/
 void SystemClock_Config(void);
@@ -55,10 +56,10 @@ void SystemClock_Config(void);
 *******************************************************************************/
 /* MSP Init */
 
-void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
+void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
 {
   GPIO_InitTypeDef GPIO_InitStruct;
-  if(hpcd->Instance==USB_OTG_FS)
+  if(pcdHandle->Instance==USB_OTG_FS)
   {
   /* USER CODE BEGIN USB_OTG_FS_MspInit 0 */
 
@@ -88,9 +89,9 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* hpcd)
   }
 }
 
-void HAL_PCD_MspDeInit(PCD_HandleTypeDef* hpcd)
+void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
 {
-  if(hpcd->Instance==USB_OTG_FS)
+  if(pcdHandle->Instance==USB_OTG_FS)
   {
   /* USER CODE BEGIN USB_OTG_FS_MspDeInit 0 */
 
@@ -278,7 +279,7 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   pdev->pData = &hpcd_USB_OTG_FS; 
   
   hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hpcd_USB_OTG_FS.Init.dev_endpoints = 7;
+  hpcd_USB_OTG_FS.Init.dev_endpoints = 4;
   hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
   hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
   hpcd_USB_OTG_FS.Init.ep0_mps = DEP0CTL_MPS_64;
@@ -288,7 +289,10 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
   hpcd_USB_OTG_FS.Init.vbus_sensing_enable = DISABLE;
   hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
-  HAL_PCD_Init(&hpcd_USB_OTG_FS);
+  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
   HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x40);
