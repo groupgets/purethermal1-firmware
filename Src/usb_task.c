@@ -44,10 +44,6 @@ void HAL_RCC_CSSCallback(void) {
 	DEBUG_PRINTF("Oh no! HAL_RCC_CSSCallback()\r\n");
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	DEBUG_PRINTF("Yay! HAL_GPIO_EXTI_Callback()\r\n");
-}
-
 #ifdef TMP007_OVERLAY 
 #include "ugui.h"
 UG_GUI gui; 
