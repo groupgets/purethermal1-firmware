@@ -156,6 +156,11 @@ int main(void)
   HAL_Delay(1000);
 
   init_lepton_command_interface();
+
+#ifndef Y16
+  disable_telemetry_and_radiometry();
+#endif
+
 #ifdef ENABLE_LEPTON_AGC
   enable_lepton_agc();
 #endif

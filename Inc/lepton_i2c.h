@@ -12,6 +12,7 @@ HAL_StatusTypeDef lepton_read_data(uint8_t * data);
 
 HAL_StatusTypeDef init_lepton_command_interface(void);
 HAL_StatusTypeDef enable_lepton_agc();
+HAL_StatusTypeDef disable_telemetry_and_radiometry(void);
 HAL_StatusTypeDef enable_telemetry(void);
 HAL_StatusTypeDef get_scene_stats(uint16_t *min, uint16_t *max, uint16_t *avg);
 HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut);

@@ -10,6 +10,7 @@
 #include "LEPTON_AGC.h"
 #include "LEPTON_VID.h"
 #include "LEPTON_OEM.h"
+#include "LEPTON_RAD.h"
 
 #ifdef USART_DEBUG
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -190,6 +191,25 @@ HAL_StatusTypeDef enable_lepton_agc()
   //   DEBUG_PRINTF("Could not set AGC scale factor\r\n");
   //   return HAL_ERROR;
   // }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef disable_telemetry_and_radiometry(void)
+{
+  LEP_RESULT result;
+
+  result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_DISABLED);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not disable telemetry %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_DISABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+    return HAL_ERROR;
+  }
 
   return HAL_OK;
 }
