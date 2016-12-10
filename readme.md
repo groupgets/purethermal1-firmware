@@ -72,6 +72,11 @@ or
 
     make USART_DEBUG=1
 
+alternatively, you can enable semihosting support to printf over JTAG/SWD:
+
+    make GDB_SEMIHOSTING=1
+
+See the "Debugging" section below for more information.
 
 ## Installing the Firmware
 
@@ -131,6 +136,46 @@ or use:
 
 Also, see the document [GroupGets PureThermal 1 Firmware Installation Guide for Windows OS](https://files.groupgets.com/purethermal/GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf)
 
+
+## Debugging
+
+This section covers `printf` over JTAG/SWD though GDB semihosting. You can also set breakpoints using GDB+OpenOCD,
+or with using the provided Eclipse projects. Additionally, you can enable printf support over UART.
+
+### Makefile projects
+
+For Makefile projects, you can enable semihosting support to enable printf over JTAG/SWD. This works with STLink/V2,
+Segger JLink, and should work with others as well.
+
+You must build the code with semihosting support enabled (GDB_SEMIHOSTING=1). Note that if you get build errors,
+you might have to `make clean` and retry. Simply run the following:
+
+    GDB_SEMIHOSTING=1 make debug
+
+The debugger should remain attached, and you should see printf output on the console, like so:
+
+    ...
+    xPSR: 0x01000000 pc: 0x08010b8c msp: 0x20020000
+    semihosting is enabled
+    auto erase enabled
+    Info : device id = 0x10006431
+    Info : flash size = 512kbytes
+    wrote 131072 bytes from file main.bin in 4.133242s (30.968 KiB/s)
+    adapter speed: 2000 kHz
+    Info : JTAG tap: stm32f4x.cpu tap/device found: 0x4ba00477 (mfg: 0x23b (ARM Ltd.), part: 0xba00, ver: 0x4)
+    Info : JTAG tap: stm32f4x.bs tap/device found: 0x06431041 (mfg: 0x020 (STMicroelectronics), part: 0x6431, ver: 0x0)
+    Hello, Lepton!
+    reading_tmp007_regs...
+    Initialized...
+
+### Eclipse projects
+
+Semihosting also works in Eclipse/OpenSTM32 projects. To enable this, locate the target debug configuration for
+the project and add the following line to Initialization Commands in the Startup tab:
+
+    monitor arm semihosting enable
+
+You should see print statements appear in the debugger console view.
 
 ## For More Information
 
