@@ -55,12 +55,18 @@ LIBS += -lm
 # INCLUDES = -I$(SRCDIR) $(LIBINC)
 INCLUDES = $(LIBINC)
 CFLAGS  = $(CPU) $(CMSIS_OPT) $(OTHER_OPT) -Wall -fno-common -fno-short-enums -Os $(INCLUDES) -Wfatal-errors -std=c99 -DGIT_VERSION
+ifdef GDB_SEMIHOSTING
+	CFLAGS += -DGDB_SEMIHOSTING
+endif
 ifdef USART_DEBUG
 	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
 endif
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp
 LDFLAGS = -Wl,--gc-sections,-Map=$*.map,-cref -fno-short-enums -Wl,--no-enum-size-warning -T $(LDSCRIPT) $(CPU)
+ifdef GDB_SEMIHOSTING
+	LDFLAGS += -specs=nosys.specs -specs=nano.specs -specs=rdimon.specs -lrdimon
+endif
 ARFLAGS = cr
 OBJCOPYFLAGS = -Obinary
 OBJDUMPFLAGS = -S
@@ -91,6 +97,15 @@ flash: $(BIN)
 	       -c "flash write_image erase $(BIN) 0x08000000" \
 	       -c "reset run" \
 	       -c "shutdown" \
+	       || echo "ERROR: could not connect to target, please try again"
+
+debug: $(BIN)
+	$(OCD) -f PureThermal1.cfg \
+	       -c "init" \
+	       -c "reset halt" \
+	       -c "arm semihosting enable" \
+	       -c "flash write_image erase $(BIN) 0x08000000" \
+	       -c "reset run" \
 	       || echo "ERROR: could not connect to target, please try again"
 
 $(BIN): main.out
