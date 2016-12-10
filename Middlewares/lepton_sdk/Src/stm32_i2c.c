@@ -65,7 +65,7 @@
 #define MAX_TXRX_SIZE_BYTES         (1024)
 #define COMM_TIMEOUT_MS             (500)
 
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)

@@ -29,7 +29,7 @@ struct rgb_to_yuv_state {
   yuv422_buffer_t *restrict buffer;
 };
 
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)

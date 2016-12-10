@@ -8,7 +8,7 @@
 #include "project_config.h"
 
 
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)

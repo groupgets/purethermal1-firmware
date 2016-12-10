@@ -20,7 +20,7 @@
 uint8_t lepton_raw[60*80*2];
 
 extern volatile int restart_frame;
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)

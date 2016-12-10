@@ -34,7 +34,7 @@ static yuv422_buffer_t *last_buffer;
 static lepton_buffer *last_buffer_rgb;
 #endif
 
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)
