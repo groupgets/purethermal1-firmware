@@ -68,7 +68,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
-#ifdef USART_DEBUG
+#if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
 #define DEBUG_PRINTF(...)
@@ -104,6 +104,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* USER CODE BEGIN 0 */
 
+#if defined(GDB_SEMIHOSTING)
+extern void initialise_monitor_handles(void);
+#endif
 
 /* USER CODE END 0 */
 
@@ -136,6 +139,10 @@ int main(void)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 2 */
+#if defined(GDB_SEMIHOSTING)
+  initialise_monitor_handles();
+#endif
+
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_8, GPIO_PIN_RESET);
   
   /*Fix RX and TX pin switch by setting the following pins */

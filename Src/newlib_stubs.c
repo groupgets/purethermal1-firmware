@@ -1,3 +1,4 @@
+#if !defined(GDB_SEMIHOSTING)
 /*
  * newlib_stubs.c
  *
@@ -241,3 +242,4 @@ int _write(int file, char *ptr, int len) {
     }
     return len;
 }
+#endif
