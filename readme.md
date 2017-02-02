@@ -44,21 +44,6 @@ Then you need to add this location to your path. Add to your .bashrc, or every t
     export PATH=$PATH:/usr/local/gcc-arm-none-eabi-4_9-2015q3/bin
 
 
-#### Windows
-
-Toolchain
-https://launchpad.net/gcc-arm-embedded
-
-Msys
-http://www.mingw.org/wiki/msys 
--or- install MINGW with MSYS. 
-http://sourceforge.net/projects/mingw/files/latest/download?source=files
-
-Command Line directions for building and updating the firmware:
-Install Above software.
-Add to your path, MSYS `/bin` and Toolchain arm gcc `/bin` folders. 
-
-
 ### Clone and Build
 
     git clone https://github.com/groupgets/purethermal1-firmware
@@ -78,64 +63,68 @@ alternatively, you can enable semihosting support to printf over JTAG/SWD:
 
 See the "Debugging" section below for more information.
 
-## Installing the Firmware
+If you have [OpenOCD](http://openocd.org) installed (available in most package management systems), you can then flash
+the compiled firmware (see next section for required hardware):
 
-To put the device in boot loader mode:
-Plug in USB Cable
-Power on device first with ON/OFF button press
-While holding the BOOT0 button, press the RST button, Release the RST first, then release the BOOT0 button
+    make flash
+
+## Installing Release Firmware
+
+[Old instructions for flashing PureThermal 1 over USB](https://files.groupgets.com/purethermal/pt1_firmware_guide_over_usb.md) (warning: this only works on early PureThermal 1 devices).
+
+**Required Hardware**
+
+* [STLInk/V2]()
+* [ARM MCU JTAG Adapter for PureThermal 1]( https://groupgets.com/manufacturers/getlab/products/arm-mcu-jtag-adapter-for-purethermal-1)
+* [PureThermal 1 - FLIR Lepton Smart I/O Module]( https://groupgets.com/manufacturers/getlab/products/purethermal-1-flir-lepton-smart-i-o-module)
+* Micro USB Cable
+
+**Hardware Instructions**
+
+1. Attach ribbon cable from STLINK/V2 into ARM Adapter.
+2. Plug in ribbon cable from ARM Adapter into PureThermal1's ZIF socket.
+3. Insert mini-usb cable into STLINK/V2 and computer.
+4. Insert micro-usb cable into PureThermal 1 and computer.
+5. Power on PureThermal 1 if not already on with ON/OFF button press.
+
+### Mac OS
+
+  * [Video Guide](https://www.youtube.com/watch?v=omKEBaMih5g)
+
+1. In terminal download and install the STLink software using homebrew:
+
+        brew install stlink
+
+2. Navigate to the folder which contains the PureThermal 1 firmware (pt1-vx.xx.x.bin or pt1-vx.xx.x+Y16), or build with the instructions above.
+3. Use the following command to erase the firmware on the PureThermal 1:
+
+        st-flash erase
+
+4. To write the firmware use one of the following commands (replace the X's with the version of firmware you have downloaded):
+
+        st-flash --reset write pt1-vX.XX.X.bin 0x08000000
+
+    Y16 Firmware:
+
+        st-flash --reset write pt1-vX.XX.X+Y16.bin 0x08000000
+
+    Output of a Makefile build:
+
+        st-flash --reset write main.bin 0x08000000
 
 ### Linux
 
-Install dfu-util:
-
-    sudo apt-get install dfu-util
-
-Then run:
-
-    dfu-util -a 0 -D main.bin -s 0x08000000
-
-or use:
-
-    scripts/flash.sh
-
-
-### OS X
-
-Install dfu-util via Homebrew
-
-    brew install dfu-util
-
-Then run:
-
-    dfu-util -a 0 -D main.bin -s 0x08000000
-
-or use:
-
-    scripts/flash.sh
-
+* See the [texane/stlink github page](https://github.com/texane/stlink) for detailed instructions for various Linux distributions. 
 
 ### Windows
 
-DfuSe USB drivers. 
-http://www.st.com/web/en/catalog/tools/FM147/CL1794/SC961/SS1533/PF257916#
+  * [Video Guide](https://www.youtube.com/watch?v=epo64Zp7TsA)
 
-win32 DFU tools
-https://files.groupgets.com/purethermal/win32_dfu.zip
-
-To unstall DFU drivers, may need to use the device manager to select the st drivers
-
-extract `win32_dfu.zip` to the current folder.
-
-    win32_dfu\bin2dfu --i main.bin --a 0x08000000 --o main.dfu
-    win32_dfu\DfuSeCommand -c -d --fn main.dfu
-
-or use:
-
-    scripts/make_and_flash.bat
-
-Also, see the document [GroupGets PureThermal 1 Firmware Installation Guide for Windows OS](https://files.groupgets.com/purethermal/GroupGets_Pure_Thermal_Firmware_Installation_Guide_for_Windows_OS.pdf)
-
+1. [Download the STM32 ST-LINK Utility](http://www.st.com/en/embedded-software/stsw-link004.html) (STSW-LINK004)
+2. Install STM32 ST-Link Utility and then open the software.
+3. Select "Target" then "Connect" to connect the software to the PureThermal 1.
+4. Next select "File" then "Open file...", now navigate to the folder which contains the PureThermal 1 firmware and select & open the firmware you want to flash (pt1-vX.XX.X.bin or pt1-vX.XX.X+Y16).
+5. Finally click "Target" then "Program & Verify...", make sure that the "Reset after programming" box is selected then press the "Start" button.
 
 ## Debugging
 
