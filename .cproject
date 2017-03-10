@@ -64,7 +64,7 @@
 								<option id="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script.721750031" name="Linker Script (-T)" superClass="fr.ac6.managedbuild.tool.gnu.cross.c.linker.script" value="../STM32F411CEUx_FLASH.ld" valueType="string"/>
 								<option id="gnu.c.link.option.libs.2085652620" name="Libraries (-l)" superClass="gnu.c.link.option.libs" valueType="libs"/>
 								<option id="gnu.c.link.option.paths.8806806" name="Library search path (-L)" superClass="gnu.c.link.option.paths"/>
-								<option id="gnu.c.link.option.ldflags.1740258603" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nosys.specs -specs=nano.specs -specs=rdimon.specs -lrdimon" valueType="string"/>
+								<option id="gnu.c.link.option.ldflags.1740258603" name="Linker flags" superClass="gnu.c.link.option.ldflags" value="-specs=nano.specs -specs=rdimon.specs -lrdimon" valueType="string"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.705418982" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>

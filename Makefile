@@ -65,7 +65,9 @@ endif
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp
 LDFLAGS = -Wl,--gc-sections,-Map=$*.map,-cref -fno-short-enums -Wl,--no-enum-size-warning -T $(LDSCRIPT) $(CPU)
 ifdef GDB_SEMIHOSTING
-	LDFLAGS += -specs=nosys.specs -specs=nano.specs -specs=rdimon.specs -lrdimon
+	LDFLAGS += -specs=nano.specs -specs=rdimon.specs -lrdimon
+else
+	LDFLAGS += -specs=nosys.specs
 endif
 ARFLAGS = cr
 OBJCOPYFLAGS = -Obinary
