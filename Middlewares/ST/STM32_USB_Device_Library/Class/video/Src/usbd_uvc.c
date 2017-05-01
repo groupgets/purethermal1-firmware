@@ -501,38 +501,38 @@ __ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
   .uvc_vs_frames_formats = {
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YUYV, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YUYV, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YUYV, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(Y16, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, Y16, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, Y16, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(NV12, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, NV12, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, NV12, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YU12, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YU12, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YU12, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(GREY, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
 #ifndef Y16
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(RGB565, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, RGB565, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, RGB565, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
     {
       .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(BGR3, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, BGR3, 80, 60),
+      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, BGR3, OUTPUT_LINE_LENGTH, OUTPUT_LINES),
       .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
     },
 #endif

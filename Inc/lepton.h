@@ -14,7 +14,7 @@
 #define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
 #ifdef Y16
-#define TELEMETRY_NUM_LINES (3)
+#define TELEMETRY_NUM_LINES (1)
 #else
 #define TELEMETRY_NUM_LINES (0)
 #endif
@@ -117,6 +117,10 @@ typedef struct _lepton_buffer {
   lepton_status status;
 } lepton_buffer;
 
+#define NUM_SEGMENTS (4)
+typedef lepton_buffer frame_buffer[NUM_SEGMENTS];
+
+
 typedef struct __attribute__((packed)) _yuv422 {
   uint8_t uv;
   uint8_t y;
@@ -128,6 +132,7 @@ typedef struct __attribute__((packed)) _yuv422_buffer {
   yuv422_row_t data[IMAGE_NUM_LINES];
 } yuv422_buffer_t;
 
+void set_current_lepton_buffer(lepton_buffer *buff);
 lepton_status complete_lepton_transfer(lepton_buffer *);
 lepton_buffer* lepton_transfer(void);
 

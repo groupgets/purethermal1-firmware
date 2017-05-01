@@ -259,6 +259,74 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
   return HAL_OK;
 }
 
+HAL_StatusTypeDef enable_user_ffc_mode()
+{
+	LEP_RESULT result;
+	LEP_SYS_FFC_SHUTTER_MODE_OBJ_T shutterModeObj;
+
+	result = LEP_GetSysFfcShutterModeObj( &hport_desc, &shutterModeObj );
+	if( result != LEP_OK ) {
+		DEBUG_PRINTF("Could not get Sys FFC shutter mode object %d\r\n", result);
+		return HAL_ERROR;
+	}
+
+	shutterModeObj.shutterMode = LEP_SYS_FFC_SHUTTER_MODE_MANUAL;
+	shutterModeObj.desiredFfcPeriod = shutterModeObj.desiredFfcPeriod * 6; // Every half hour
+	shutterModeObj.explicitCmdToOpen = LEP_TRUE;
+
+	result = LEP_SetSysFfcShutterModeObj( &hport_desc, shutterModeObj );
+	if( result != LEP_OK ) {
+		DEBUG_PRINTF("Could not get Sys FFC shutter mode object %d\r\n", result);
+		return HAL_ERROR;
+	}
+
+	return HAL_OK;
+}
+
+int lepton_rad_enable() {
+	int error = 0;
+
+	error =  LEP_SetRadEnableState( &hport_desc, LEP_RAD_ENABLE);
+	if (error != LEP_OK) {
+			return error;
+	} else if (error == LEP_OK ) {
+			DEBUG_PRINTF("Rad mode enabled." );
+	}
+	return 0;
+}
+
+int lepton_rad_disable() {
+	int error = 0;
+
+    error = LEP_SetRadEnableState( &hport_desc, LEP_RAD_DISABLE);
+	if (error != LEP_OK) {
+		return error;
+	} else if (error == LEP_OK){
+		DEBUG_PRINTF( "Rad mode disabled." );
+	}
+	return 0;
+}
+
+int lepton_get_rad_state() {
+	LEP_UINT32 enableState = 0;
+	LEP_RAD_ENABLE_E_PTR radEnableStatePtr = &enableState;
+
+	radEnableStatePtr = (LEP_RAD_ENABLE_E_PTR)malloc(sizeof(LEP_UINT32));
+	int error;
+	if ((error = LEP_GetRadEnableState( &hport_desc, radEnableStatePtr))!= LEP_OK) {
+		DEBUG_PRINTF("Error=%x, in rad state.",error);
+		return error;
+	}
+	else {
+		DEBUG_PRINTF("Rad enable state variale= %x", *radEnableStatePtr );
+	}
+
+	return 0;
+}
+
+
+
+
 // HAL_OK       = 0x00,
 //  HAL_ERROR    = 0x01,
 //  HAL_BUSY     = 0x02,
@@ -292,6 +360,12 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
 
   if (print_aux_temp_celcius() != HAL_OK)
     return HAL_ERROR;
+
+  if (enable_user_ffc_mode() != HAL_OK)
+	 return HAL_ERROR;
+
+  if (lepton_rad_enable() != HAL_OK)
+	return HAL_ERROR;
 
   return HAL_OK;
 }

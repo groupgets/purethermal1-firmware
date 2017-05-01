@@ -112,7 +112,7 @@ __ALIGN_BEGIN struct uvc_streaming_control videoCommitControl __ALIGN_END =
   .wCompQuality = 0,
   .wCompWindowSize = 0,
   .wDelay = 0,
-  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
+  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(YUYV)),
   .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
   .dwClockFrequency = 0,
   .bmFramingInfo = 0,
@@ -132,7 +132,7 @@ __ALIGN_BEGIN struct uvc_streaming_control videoProbeControl __ALIGN_END =
   .wCompQuality = 0,
   .wCompWindowSize = 0,
   .wDelay = 0,
-  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
+  .dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(YUYV)),
   .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
   .dwClockFrequency = 0,
   .bmFramingInfo = 0,
@@ -449,23 +449,23 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
         switch(videoProbeControl.bFormatIndex) {
         case VS_FMT_INDEX(NV12):
         case VS_FMT_INDEX(YU12):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(NV12));
           break;
         case VS_FMT_INDEX(GREY):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(GREY));
           break;
         case VS_FMT_INDEX(Y16):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(Y16));
           break;
         case VS_FMT_INDEX(BGR3):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(BGR3));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(BGR3));
           break;
         case VS_FMT_INDEX(RGB565):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(RGB565));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(RGB565));
           break;
         case VS_FMT_INDEX(YUYV):
         default:
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(OUTPUT_LINE_LENGTH, OUTPUT_LINES,VS_FMT_SIZE(YUYV));
           break;
         }
       }

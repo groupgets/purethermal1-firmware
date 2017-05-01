@@ -25,7 +25,7 @@ CMSIS_DEVSUP = $(CMSIS)/Device/ST/$(DEVICE_FAMILY)/
 CMSIS_OPT = -D$(DEVICE_TYPE) -DUSE_HAL_DRIVER
 OTHER_OPT = "-D__weak=__attribute__((weak))" "-D__packed=__attribute__((__packed__))" 
 
-LDSCRIPT = ./STM32F411CEUx_FLASH.ld
+LDSCRIPT = ./STM32F412CGUx_FLASH.ld
 
 SRCDIR := Src/
 INCDIR := Inc/
