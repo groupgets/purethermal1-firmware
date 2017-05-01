@@ -14,7 +14,11 @@ PT_THREAD( uart_lepton_send(struct pt *pt,char * buffer));
 PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict rgb, yuv422_buffer_t *restrict buffer));
 
 // Synchronization helpers
+#ifdef LEPTON2
+uint32_t get_lepton_buffer(lepton_buffer **buffer);
+#else /* Lepton 3 */
 uint32_t get_frame_buffer(frame_buffer **buffer);
+#endif
 uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer);
 
 //Other

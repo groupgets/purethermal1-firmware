@@ -35,6 +35,21 @@ struct rgb_to_yuv_state {
 #define DEBUG_PRINTF(...)
 #endif
 
+#ifdef LEPTON2
+uint32_t get_lepton_buffer(lepton_buffer **buffer)
+{
+  if (buffer != NULL)
+    *buffer = completed_buffer;
+	return completed_frame_count;
+}
+
+uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
+{
+  if (buffer != NULL)
+    *buffer = &yuv_buffers[completed_yuv_frame_count%2];
+	return completed_yuv_frame_count;
+}
+#else
 #define NUM_FRAMES_BUFFERED (3)
 frame_buffer lepton_buffers[NUM_FRAMES_BUFFERED];
 
@@ -55,6 +70,8 @@ uint32_t get_frame_buffer(frame_buffer **buffer)
     *buffer = &lepton_buffers[prev_frame(inprogress_index)];
 	return completed_frame_count;
 }
+
+#endif
 
 void init_lepton_state(void);
 void init_lepton_state(void)
@@ -96,9 +113,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 	while (1)
 	{
+#ifdef LEPTON2
+		current_buffer = lepton_transfer();
+#else
 		current_buffer = &lepton_buffers[inprogress_index][pending_segment];
 		set_current_lepton_buffer(current_buffer);
 		lepton_transfer();
+#endif
 
 		transferring_timer = HAL_GetTick();
 		PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
@@ -146,12 +167,33 @@ PT_THREAD( lepton_task(struct pt *pt))
 			last_tick = curtick;
 			last_logged_count = current_frame_count;
 		}
+#ifdef LEPTON2
+			// Need to update completed buffer for clients?
+	#ifdef Y16
+			if (completed_frame_count != current_frame_count)
+	#else
+			if ((current_frame_count % 3) == 0)
+	#endif
+			{
+				completed_buffer = current_buffer;
+				completed_frame_count = current_frame_count;
 
+				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
+
+	#ifndef Y16
+				PT_SPAWN(
+					pt,
+					&rgb_to_yuv_pt,
+					rgb_to_yuv(&rgb_to_yuv_pt, completed_buffer, &yuv_buffers[(completed_yuv_frame_count + 1) % 2])
+				);
+	#endif
+			}
+#else
 		int segment_number = (current_buffer->lines[20].header[0] >> 12) & 0x7;
 		int segment_index = segment_number - 1; // number = 0, index = -1 indicates that this is a repeat
 
 		// Need to update completed buffer for clients?
-		if (pending_segment == segment_index){
+		if (pending_segment == segment_index) {
 			if(pending_segment == 3){
 				completed_frame_count ++;
 				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
@@ -163,7 +205,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 		}else{
 			pending_segment = 0;
 		}
+#endif
 	}
+	
 	PT_END(pt);
 }
 

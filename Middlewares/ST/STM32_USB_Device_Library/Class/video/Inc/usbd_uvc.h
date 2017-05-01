@@ -63,8 +63,13 @@
 #define VIDEO_PACKET_SIZE                             ((unsigned int)(482))
 #define VIDEO_MAX_SETUP_PACKET_SIZE                   ((unsigned int)(1024))
 #define CMD_PACKET_SIZE                               ((unsigned int)(8))
-#define OUTPUT_LINES								  (120)
-#define OUTPUT_LINE_LENGTH							  (160)
+#ifdef LEPTON2
+  #define OUTPUT_LINES      	(60)  
+  #define OUTPUT_LINE_LENGTH    (80)
+#else
+  #define OUTPUT_LINES		(120)
+  #define OUTPUT_LINE_LENGTH	(160)
+#endif
 
 #define CAM_FPS                                       9
 

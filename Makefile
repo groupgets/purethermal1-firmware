@@ -25,7 +25,11 @@ CMSIS_DEVSUP = $(CMSIS)/Device/ST/$(DEVICE_FAMILY)/
 CMSIS_OPT = -D$(DEVICE_TYPE) -DUSE_HAL_DRIVER
 OTHER_OPT = "-D__weak=__attribute__((weak))" "-D__packed=__attribute__((__packed__))" 
 
-LDSCRIPT = ./STM32F412CGUx_FLASH.ld
+ifndef STM32F411CEU
+	LDSCRIPT = ./STM32F412CGUx_FLASH.ld
+else
+	LDSCRIPT = ./STM32F411CEUx_FLASH.ld
+endif
 
 SRCDIR := Src/
 INCDIR := Inc/
@@ -61,6 +65,9 @@ endif
 ifdef USART_DEBUG
 	USART_DEBUG_SPEED ?= 115200
 	CFLAGS += -DUSART_DEBUG -DUSART_DEBUG_SPEED=$(USART_DEBUG_SPEED)
+endif
+ifdef LEPTON2
+	CFLAGS += -DLEPTON2
 endif
 ASFLAGS = $(CFLAGS) -x assembler-with-cpp
 LDFLAGS = -Wl,--gc-sections,-Map=$*.map,-cref -fno-short-enums -Wl,--no-enum-size-warning -T $(LDSCRIPT) $(CPU)

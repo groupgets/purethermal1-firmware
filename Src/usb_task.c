@@ -27,8 +27,20 @@ void change_overlay_mode(void)
 }
 
 static int last_frame_count;
+#ifdef LEPTON2
+	#ifdef Y16
+	static lepton_buffer *last_buffer;
+	#else
+	static yuv422_buffer_t *last_buffer;
+	static lepton_buffer *last_buffer_rgb;
+	#endif
+#endif
 #ifdef Y16
-static frame_buffer *last_buffer;
+	#ifdef LEPTON2
+		static lepton_buffer *last_buffer;
+	#else
+		static frame_buffer *last_buffer;
+	#endif
 #else
 static yuv422_buffer_t *last_buffer;
 static lepton_buffer *last_buffer_rgb;
@@ -227,7 +239,11 @@ PT_THREAD(usb_task(struct pt *pt))
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0;
+#ifdef LEPTON2
+	static uint32_t uvc_xmit_plane = 0;
+#else
 	static uint32_t lepton_lines_sent = 0;
+#endif
 	static uint8_t packet[VIDEO_PACKET_SIZE];
 
 	PT_BEGIN(pt);
@@ -240,14 +256,19 @@ PT_THREAD(usb_task(struct pt *pt))
 	while (1)
 	{
 #ifdef Y16
+	#ifdef LEPTON2
+		PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame_count);
+		last_frame_count = get_lepton_buffer(&last_buffer);
+	#else
 		PT_WAIT_UNTIL(pt, get_frame_buffer(NULL) != last_frame_count);
 		last_frame_count = get_frame_buffer(&last_buffer);
+	#endif
 #else
 		PT_WAIT_UNTIL(pt, get_lepton_buffer_yuv(NULL) != last_frame_count);
 		last_frame_count = get_lepton_buffer_yuv(&last_buffer);
 		get_lepton_buffer(&last_buffer_rgb);
 #endif
-
+#ifndef LEPTON2
 		// perform stream initialization
 		if (uvc_stream_status == 1)
 		{
@@ -309,7 +330,7 @@ PT_THREAD(usb_task(struct pt *pt))
 			}
 			PT_YIELD(pt);
 		}
-
+#endif /* not defined LEPTON2 */
 #ifndef ENABLE_LEPTON_AGC
 		switch (videoCommitControl.bFormatIndex)
 		{
@@ -358,7 +379,272 @@ PT_THREAD(usb_task(struct pt *pt))
 			}
 #endif
 		}
-		PT_YIELD(pt);
+#ifdef LEPTON2
+    // perform stream initialization
+    if (uvc_stream_status == 1)
+    {
+      DEBUG_PRINTF("Starting UVC stream...\r\n");
+
+      uvc_header[0] = 2;
+      uvc_header[1] = 0;
+      UVC_Transmit_FS(uvc_header, 2);
+
+      uvc_stream_status = 2;
+      uvc_xmit_row = 0;
+      uvc_xmit_plane = 0;
+    }
+
+    // put image on stream as long as stream is open
+    while (uvc_stream_status == 2)
+    {
+      count = 0;
+
+      packet[count++] = uvc_header[0];
+      packet[count++] = uvc_header[1];
+
+      switch (videoCommitControl.bFormatIndex)
+      {
+        // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
+        case VS_FMT_INDEX(NV12):
+        case VS_FMT_INDEX(YU12):
+        {
+          // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
+
+          switch (uvc_xmit_plane)
+          {
+            default:
+            case 0: // Y
+            {
+              // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+              {
+                for (i = 0; i < FRAME_LINE_LENGTH; i++)
+                {
+#ifdef Y16
+                  uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+                  uint8_t val = last_buffer->data[uvc_xmit_row][i].y;
+#endif
+                  // AGC is on so just use lower 8 bits
+                  packet[count++] = (uint8_t)val;
+                }
+
+                uvc_xmit_row++;
+              }
+
+              if (uvc_xmit_row == IMAGE_NUM_LINES)
+              {
+                uvc_xmit_plane = 1;
+                uvc_xmit_row = 0;
+              }
+
+              break;
+            }
+            case 1: // VU
+            case 2:
+            {
+              int incr = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(NV12) ? 1 : 2);
+              int plane_offset = uvc_xmit_plane - 1;
+
+              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+              {
+                for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE; i += incr)
+                {
+#ifdef Y16
+                  packet[count++] = 128;
+#else
+                  packet[count++] = last_buffer->data[uvc_xmit_row][i + plane_offset].uv;
+#endif
+                }
+
+                uvc_xmit_row += 2;
+              }
+
+              // plane is done
+              if (uvc_xmit_row == IMAGE_NUM_LINES)
+              {
+                if (uvc_xmit_plane == 1 && videoCommitControl.bFormatIndex == VS_FMT_INDEX(YU12))
+                {
+                  uvc_xmit_plane = 2;
+                  uvc_xmit_row = 0;
+                }
+                else
+                {
+                  packet[1] |= 0x2; // Flag end of frame
+                }
+              }
+              break;
+            }
+          }
+  
+          break;
+        }
+        case VS_FMT_INDEX(GREY):
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+#ifdef Y16
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+              uint8_t val = last_buffer->data[uvc_xmit_row][i].y;
+#endif
+              // AGC is on, so just use lower 8 bits
+              packet[count++] = (uint8_t)val;
+            }
+
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        case VS_FMT_INDEX(Y16):
+        {
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+#ifdef Y16
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+#else
+              uint16_t val = last_buffer->data[uvc_xmit_row][i].y;
+#endif
+              packet[count++] = (uint8_t)((val >> 0) & 0xFF);
+              packet[count++] = (uint8_t)((val >> 8) & 0xFF);
+            }
+
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        default:
+        case VS_FMT_INDEX(YUYV):
+        {
+#ifdef Y16
+          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint16_t val = last_buffer->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              // AGC is on so just use lower 8 bits
+              packet[count++] = (uint8_t)val;
+              packet[count++] = 128;
+            }
+
+            uvc_xmit_row++;
+          }
+#else
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            memcpy(&packet[count], last_buffer->data[uvc_xmit_row], sizeof(yuv422_row_t));
+            count += sizeof(yuv422_row_t);
+            uvc_xmit_row++;
+          }
+#endif
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+#ifndef Y16
+        case VS_FMT_INDEX(BGR3):
+        {
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              rgb_t rgb = last_buffer_rgb->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              packet[count++] = rgb.b;
+              packet[count++] = rgb.g;
+              packet[count++] = rgb.r;
+            }
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+        case VS_FMT_INDEX(RGB565):
+        {
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          {
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              rgb_t rgb = last_buffer_rgb->lines[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
+              uint16_t val =
+                ((rgb.r >> 3) << 11) |
+                ((rgb.g >> 2) <<  5) |
+                ((rgb.b >> 3) <<  0);
+
+              packet[count++] = (val >> 0) & 0xff;
+              packet[count++] = (val >> 8) & 0xff;
+            }
+            uvc_xmit_row++;
+          }
+
+          // image is done
+          if (uvc_xmit_row == IMAGE_NUM_LINES)
+          {
+            packet[1] |= 0x2; // Flag end of frame
+          }
+
+          break;
+        }
+#endif
+      }
+
+      // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
+      // fflush(stdout);
+
+      int retries = 1000;
+      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
+      {
+        if (--retries == 0) {
+//          DEBUG_PRINTF("UVC_Transmit_FS() failed (no one is acking)\r\n");
+          break;
+        }
+      }
+
+      if (packet[1] & 0x2)
+      {
+        uvc_header[1] ^= 1; // toggle bit 0 for next new frame
+        uvc_xmit_row = 0;
+        uvc_xmit_plane = 0;
+        // DEBUG_PRINTF("Frame complete\r\n");
+        break;
+      }
+      PT_YIELD(pt);
+    }
+    PT_YIELD(pt);
+#endif
+
+
 	}
 	PT_END(pt);
 }

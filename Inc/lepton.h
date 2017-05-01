@@ -14,7 +14,11 @@
 #define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
 #ifdef Y16
+  #ifndef LEPTON2 /* This is for Lepton 3 */
 #define TELEMETRY_NUM_LINES (1)
+  #else /* This is for Lepton 2 */
+#define TELEMETRY_NUM_LINES (3)
+  #endif
 #else
 #define TELEMETRY_NUM_LINES (0)
 #endif
