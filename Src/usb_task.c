@@ -239,12 +239,12 @@ PT_THREAD( usb_task(struct pt *pt))
 	while (1)
 	{
 #ifdef Y16
-		PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame_count);
-		last_frame_count = get_lepton_buffer(&last_buffer);
+		PT_WAIT_UNTIL(pt, (last_buffer = dequeue_lepton_buffer()) != NULL);
+		last_frame_count++;
 #else
-		PT_WAIT_UNTIL(pt, get_lepton_buffer_yuv(NULL) != last_frame_count);
-		last_frame_count = get_lepton_buffer_yuv(&last_buffer);
-		get_lepton_buffer(&last_buffer_rgb);
+		PT_WAIT_UNTIL(pt, (last_buffer_rgb = dequeue_lepton_buffer()) != NULL);
+		get_lepton_buffer_yuv(&last_buffer);
+		last_frame_count++;
 #endif
 
 #ifndef ENABLE_LEPTON_AGC
@@ -295,8 +295,6 @@ PT_THREAD( usb_task(struct pt *pt))
 			}
 #endif
 		}
-
-
 
     // perform stream initialization
     if (g_uvc_stream_status == 1)
@@ -559,7 +557,12 @@ PT_THREAD( usb_task(struct pt *pt))
       }
       PT_YIELD(pt);
     }
-    PT_YIELD(pt);
+
+#ifdef Y16
+    return_lepton_buffer(last_buffer);
+#else
+    return_lepton_buffer(last_buffer_rgb);
+#endif
 	}
 	PT_END(pt);
 }

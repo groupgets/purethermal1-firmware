@@ -31,7 +31,6 @@ static inline HAL_StatusTypeDef setup_lepton_spi_rx(SPI_HandleTypeDef *hspi, uin
 static void lepton_spi_rx_dma_cplt(DMA_HandleTypeDef *hdma);
 
 void 	init_lepton_task();
-lepton_buffer* get_next_lepton_buffer();
 
 lepton_status complete_lepton_transfer(lepton_buffer* buffer)
 {
@@ -39,9 +38,8 @@ lepton_status complete_lepton_transfer(lepton_buffer* buffer)
   return buffer->status;
 }
 
-lepton_buffer* lepton_transfer(void)
+void lepton_transfer(lepton_buffer *buf)
 {
-  static lepton_buffer *buf;
   HAL_StatusTypeDef status;
 
   // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
@@ -50,7 +48,6 @@ lepton_buffer* lepton_transfer(void)
   {
   default:
   case LEPTON_XFER_STATE_START:
-    buf = get_next_lepton_buffer();
     status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH);
     break;
   case LEPTON_XFER_STATE_SYNC:
@@ -65,11 +62,10 @@ lepton_buffer* lepton_transfer(void)
   {
     DEBUG_PRINTF("Error setting up SPI DMA receive: %d\r\n", status);
     buf->status = LEPTON_STATUS_RESYNC;
-    return buf;
+    return;
   }
 
   buf->status = LEPTON_STATUS_TRANSFERRING;
-  return buf;
 }
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)

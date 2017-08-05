@@ -129,7 +129,7 @@ typedef struct __attribute__((packed)) _yuv422_buffer {
 } yuv422_buffer_t;
 
 lepton_status complete_lepton_transfer(lepton_buffer *);
-lepton_buffer* lepton_transfer(void);
+void lepton_transfer(lepton_buffer *buf);
 
 void print_image_binary_background(void);
 void lepton_init(void );
