@@ -14,11 +14,14 @@
 #include "tasks.h"
 #include "project_config.h"
 
-
 lepton_buffer *completed_buffer;
 uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
+
+#define RING_SIZE (4)
+lepton_buffer lepton_buffers[RING_SIZE];
+static uint32_t current_buffer_index = 0;
 
 uint32_t completed_yuv_frame_count;
 yuv422_buffer_t yuv_buffers[2];
@@ -35,6 +38,13 @@ struct rgb_to_yuv_state {
 #define DEBUG_PRINTF(...)
 #endif
 
+lepton_buffer* get_next_lepton_buffer()
+{
+  current_buffer_index = ((current_buffer_index + 1) % RING_SIZE);
+  lepton_buffer* packet = &lepton_buffers[current_buffer_index];
+  packet->status = LEPTON_STATUS_OK;
+  return packet;
+}
 
 uint32_t get_lepton_buffer(lepton_buffer **buffer)
 {
@@ -50,10 +60,15 @@ uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
 	return completed_yuv_frame_count;
 }
 
-void init_lepton_state(void);
-void init_lepton_state(void)
+void init_lepton_task()
 {
-
+  int i;
+  for (i = 0; i < RING_SIZE; i++)
+  {
+    lepton_buffers[i].number = i;
+    lepton_buffers[i].status = LEPTON_STATUS_OK;
+    DEBUG_PRINTF("Initialized lepton buffer %d @ %p\r\n", i, &lepton_buffers[i]);
+  }
 }
 
 static float k_to_c(uint16_t unitsKelvin)

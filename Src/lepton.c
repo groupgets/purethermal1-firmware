@@ -23,9 +23,6 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-#define RING_SIZE (4)
-lepton_buffer lepton_buffers[RING_SIZE];
-static uint32_t current_buffer_index = 0;
 static lepton_xfer_state xfer_state = LEPTON_XFER_STATE_START;
 
 // These replace HAL library functions as they're a lot shorter and more specialized
@@ -33,13 +30,8 @@ static inline HAL_StatusTypeDef start_lepton_spi_dma(DMA_HandleTypeDef *hdma, ui
 static inline HAL_StatusTypeDef setup_lepton_spi_rx(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size);
 static void lepton_spi_rx_dma_cplt(DMA_HandleTypeDef *hdma);
 
-lepton_buffer* get_next_lepton_buffer()
-{
-  current_buffer_index = ((current_buffer_index + 1) % RING_SIZE);
-  lepton_buffer* packet = &lepton_buffers[current_buffer_index];
-  packet->status = LEPTON_STATUS_OK;
-  return packet;
-}
+void 	init_lepton_task();
+lepton_buffer* get_next_lepton_buffer();
 
 lepton_status complete_lepton_transfer(lepton_buffer* buffer)
 {
@@ -49,7 +41,7 @@ lepton_status complete_lepton_transfer(lepton_buffer* buffer)
 
 lepton_buffer* lepton_transfer(void)
 {
-  lepton_buffer *buf;
+  static lepton_buffer *buf;
   HAL_StatusTypeDef status;
 
   // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
@@ -62,11 +54,9 @@ lepton_buffer* lepton_transfer(void)
     status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH);
     break;
   case LEPTON_XFER_STATE_SYNC:
-    buf = &lepton_buffers[current_buffer_index];
     status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH);
     break;
   case LEPTON_XFER_STATE_DATA:
-    buf = &lepton_buffers[current_buffer_index];
     status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[1]), FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES - 1));
     break;
   }
@@ -131,14 +121,6 @@ static void lepton_spi_rx_dma_cplt(DMA_HandleTypeDef *hdma)
 
 void lepton_init(void )
 {
-  int i;
-  for (i = 0; i < RING_SIZE; i++)
-  {
-    lepton_buffers[i].number = i;
-    lepton_buffers[i].status = LEPTON_STATUS_OK;
-    DEBUG_PRINTF("Initialized lepton buffer %d @ %p\r\n", i, &lepton_buffers[i]);
-  }
-
 	LEPTON_RESET_L_LOW;
   LEPTON_PW_DWN_LOW;
 
@@ -166,6 +148,7 @@ void lepton_init(void )
   /* Enable SPI peripheral */
   __HAL_SPI_ENABLE(&hspi2);
 
+  init_lepton_task();
 }
 
 static inline HAL_StatusTypeDef start_lepton_spi_dma(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength)
