@@ -72,7 +72,8 @@
 
 // #define UVC_SETUP_REQ_DEBUG
 
-volatile uint8_t uvc_stream_status = 0;
+volatile uint8_t g_uvc_stream_status = 0;
+volatile uint8_t g_lepton_type_3 = 0;
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{
@@ -221,346 +222,22 @@ struct usbd_uvc_cfg {
 } __attribute__ ((packed));
 
 /* USB UVC device Configuration Descriptor */
-__ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc __ALIGN_END =
+__ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc_L2 __ALIGN_END =
 {
-  /* Configuration 1 */
-  .usb_configuration = {
-    .bLength = USB_LEN_CFG_DESC,                    // 9
-    .bDescriptorType = USB_DESC_TYPE_CONFIGURATION, // 2
-    .wTotalLength = sizeof(struct usbd_uvc_cfg),
-    .bNumInterfaces = 0x02,                         // 2
-    .bConfigurationValue = 0x01,                    // 1 ID of this configuration
-    .iConfiguration = 0x00,                         // 0 no description available
-    .bmAttributes = USB_CONFIG_BUS_POWERED ,        // 0x80 Bus Powered
-    .bMaxPower = USB_CONFIG_POWER_MA(100),          // 100 mA
-  },
+  #include "uvc_desc_conf.h"
+  #include "uvc_desc_va.h"
+  #include "uvc_desc_vc.h"
+  #include "uvc_desc_vs_l2.h"
+  #include "uvc_desc_vs_if.h"
+};
 
-  /*----------------- Video Association (Control + stream) ------------------*/
-
-  /* Interface Association Descriptor */
-  .usb_uvc_association = {
-    .bLength = USB_DT_INTERFACE_ASSOC_SIZE,                       // 8
-    .bDescriptorType = USB_INTERFACE_ASSOCIATION_DESCRIPTOR_TYPE, // 11
-    .bFirstInterface = 0x00,                                      // 0
-    .bInterfaceCount = 0x02,                                      // 2
-    .bFunctionClass = UVC_CC_VIDEO,                               // 14 Video
-    .bFunctionSubClass = UVC_SC_VIDEO_INTERFACE_COLLECTION,       // 3 Video Interface Collection
-    .bFunctionProtocol = UVC_PC_PROTOCOL_UNDEFINED,              // 0 (protocol undefined)
-    .iFunction = 0x02,                                            // 2
-  },
-
-
-  /*------------------ VideoControl Interface descriptor --------------------*/
-
-  /* Standard VC Interface Descriptor  = interface 0 */
-  .uvc_vc_if_desc = {
-    .bLength = USB_LEN_IF_DESC,                       // 9
-    .bDescriptorType = USB_DESC_TYPE_INTERFACE,       // 4
-    .bInterfaceNumber = USB_UVC_VCIF_NUM,             // 0 index of this interface (VC)
-    .bAlternateSetting = 0x00,                        // 0 index of this setting
-    .bNumEndpoints = 0x01,                            // 1 endpoint
-    .bInterfaceClass = UVC_CC_VIDEO,                  // 14 Video
-    .bInterfaceSubClass = UVC_SC_VIDEOCONTROL,        // 1 Video Control
-    .bInterfaceProtocol = UVC_PC_PROTOCOL_UNDEFINED,  // 0 (protocol undefined)
-    .iInterface = 0x00,
-  },
-
-  /* Class-specific VC Interface Descriptor */
-  .ucv_vc_header = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, ucv_vc_header),
-    .bDescriptorType = UVC_CS_INTERFACE,     // 36 (INTERFACE)
-    .bDescriptorSubType = UVC_VC_HEADER,     // 1 (HEADER)
-    .bcdUVC = UVC_VERSION,                   // 1.10 or 1.00
-    .wTotalLength =
-      SIZEOF_M(struct usbd_uvc_cfg, ucv_vc_header) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_oem) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_rad) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_sys) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_vid) +
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_output_terminal), // header+units+terminals
-    .dwClockFrequency = 0x005B8D80,          // 6.000000 MHz
-    .bInCollection = 0x01,                   // 1 one streaming interface
-    .baInterfaceNr = { 0x01 },               // 1 VS interface 1 belongs to this VC interface
-  },
-
-  /* Input Terminal Descriptor (Camera) */
-  .uvc_vc_input_terminal = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_input_terminal), // Descriptor size
-    .bDescriptorType = UVC_CS_INTERFACE,       // 36 (INTERFACE)
-    .bDescriptorSubType = UVC_VC_INPUT_TERMINAL, // 2 (INPUT_TERMINAL)
-    .bTerminalID = VC_INPUT_TERMINAL_ID,   // 1 ID of this Terminal
-    .wTerminalType = UVC_ITT_CAMERA,           // 0x0201 Camera Sensor
-    .bAssocTerminal = 0x00,                    // 0 no Terminal associated
-    .iTerminal = 0x00,                         // 0 no description available
-    .wObjectiveFocalLengthMin = 0x0000,        // 0
-    .wObjectiveFocalLengthMax = 0x0000,        // 0
-    .wOcularFocalLength = 0x0000,              // 0
-    .bControlSize = 0x03,                      // 2
-    .bmControls = { 0x00, 0x00, 0x00 },        // 0x0000 no controls supported
-  },
-
-  /* Processing Unit Descriptor */
-  .uvc_vc_processing_unit = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_processing_unit), // Descriptor size
-    .bDescriptorType = 0x24,                   // Class specific interface desc type
-    .bDescriptorSubType = 0x05,                // Processing Unit Descriptor type
-    .bUnitID = VC_CONTROL_PU_ID,           // ID of this terminal
-    .bSourceID = 0x01,                         // Source ID : 1 : Conencted to input terminal
-    .wMaxMultiplier = 0,                       // Digital multiplier
-    .bControlSize = 0x03,                      // Size of controls field for this terminal : 2 bytes
-    .bmControls = { 0x03, 0x00, 0x00 },        // Brightness and contrast
-    .iProcessing = 0x00,                       // String desc index : Not used
-  },
-
-  /* Extension Unit Descriptor */
-  .uvc_vc_xu_lep_agc = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_agc), // Descriptor size
-    .bDescriptorType = 0x24,                     // Class specific interface desc type
-    .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = VC_CONTROL_XU_LEP_AGC_ID,     // ID of this terminal
-    .guidExtensionCode = {                       // 16 byte GUID
-      'p','t','1','-',
-      'l','e','p','-',
-      'a','g','c','-',
-      '0','0','0','0'
-    },
-    .bNumControls = 0x13,                        // Number of controls in this terminal
-    .bNrInPins = 0x01,                           // Number of input pins in this terminal
-    .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xff, 0xff, 0x07, 0x00 },    // Registers 0x00 to 0x48
-    .iExtension = 0x00,                          // String desc index : Not used
-  },
-
-  /* Extension Unit Descriptor */
-  .uvc_vc_xu_lep_oem = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_oem), // Descriptor size
-    .bDescriptorType = 0x24,                     // Class specific interface desc type
-    .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = VC_CONTROL_XU_LEP_OEM_ID,     // ID of this terminal
-    .guidExtensionCode = {                       // 16 byte GUID
-      'p','t','1','-',
-      'l','e','p','-',
-      'o','e','m','-',
-      '0','0','0','0'
-    },
-    .bNumControls = 0x1e,                        // Number of controls in this terminal
-    .bNrInPins = 0x01,                           // Number of input pins in this terminal
-    .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xbf, 0xff, 0xff, 0x7f },    // Registers 0x00 to 0x48
-    .iExtension = 0x00,                          // String desc index : Not used
-  },
-
-  /* Extension Unit Descriptor */
-  .uvc_vc_xu_lep_rad = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_rad), // Descriptor size
-    .bDescriptorType = 0x24,                     // Class specific interface desc type
-    .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = VC_CONTROL_XU_LEP_RAD_ID,     // ID of this terminal
-    .guidExtensionCode = {                       // 16 byte GUID
-      'p','t','1','-',
-      'l','e','p','-',
-      'r','a','d','-',
-      '0','0','0','0'
-    },
-    .bNumControls = 47,                          // Number of controls in this terminal
-    .bNrInPins = 0x01,                           // Number of input pins in this terminal
-    .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x08,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xFF, 0xFF, 0xFF, 0x81, 0xFC, 0xCF, 0xFF, 0x01 },    // Registers 0x00 to 0x48
-    .iExtension = 0x00,                          // String desc index : Not used
-  },
-
-  /* Extension Unit Descriptor */
-  .uvc_vc_xu_lep_sys = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_sys), // Descriptor size
-    .bDescriptorType = 0x24,                     // Class specific interface desc type
-    .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = VC_CONTROL_XU_LEP_SYS_ID,     // ID of this terminal
-    .guidExtensionCode = {                       // 16 byte GUID
-      'p','t','1','-',
-      'l','e','p','-',
-      's','y','s','-',
-      '0','0','0','0'
-    },
-    .bNumControls = 0x12,                        // Number of controls in this terminal
-    .bNrInPins = 0x01,                           // Number of input pins in this terminal
-    .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xFF, 0xFF, 0x03, 0x00 },    // Registers 0x00 to 0x48
-    .iExtension = 0x00,                          // String desc index : Not used
-  },
-
-  /* Extension Unit Descriptor */
-  .uvc_vc_xu_lep_vid = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_vid), // Descriptor size
-    .bDescriptorType = 0x24,                     // Class specific interface desc type
-    .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
-    .bUnitID = VC_CONTROL_XU_LEP_VID_ID,     // ID of this terminal
-    .guidExtensionCode = {                       // 16 byte GUID
-      'p','t','1','-',
-      'l','e','p','-',
-      'v','i','d','-',
-      '0','0','0','0'
-    },
-    .bNumControls = 0x0a,                        // Number of controls in this terminal
-    .bNrInPins = 0x01,                           // Number of input pins in this terminal
-    .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
-    .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-    .bmControls = { 0xFF, 0x03, 0x00, 0x00 },    // Registers 0x00 to 0x48
-    .iExtension = 0x00,                          // String desc index : Not used
-  },
-
-  /* Output Terminal Descriptor */
-  .uvc_vc_output_terminal = {
-    .bLength = UVC_DT_OUTPUT_TERMINAL_SIZE,      // 9
-    .bDescriptorType = UVC_CS_INTERFACE,         // 36 (INTERFACE)
-    .bDescriptorSubType = UVC_VC_OUTPUT_TERMINAL, // 3 (OUTPUT_TERMINAL)
-    .bTerminalID = VC_OUTPUT_TERMINAL_ID,    // 2 ID of this Terminal
-    .wTerminalType = UVC_TT_STREAMING,           // 0x0101 USB streaming terminal
-    .bAssocTerminal = 0x00,                      // 0 no Terminal assiciated
-    .bSourceID = 0x03,                           // 1 input pin connected to output pin unit 1
-    .iTerminal = 0x00,                           // 0 no description available
-  },
-
-  /* Standard Interrupt Endpoint Descriptor */
-  .uvc_vc_ep = {
-    .bLength = USB_DT_ENDPOINT_SIZE,              // 7
-    .bDescriptorType = USB_DESC_TYPE_ENDPOINT,    // 5 (ENDPOINT)
-    .bEndpointAddress = UVC_CMD_EP,               // 0x82 EP 2 IN
-    .bmAttributes = USBD_EP_TYPE_INTR,            // interrupt
-    .wMaxPacketSize = CMD_PACKET_SIZE,            // 8 bytes status
-    .bInterval = 0x20,                            // poll at least every 32ms
-  },
-
-  /* Class-specific Interrupt Endpoint Descriptor */
-  .uvc_vc_cs_ep = {
-    .bLength = UVC_DT_CONTROL_ENDPOINT_SIZE,
-    .bDescriptorType = UVC_CS_ENDPOINT,
-    .bDescriptorSubType = USBD_EP_TYPE_INTR,
-    .wMaxTransferSize = CMD_PACKET_SIZE,
-  },
-
-
-  /*-------------- Video Streaming (VS) Interface Descriptor ----------------*/
-
-  /* Standard VS Interface Descriptor  = interface 1 */
-  // alternate setting 0 = Zero Bandwidth
-  .uvc_vs_if_alt0_desc = {
-    .bLength = USB_DT_INTERFACE_SIZE,                // 9
-    .bDescriptorType = USB_DESC_TYPE_INTERFACE,      // 4
-    .bInterfaceNumber = USB_UVC_VSIF_NUM,            // 1 index of this interface
-    .bAlternateSetting = 0x00,                       // 0 index of this setting
-    .bNumEndpoints = 0x00,                           // 0 no EP used
-    .bInterfaceClass = UVC_CC_VIDEO,                 // 14 Video
-    .bInterfaceSubClass = UVC_SC_VIDEOSTREAMING,     // 2 Video Streaming
-    .bInterfaceProtocol = UVC_PC_PROTOCOL_UNDEFINED, // 0 (protocol undefined)
-    .iInterface = 0x00,                              // 0 no description available
-  },
-
-  /* Class-specific VS Header Descriptor (Input) */
-  .uvc_vs_input_header_desc = {
-    .bLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_input_header_desc),
-    .bDescriptorType = UVC_CS_INTERFACE,       // 36 (INTERFACE)
-    .bDescriptorSubType = UVC_VS_INPUT_HEADER, // 1 (INPUT_HEADER)
-    .bNumFormats = VS_NUM_FORMATS,       // 4 four format descriptors follow
-    .wTotalLength =
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_input_header_desc) + 
-      SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_frames_formats),
-    .bEndpointAddress = UVC_IN_EP,             // 0x83 EP 3 IN
-    .bmInfo = 0x00,                            // 0 no dynamic format change supported
-    .bTerminalLink = VC_OUTPUT_TERMINAL_ID,    // 2 supplies terminal ID 2 (Output terminal)
-    .bStillCaptureMethod = 0x01,               // 1 Host captures from video stream
-    .bTriggerSupport = 0x00,                   // 0 HW trigger supported for still image capture
-    .bTriggerUsage = 0x00,                     // 0 HW trigger initiate a still image capture
-    .bControlSize = 0x01,                      // 1 one byte bmaControls field size
-    .bmaControls = {
-      { 0x00 },                                // bmaControls(0)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(1)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(2)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(3)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(4)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(4)           0 no VS specific controls
-      { 0x00 },                                // bmaControls(4)           0 no VS specific controls
-    },
-  },
-
-  .uvc_vs_frames_formats = {
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YUYV, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YUYV, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(Y16, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, Y16, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(NV12, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, NV12, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YU12, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YU12, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(GREY, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-#ifndef Y16
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(RGB565, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, RGB565, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-    {
-      .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(BGR3, 1),
-      .uvc_vs_frame  = UVC_FRAME_FORMAT(1, BGR3, 80, 60),
-      .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-    },
-#endif
-  },
-
-  /* Standard VS Interface Descriptor  = interface 1 */
-  // alternate setting 1 = operational setting
-  .uvc_vs_if_alt1_desc = {
-    .bLength = USB_DT_INTERFACE_SIZE,                // 9
-    .bDescriptorType = USB_DESC_TYPE_INTERFACE,      // 4
-    .bInterfaceNumber = USB_UVC_VSIF_NUM,            // 1 index of this interface
-    .bAlternateSetting = 0x01,                       // 1 index of this setting
-    .bNumEndpoints = 0x01,                           // 1 one EP used
-    .bInterfaceClass = UVC_CC_VIDEO,                 // 14 Video
-    .bInterfaceSubClass = UVC_SC_VIDEOSTREAMING,     // 2 Video Streaming
-    .bInterfaceProtocol = UVC_PC_PROTOCOL_UNDEFINED, // 0 (protocol undefined)
-    .iInterface = 0x00,                              // 0 no description available
-  },
-
-  /* Standard VS Isochronous Video data Endpoint Descriptor */
-  .uvc_vs_if_alt1_ep = {
-    .bLength = USB_DT_ENDPOINT_SIZE,              // 7
-    .bDescriptorType = USB_DESC_TYPE_ENDPOINT,    // 5 (ENDPOINT)
-    .bEndpointAddress = UVC_IN_EP,                // 0x83 EP 3 IN
-    .bmAttributes = USBD_EP_TYPE_ISOC,            // 1 isochronous transfer type
-    .wMaxPacketSize = VIDEO_PACKET_SIZE,
-    .bInterval = 0x01,                            // 1 one frame interval
-  },
+__ALIGN_BEGIN struct usbd_uvc_cfg USBD_UVC_CfgFSDesc_L3 __ALIGN_END =
+{
+  #include "uvc_desc_conf.h"
+  #include "uvc_desc_va.h"
+  #include "uvc_desc_vc.h"
+  #include "uvc_desc_vs_l3.h"
+  #include "uvc_desc_vs_if.h"
 };
 
 /**
@@ -736,7 +413,14 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       if( (req->wValue >> 8) == UVC_CS_DEVICE)
       {
         DEBUG_PRINTF("USB_REQ_GET_DESCRIPTOR(UVC_CS_DEVICE)\r\n");
-        USBD_CtlSendData (pdev, (uint8_t *)&USBD_UVC_CfgFSDesc.uvc_vc_if_desc, MIN(sizeof(struct usbd_uvc_cfg) , req->wLength));
+        if (g_lepton_type_3)
+        {
+          USBD_CtlSendData (pdev, (uint8_t *)&USBD_UVC_CfgFSDesc_L3.uvc_vc_if_desc, MIN(sizeof(USBD_UVC_CfgFSDesc_L3) , req->wLength));
+        }
+        else
+        {
+          USBD_CtlSendData (pdev, (uint8_t *)&USBD_UVC_CfgFSDesc_L2.uvc_vc_if_desc, MIN(sizeof(USBD_UVC_CfgFSDesc_L2) , req->wLength));
+        }
       }
       else
       {
@@ -760,10 +444,10 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
 
         if (ifalt == 1) {
           DEBUG_PRINTF("USB_REQ_SET_INTERFACE: 1\r\n");
-        	uvc_stream_status = 1;
+          g_uvc_stream_status = 1;
         } else {
           DEBUG_PRINTF("USB_REQ_SET_INTERFACE: %d\r\n", req->wValue);
-        	uvc_stream_status = 0;
+          g_uvc_stream_status = 0;
         }
       }
       else
@@ -844,11 +528,11 @@ static uint8_t  USBD_UVC_SOF (USBD_HandleTypeDef *pdev)
 
   // This is being done in our main loop, but this callback doesn't seem to get called right now anyhow
 
-  // if (uvc_stream_status == 1)
+  // if (g_uvc_stream_status == 1)
   // {
   //     USBD_LL_FlushEP(pdev,USB_ENDPOINT_IN(1));
   //     USBD_LL_Transmit(pdev,USB_ENDPOINT_IN(1), (uint8_t*)0x0002, 2);//header
-  //     uvc_stream_status = 2;
+  //     g_uvc_stream_status = 2;
   // }
 
   return USBD_OK;
@@ -906,8 +590,16 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
   */
 static uint8_t  *USBD_UVC_GetFSCfgDesc (uint16_t *length)
 {
-  *length = sizeof(struct usbd_uvc_cfg);
-  return (uint8_t*)&USBD_UVC_CfgFSDesc;
+  if (g_lepton_type_3)
+  {
+    *length = sizeof(USBD_UVC_CfgFSDesc_L3);
+    return (uint8_t*)&USBD_UVC_CfgFSDesc_L3;
+  }
+  else
+  {
+    *length = sizeof(USBD_UVC_CfgFSDesc_L2);
+    return (uint8_t*)&USBD_UVC_CfgFSDesc_L2;
+  }
 }
 
 /**

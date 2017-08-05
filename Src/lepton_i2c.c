@@ -26,6 +26,33 @@
 extern I2C_HandleTypeDef hi2c1;
 LEP_CAMERA_PORT_DESC_T hport_desc;
 
+extern volatile uint8_t g_lepton_type_3;
+
+static void set_lepton_type()
+{
+  LEP_RESULT result;
+  LEP_OEM_PART_NUMBER_T part_number;
+  result = LEP_GetOemFlirPartNumber(&hport_desc, &part_number);
+
+  // 500-0643-00 : 50 deg (l2)
+  // 500-0659-01 : shuttered 50 deg (l2)
+  // 500-0690-00 : 25 deg (l2)
+  // 500-0763-01 : shuttered 50 deg + radiometric (l2.5)
+  // 500-0726-01 : shuttered 50 deg (l3)
+
+  if (result != LEP_OK ||
+      strncmp(part_number.value, "500-06xx", 6) == 0 ||
+      strncmp(part_number.value, "500-0763", 8) == 0)
+  {
+    g_lepton_type_3 = 0;
+  }
+  else
+  {
+    // let default case be l3, because this will be more likely to cover new products
+    g_lepton_type_3 = 1;
+  }
+}
+
 static HAL_StatusTypeDef print_cust_serial_number()
 {
   LEP_RESULT result;
@@ -292,6 +319,8 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
 
   if (print_aux_temp_celcius() != HAL_OK)
     return HAL_ERROR;
+
+  set_lepton_type();
 
   return HAL_OK;
 }

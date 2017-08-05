@@ -16,7 +16,7 @@
 
 #include "project_config.h"
 
-extern volatile uint8_t uvc_stream_status;
+extern volatile uint8_t g_uvc_stream_status;
 extern struct uvc_streaming_control videoCommitControl;
 
 static int overlay_mode = 0;
@@ -299,7 +299,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 
     // perform stream initialization
-    if (uvc_stream_status == 1)
+    if (g_uvc_stream_status == 1)
     {
       DEBUG_PRINTF("Starting UVC stream...\r\n");
 
@@ -307,13 +307,13 @@ PT_THREAD( usb_task(struct pt *pt))
       uvc_header[1] = 0;
       UVC_Transmit_FS(uvc_header, 2);
 
-      uvc_stream_status = 2;
+      g_uvc_stream_status = 2;
       uvc_xmit_row = 0;
       uvc_xmit_plane = 0;
     }
 
     // put image on stream as long as stream is open
-    while (uvc_stream_status == 2)
+    while (g_uvc_stream_status == 2)
     {
       count = 0;
 
@@ -541,7 +541,7 @@ PT_THREAD( usb_task(struct pt *pt))
       // fflush(stdout);
 
       int retries = 1000;
-      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && uvc_stream_status == 2)
+      while (UVC_Transmit_FS(packet, count) == USBD_BUSY && g_uvc_stream_status == 2)
       {
         if (--retries == 0) {
 //          DEBUG_PRINTF("UVC_Transmit_FS() failed (no one is acking)\r\n");
