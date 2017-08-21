@@ -40,6 +40,8 @@
 #define DEBUG_PRINTF(...)
 #endif
 
+extern volatile uint8_t g_lepton_type_3;
+
 // #define UVC_VC_DEBUG
 // #define UVC_VS_DEBUG
 
@@ -446,26 +448,33 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
           cmd == UVC_GET_MAX ||
           cmd == UVC_GET_CUR)
       {
+        uint8_t w = 80, h = 60;
+        if (g_lepton_type_3)
+        {
+          w = 160;
+          h = 120;
+        }
+
         switch(videoProbeControl.bFormatIndex) {
         case VS_FMT_INDEX(NV12):
         case VS_FMT_INDEX(YU12):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(NV12));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(NV12));
           break;
         case VS_FMT_INDEX(GREY):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(GREY));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(GREY));
           break;
         case VS_FMT_INDEX(Y16):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(Y16));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(Y16));
           break;
         case VS_FMT_INDEX(BGR3):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(BGR3));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(BGR3));
           break;
         case VS_FMT_INDEX(RGB565):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(RGB565));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(RGB565));
           break;
         case VS_FMT_INDEX(YUYV):
         default:
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV));
+          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(YUYV));
           break;
         }
       }
