@@ -16,6 +16,7 @@
 
 #include "project_config.h"
 
+extern volatile uint8_t g_lepton_type_3;
 extern volatile uint8_t g_uvc_stream_status;
 extern struct uvc_streaming_control videoCommitControl;
 
@@ -222,8 +223,9 @@ PT_THREAD( usb_task(struct pt *pt))
 #endif
 
 	static uint8_t uvc_header[2] = { 2, 0 };
-	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0;
+	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0, uvc_xmit_seg = 0;
 	static uint8_t packet[VIDEO_PACKET_SIZE];
+	static int image_num_segments;
 
 	PT_BEGIN(pt);
 
@@ -232,16 +234,30 @@ PT_THREAD( usb_task(struct pt *pt))
 	UG_FontSelect(&FONT_8X8);     
 #endif
 
+	image_num_segments = ((g_lepton_type_3 == 1) ? 4 : 1);
+
 	while (1)
 	{
 #ifdef Y16
 		PT_WAIT_UNTIL(pt, (last_buffer = dequeue_lepton_buffer()) != NULL);
-		last_frame_count++;
 #else
 		PT_WAIT_UNTIL(pt, (last_buffer_rgb = dequeue_lepton_buffer()) != NULL);
 		get_lepton_buffer_yuv(&last_buffer);
-		last_frame_count++;
 #endif
+
+		uvc_xmit_row = 0;
+		uvc_xmit_plane = 0;
+
+		if (image_num_segments > 1)
+		{
+			if (uvc_xmit_seg == 0 && ((last_buffer_rgb->lines[20].header[0] & 0x7000) >> 12) != 1)
+			{
+				// Skip this segment until we have the beginning of a frame
+				break;
+			}
+		}
+
+		last_frame_count++;
 
 #ifndef ENABLE_LEPTON_AGC
 		switch (videoCommitControl.bFormatIndex)
@@ -302,8 +318,6 @@ PT_THREAD( usb_task(struct pt *pt))
       UVC_Transmit_FS(uvc_header, 2);
 
       g_uvc_stream_status = 2;
-      uvc_xmit_row = 0;
-      uvc_xmit_plane = 0;
     }
 
     // put image on stream as long as stream is open
@@ -410,12 +424,6 @@ PT_THREAD( usb_task(struct pt *pt))
             uvc_xmit_row++;
           }
 
-          // image is done
-          if (uvc_xmit_row == IMAGE_NUM_LINES)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
           break;
         }
         case VS_FMT_INDEX(Y16):
@@ -435,12 +443,6 @@ PT_THREAD( usb_task(struct pt *pt))
             }
 
             uvc_xmit_row++;
-          }
-
-          // image is done
-          if (uvc_xmit_row == IMAGE_NUM_LINES)
-          {
-            packet[1] |= 0x2; // Flag end of frame
           }
 
           break;
@@ -471,12 +473,6 @@ PT_THREAD( usb_task(struct pt *pt))
           }
 #endif
 
-          // image is done
-          if (uvc_xmit_row == IMAGE_NUM_LINES)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
           break;
         }
 #ifndef Y16
@@ -492,12 +488,6 @@ PT_THREAD( usb_task(struct pt *pt))
               packet[count++] = rgb.r;
             }
             uvc_xmit_row++;
-          }
-
-          // image is done
-          if (uvc_xmit_row == IMAGE_NUM_LINES)
-          {
-            packet[1] |= 0x2; // Flag end of frame
           }
 
           break;
@@ -520,15 +510,20 @@ PT_THREAD( usb_task(struct pt *pt))
             uvc_xmit_row++;
           }
 
-          // image is done
-          if (uvc_xmit_row == IMAGE_NUM_LINES)
-          {
-            packet[1] |= 0x2; // Flag end of frame
-          }
-
           break;
         }
 #endif
+      }
+
+      // Check if image is done (non planar/semi-planar formats)
+      if (videoCommitControl.bFormatIndex != VS_FMT_INDEX(NV12) &&
+          videoCommitControl.bFormatIndex != VS_FMT_INDEX(YU12) &&
+          uvc_xmit_row == IMAGE_NUM_LINES)
+      {
+        if (++uvc_xmit_seg == image_num_segments)
+        {
+           packet[1] |= 0x2; // Flag end of frame
+        }
       }
 
       // printf("UVC_Transmit_FS(): packet=%p, count=%d\r\n", packet, count);
@@ -548,7 +543,7 @@ PT_THREAD( usb_task(struct pt *pt))
       if (packet[1] & 0x2)
       {
         uvc_header[1] ^= 1; // toggle bit 0 for next new frame
-        uvc_xmit_plane = 0;
+        uvc_xmit_seg = 0;
         // DEBUG_PRINTF("Frame complete\r\n");
         break;
       }
