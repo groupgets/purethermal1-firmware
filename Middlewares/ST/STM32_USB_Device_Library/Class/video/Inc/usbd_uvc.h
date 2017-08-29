@@ -60,7 +60,7 @@
 
 #define UVC_IN_EP                                     0x81  /* EP1 for data IN */
 #define UVC_CMD_EP                                    0x82  /* EP2 for UVC commands */
-#define VIDEO_PACKET_SIZE                             ((unsigned int)(482))
+#define VIDEO_PACKET_SIZE                             ((unsigned int)(962))
 #define VIDEO_MAX_SETUP_PACKET_SIZE                   ((unsigned int)(1024))
 #define CMD_PACKET_SIZE                               ((unsigned int)(8))
 
