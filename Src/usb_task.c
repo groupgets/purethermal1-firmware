@@ -44,10 +44,6 @@ void HAL_RCC_CSSCallback(void) {
 	DEBUG_PRINTF("Oh no! HAL_RCC_CSSCallback()\r\n");
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	DEBUG_PRINTF("Yay! HAL_GPIO_EXTI_Callback()\r\n");
-}
-
 #ifdef TMP007_OVERLAY 
 #include "ugui.h"
 UG_GUI gui; 
@@ -550,19 +546,17 @@ PT_THREAD( usb_task(struct pt *pt))
       if (packet[1] & 0x2)
       {
         uvc_header[1] ^= 1; // toggle bit 0 for next new frame
-        uvc_xmit_row = 0;
         uvc_xmit_plane = 0;
         // DEBUG_PRINTF("Frame complete\r\n");
+        break;
+      }
+      else if (uvc_xmit_row == IMAGE_NUM_LINES)
+      {
         break;
       }
       PT_YIELD(pt);
     }
 
-#ifdef Y16
-    return_lepton_buffer(last_buffer);
-#else
-    return_lepton_buffer(last_buffer_rgb);
-#endif
 	}
 	PT_END(pt);
 }

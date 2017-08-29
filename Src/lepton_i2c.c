@@ -51,6 +51,9 @@ static void set_lepton_type()
     // let default case be l3, because this will be more likely to cover new products
     g_lepton_type_3 = 1;
   }
+
+  LEP_SetOemGpioVsyncPhaseDelay(&hport_desc,LEP_OEM_VSYNC_DELAY_PLUS_2);
+  LEP_SetOemGpioMode(&hport_desc, LEP_OEM_GPIO_MODE_VSYNC);
 }
 
 static HAL_StatusTypeDef print_cust_serial_number()

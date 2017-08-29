@@ -28,9 +28,6 @@ lepton_buffer lepton_buffers[RING_SIZE];
 lepton_buffer* completed_frames_buf[RING_SIZE] = { 0 };
 DECLARE_CIRC_BUF_HANDLE(completed_frames_buf);
 
-lepton_buffer* empty_frames_buf[RING_SIZE] = { 0 };
-DECLARE_CIRC_BUF_HANDLE(empty_frames_buf);
-
 uint32_t completed_yuv_frame_count;
 yuv422_buffer_t yuv_buffers[2];
 
@@ -61,11 +58,6 @@ lepton_buffer* dequeue_lepton_buffer()
     return shift(CIRC_BUF_HANDLE(completed_frames_buf));
 }
 
-void return_lepton_buffer(lepton_buffer* buffer)
-{
-  push(CIRC_BUF_HANDLE(empty_frames_buf), buffer);
-}
-
 uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
 {
   if (buffer != NULL)
@@ -80,7 +72,6 @@ void init_lepton_task()
   {
     lepton_buffers[i].number = i;
     lepton_buffers[i].status = LEPTON_STATUS_OK;
-    push(CIRC_BUF_HANDLE(empty_frames_buf), &lepton_buffers[i]);
     DEBUG_PRINTF("Initialized lepton buffer %d @ %p\r\n", i, &lepton_buffers[i]);
   }
 }
@@ -104,6 +95,16 @@ static void print_telemetry_temps(telemetry_data_l2* telemetry)
 		(int)(aux_c), (int)((aux_c-(int)aux_c)*100));
 }
 
+static lepton_buffer *current_buffer = NULL;
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+	static int current_buffer_index = 0;
+	lepton_buffer *buffer = &lepton_buffers[current_buffer_index];
+	current_buffer = buffer;
+	current_buffer_index = ((current_buffer_index + 1) % RING_SIZE);
+	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
 PT_THREAD( lepton_task(struct pt *pt))
 {
 	PT_BEGIN(pt);
@@ -112,44 +113,27 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t last_tick = 0;
 	static uint32_t last_logged_count = 0;
 	static uint32_t current_frame_count = 0;
-	static lepton_buffer *current_buffer = NULL;
 	static struct pt rgb_to_yuv_pt;
 	static int transferring_timer = 0;
+	static uint8_t current_segment = 0;
+	static uint8_t last_end_line = 0;
 	curtick = last_tick = HAL_GetTick();
 
 	while (1)
 	{
-		if (current_buffer == NULL)
-		{
-			PT_YIELD_UNTIL(pt, !empty(CIRC_BUF_HANDLE(empty_frames_buf)));
-			current_buffer = shift(CIRC_BUF_HANDLE(empty_frames_buf));
-			current_buffer->status = LEPTON_STATUS_OK;
-		}
+		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
-		lepton_transfer(current_buffer);
+		PT_WAIT_UNTIL(pt, current_buffer != NULL);
+
+		lepton_transfer_full(current_buffer);
 
 		transferring_timer = HAL_GetTick();
 		PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
 
 		if (complete_lepton_transfer(current_buffer) != LEPTON_STATUS_OK)
 		{
-			if (current_buffer->status == LEPTON_STATUS_TRANSFERRING){
-				current_buffer->status = LEPTON_STATUS_RESYNC;
-			}
-			if (current_buffer->status == LEPTON_STATUS_RESYNC)
-			{
-				if (current_frame_count != 0)
-					DEBUG_PRINTF("Synchronization lost, status: %d\r\n", current_buffer->status);
-				HAL_Delay(250);
-				push(CIRC_BUF_HANDLE(empty_frames_buf), current_buffer);
-				current_buffer = NULL;
-			}
-			else if (current_buffer->status != LEPTON_STATUS_CONTINUE)
-			{
-				DEBUG_PRINTF("Transfer failed, status: %d\r\n", current_buffer->status);
-				push(CIRC_BUF_HANDLE(empty_frames_buf), current_buffer);
-				current_buffer = NULL;
-			}
+			DEBUG_PRINTF("Lepton transfer failed: %d\r\n", current_buffer->status);
+			current_buffer = NULL;
 			continue;
 		}
 
@@ -161,13 +145,38 @@ PT_THREAD( lepton_task(struct pt *pt))
 		current_frame_count++;
 #endif
 
+		current_segment = ((current_buffer->lines[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+		last_end_line = (current_buffer->lines[IMAGE_OFFSET_LINES + 59].header[0] & 0x00ff);
+
+		if (current_frame_count > 2 && last_end_line != (59))
+		{
+			DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
+				current_buffer->status, last_end_line);
+
+			// flush out any old data since it's no good
+			while (dequeue_lepton_buffer() != NULL) {}
+
+			transferring_timer = HAL_GetTick();
+			PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 190);
+
+			// Make sure we're not about to service an old irq when the interrupts are re-enabled
+			__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+
+			current_frame_count = 0;
+			current_buffer = NULL;
+
+			continue;
+		}
+
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
+#ifdef PRINT_FPS
 			DEBUG_PRINTF("fps: %lu, last end line: %d, frame #%lu, buffer %p\r\n",
 				(current_frame_count - last_logged_count) / 3,
-				current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff,
+				last_end_line,
 				current_frame_count, current_buffer
 			);
+#endif
 
 #ifdef Y16
 			print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
@@ -179,37 +188,30 @@ PT_THREAD( lepton_task(struct pt *pt))
 			last_logged_count = current_frame_count;
 		}
 
-		// if (g_lepton_type_3)
-		// {
-		// 	
-		// }
-		// else
+		static uint32_t frame_count = 0;
+		if (current_segment == 1)
+			frame_count++;
+
+		// Need to update completed buffer for clients?
+#ifdef Y16
+		if (completed_frame_count != current_frame_count)
+#else
+		if (g_lepton_type_3 == 0 || (current_segment > 0 && current_segment <= 4))// && (frame_count % 3) == 0))
+#endif
 		{
-			// Need to update completed buffer for clients?
-	#ifdef Y16
-			if (completed_frame_count != current_frame_count)
-	#else
-			if ((current_frame_count % 3) == 0)
-	#endif
-			{
-				completed_buffer = current_buffer;
-				completed_frame_count = current_frame_count;
+			completed_buffer = current_buffer;
+			completed_frame_count = current_frame_count;
 
-				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
+			HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
 
-	#ifndef Y16
-				PT_SPAWN(
-					pt,
-					&rgb_to_yuv_pt,
-					rgb_to_yuv(&rgb_to_yuv_pt, completed_buffer, &yuv_buffers[(completed_yuv_frame_count + 1) % 2])
-				);
-	#endif
-			}
-			else
-			{
-				push(CIRC_BUF_HANDLE(empty_frames_buf), completed_buffer);
-			}
+			PT_SPAWN(
+				pt,
+				&rgb_to_yuv_pt,
+				rgb_to_yuv(&rgb_to_yuv_pt, completed_buffer, &yuv_buffers[(completed_yuv_frame_count + 1) % 2])
+			);
 		}
+
+		current_buffer = NULL;
 	}
 	PT_END(pt);
 }
@@ -258,7 +260,9 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buff
   }
 
   completed_yuv_frame_count++;
-  push(CIRC_BUF_HANDLE(completed_frames_buf), lepton);
+
+  if (!full(CIRC_BUF_HANDLE(completed_frames_buf)))
+    push(CIRC_BUF_HANDLE(completed_frames_buf), lepton);
 
 	PT_END(pt);
 }

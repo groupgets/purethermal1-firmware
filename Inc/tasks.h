@@ -15,7 +15,6 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict rgb, yuv422_buffer_
 
 // Synchronization helpers
 lepton_buffer* dequeue_lepton_buffer(void);
-void return_lepton_buffer(lepton_buffer* buffer);
 uint32_t get_lepton_buffer(lepton_buffer **buffer);
 uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer);
 

@@ -28,12 +28,6 @@ typedef enum {
   LEPTON_STATUS_CONTINUE = 4,
 } lepton_status;
 
-typedef enum {
-  LEPTON_XFER_STATE_START = 0,
-  LEPTON_XFER_STATE_SYNC = 1,
-  LEPTON_XFER_STATE_DATA = 2,
-} lepton_xfer_state;
-
 typedef struct __attribute__((packed)) _telemetry_data_l2 {
 
   uint16_t telemetry_revision[1];     // w  0
@@ -129,7 +123,7 @@ typedef struct __attribute__((packed)) _yuv422_buffer {
 } yuv422_buffer_t;
 
 lepton_status complete_lepton_transfer(lepton_buffer *);
-void lepton_transfer(lepton_buffer *buf);
+void lepton_transfer_full(lepton_buffer *buf);
 
 void print_image_binary_background(void);
 void lepton_init(void );

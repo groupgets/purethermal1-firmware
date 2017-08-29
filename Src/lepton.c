@@ -23,8 +23,6 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-static lepton_xfer_state xfer_state = LEPTON_XFER_STATE_START;
-
 // These replace HAL library functions as they're a lot shorter and more specialized
 static inline HAL_StatusTypeDef start_lepton_spi_dma(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength);
 static inline HAL_StatusTypeDef setup_lepton_spi_rx(SPI_HandleTypeDef *hspi, uint8_t *pData, uint16_t Size);
@@ -38,25 +36,13 @@ lepton_status complete_lepton_transfer(lepton_buffer* buffer)
   return buffer->status;
 }
 
-void lepton_transfer(lepton_buffer *buf)
+void lepton_transfer_full(lepton_buffer *buf)
 {
   HAL_StatusTypeDef status;
 
   // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
 
-  switch (xfer_state)
-  {
-  default:
-  case LEPTON_XFER_STATE_START:
-    status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH);
-    break;
-  case LEPTON_XFER_STATE_SYNC:
-    status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH);
-    break;
-  case LEPTON_XFER_STATE_DATA:
-    status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[1]), FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES - 1));
-    break;
-  }
+  status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES));
 
   if (status != HAL_OK)
   {
@@ -84,35 +70,8 @@ static void lepton_spi_rx_dma_cplt(DMA_HandleTypeDef *hdma)
   hspi->TxXferCount = hspi->RxXferCount = 0;
   hspi->State = HAL_SPI_STATE_READY;
 
-  switch (xfer_state)
-  {
-  case LEPTON_XFER_STATE_START:
-    // get out of start mode; then fall through to the next block
-    xfer_state = LEPTON_XFER_STATE_SYNC;
-
-  case LEPTON_XFER_STATE_SYNC:
-    // Checking the first line to see if we're in sync yet
-    buffer = (lepton_buffer*)(packet);
-    if ((buffer->lines[0].header[0] & 0x0f00) != 0x0f00)
-    {
-      xfer_state = LEPTON_XFER_STATE_DATA;
-    }
-    buffer->status = LEPTON_STATUS_CONTINUE;
-    break;
-
-  default:
-  case LEPTON_XFER_STATE_DATA:
-    // lepton frame complete
-    // we started on second line, so (packet - 1) points to the beginning of the buffer
-    buffer = (lepton_buffer*)(packet - 1);
-    uint8_t frame = buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0xff;
-
-    // restart for next transfer
-    xfer_state = LEPTON_XFER_STATE_START;
-
-    buffer->status = ((frame == (IMAGE_NUM_LINES - 1)) ? LEPTON_STATUS_OK : LEPTON_STATUS_RESYNC);
-    break;
-  }
+  buffer = (lepton_buffer*)(packet);
+  buffer->status = LEPTON_STATUS_OK;
 }
 
 void lepton_init(void )
