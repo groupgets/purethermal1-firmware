@@ -56,19 +56,19 @@ void HAL_MspInit(void)
 
   /* System interrupt init*/
   /* MemoryManagement_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(MemoryManagement_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(MemoryManagement_IRQn, 7, 0);
   /* BusFault_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(BusFault_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(BusFault_IRQn, 7, 0);
   /* UsageFault_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(UsageFault_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(UsageFault_IRQn, 7, 0);
   /* SVCall_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SVCall_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SVCall_IRQn, 7, 0);
   /* DebugMonitor_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DebugMonitor_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DebugMonitor_IRQn, 7, 0);
   /* PendSV_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(PendSV_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(PendSV_IRQn, 7, 0);
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 1, 0);
 
   /* USER CODE BEGIN MspInit 1 */
 
