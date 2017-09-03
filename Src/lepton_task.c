@@ -121,6 +121,28 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 	while (1)
 	{
+		if (g_uvc_stream_status == 0)
+		{
+			lepton_low_power();
+
+			// Start slow blink (1 Hz)
+			while (g_uvc_stream_status == 0)
+			{
+				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
+
+				transferring_timer = HAL_GetTick();
+				PT_YIELD_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 500);
+			}
+
+			// flush out any old data
+			while (dequeue_lepton_buffer() != NULL) {}
+
+			// Make sure we're not about to service an old irq when the interrupts are re-enabled
+			__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+
+			lepton_power_on();
+		}
+
 		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 		PT_WAIT_UNTIL(pt, current_buffer != NULL);

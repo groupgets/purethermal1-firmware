@@ -17,5 +17,8 @@ HAL_StatusTypeDef enable_telemetry(void);
 HAL_StatusTypeDef get_scene_stats(uint16_t *min, uint16_t *max, uint16_t *avg);
 HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut);
 
+HAL_StatusTypeDef lepton_low_power();
+HAL_StatusTypeDef lepton_power_on();
+
 #endif
 

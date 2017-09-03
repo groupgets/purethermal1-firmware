@@ -345,3 +345,31 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
 
   return HAL_OK;
 }
+
+HAL_StatusTypeDef lepton_low_power()
+{
+  LEP_RESULT result;
+  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
+
+  result = LEP_RunOemLowPowerMode2( &hport_desc );
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set low power mode 2: %d\r\n", result);
+    return result;
+  }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef lepton_power_on()
+{
+  LEP_RESULT result;
+  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
+
+  result = LEP_RunOemPowerOn( &hport_desc );
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set power on: %d\r\n", result);
+    return result;
+  }
+
+  return HAL_OK;
+}
