@@ -456,10 +456,6 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
         }
 
         switch(videoProbeControl.bFormatIndex) {
-        case VS_FMT_INDEX(NV12):
-        case VS_FMT_INDEX(YU12):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(NV12));
-          break;
         case VS_FMT_INDEX(GREY):
           rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(GREY));
           break;

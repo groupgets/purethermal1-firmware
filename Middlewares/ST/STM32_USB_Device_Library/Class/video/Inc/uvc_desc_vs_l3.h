@@ -54,16 +54,6 @@
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
   {
-    .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(NV12, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, NV12, 160, 120),
-    .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-  },
-  {
-    .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YU12, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YU12, 160, 120),
-    .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
-  },
-  {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(GREY, 1),
     .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, 160, 120),
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),

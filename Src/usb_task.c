@@ -304,78 +304,6 @@ PT_THREAD( usb_task(struct pt *pt))
 
       switch (videoCommitControl.bFormatIndex)
       {
-        // HACK: NV12 is semi-planar but YU12/I420 is planar. Deal with it when we have actual color.
-        case VS_FMT_INDEX(NV12):
-        case VS_FMT_INDEX(YU12):
-        {
-          // printf("Writing format 1, plane %d...\r\n", uvc_xmit_plane);
-
-          switch (uvc_xmit_plane)
-          {
-            default:
-            case 0: // Y
-            {
-              // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
-              {
-                for (i = 0; i < FRAME_LINE_LENGTH; i++)
-                {
-#ifdef Y16
-                  uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
-#else
-                  uint8_t val;
-                  rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
-                          &val, NULL, NULL);
-#endif
-                  // AGC is on so just use lower 8 bits
-                  packet[count++] = (uint8_t)val;
-                }
-
-                uvc_xmit_row++;
-              }
-
-              if (uvc_xmit_row == IMAGE_NUM_LINES)
-              {
-                uvc_xmit_plane = 1;
-                uvc_xmit_row = 0;
-              }
-
-              break;
-            }
-            case 1: // VU
-            case 2:
-            {
-              int incr = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(NV12) ? 1 : 2);
-
-              while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
-              {
-                for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE; i += incr)
-                {
-                  packet[count++] = 128;
-                }
-
-                uvc_xmit_row += 2;
-              }
-
-              // plane is done
-              if (uvc_xmit_row == IMAGE_NUM_LINES)
-              {
-                if (uvc_xmit_plane == 1 && videoCommitControl.bFormatIndex == VS_FMT_INDEX(YU12))
-                {
-                  uvc_xmit_plane = 2;
-                  uvc_xmit_row = 0;
-                }
-                else
-                {
-                  packet[1] |= 0x2; // Flag end of frame
-                }
-              }
-              break;
-            }
-          }
-  
-          break;
-        }
         case VS_FMT_INDEX(GREY):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
@@ -503,14 +431,12 @@ PT_THREAD( usb_task(struct pt *pt))
 #endif
       }
 
-      // Check if image is done (non planar/semi-planar formats)
-      if (videoCommitControl.bFormatIndex != VS_FMT_INDEX(NV12) &&
-          videoCommitControl.bFormatIndex != VS_FMT_INDEX(YU12) &&
-          uvc_xmit_row == IMAGE_NUM_LINES)
+      // Check if image is done
+      if (uvc_xmit_row == IMAGE_NUM_LINES)
       {
         if (++uvc_xmit_seg == image_num_segments)
         {
-           packet[1] |= 0x2; // Flag end of frame
+          packet[1] |= 0x2; // Flag end of frame
         }
       }
 
