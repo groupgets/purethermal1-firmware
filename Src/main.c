@@ -168,13 +168,10 @@ int main(void)
   disable_telemetry_and_radiometry();
 #endif
 
-#ifdef ENABLE_LEPTON_AGC
-  enable_lepton_agc();
-#endif
-
 #ifdef Y16
   enable_telemetry();
 #else
+  enable_lepton_agc();
   enable_rgb888(PSUEDOCOLOR_LUT);
 #endif
 

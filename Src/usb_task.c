@@ -29,9 +29,6 @@ void change_overlay_mode(void)
 
 static int last_frame_count;
 static lepton_buffer *last_buffer;
-#ifndef Y16
-static yuv422_buffer_t *last_buffer_yuv;
-#endif
 
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -52,7 +49,6 @@ static void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 	last_buffer->lines.y16[y].data.image_data[x] = c;
 #else
 	last_buffer->lines.rgb[y].data.image_data[x].g = c;
-	last_buffer_yuv->data[y][x].y = c;
 #endif
 }
 #endif
@@ -151,12 +147,8 @@ static void draw_splash(int min, int max)
 
 }
 
-#ifndef ENABLE_LEPTON_AGC
 #ifdef Y16
 static void get_min_max(lepton_buffer *buffer, uint16_t * min, uint16_t * max)
-#else
-static void get_min_max(yuv422_buffer_t *buffer, uint16_t * min, uint16_t * max)
-#endif
 {
 	int i,j;
 	*min= 0xffff;
@@ -165,11 +157,7 @@ static void get_min_max(yuv422_buffer_t *buffer, uint16_t * min, uint16_t * max)
 	{
 		for (i = 0; i < FRAME_LINE_LENGTH; i++)
 		{
-#ifdef Y16
 			uint16_t val = buffer->lines.y16[j].data.image_data[i];
-#else
-			uint8_t val = buffer->data[j][i].y;
-#endif
 
 			if( val > *max )
 			{
@@ -183,11 +171,7 @@ static void get_min_max(yuv422_buffer_t *buffer, uint16_t * min, uint16_t * max)
 	}
 }
 
-#ifdef Y16
 static void scale_image_8bit(lepton_buffer *buffer, uint16_t min, uint16_t max)
-#else
-static void scale_image_8bit(yuv422_buffer_t *buffer, uint16_t min, uint16_t max)
-#endif
 {
 	int i,j;
 
@@ -195,19 +179,11 @@ static void scale_image_8bit(yuv422_buffer_t *buffer, uint16_t min, uint16_t max
 	{
 		for (i = 0; i < FRAME_LINE_LENGTH; i++)
 		{
-#ifdef Y16
 			uint16_t val = buffer->lines.y16[j].data.image_data[i];
 			val -= min;
 			val = (( val * 255) / (max-min));
 
 			buffer->lines.y16[j].data.image_data[i] = val;
-#else
-			uint8_t val = buffer->data[j][i].y;
-			val -= min;
-			val = (( val * 255) / (max-min));
-
-			buffer->data[j][i].y = val;
-#endif
 		}
 	}
 }
@@ -217,7 +193,7 @@ PT_THREAD( usb_task(struct pt *pt))
 {
 	static int temperature;
 	static uint16_t count = 0, i;
-#ifndef ENABLE_LEPTON_AGC
+#ifdef Y16
 	static uint16_t current_min, current_max;
 #endif
 
@@ -238,9 +214,6 @@ PT_THREAD( usb_task(struct pt *pt))
 	while (1)
 	{
 		PT_WAIT_UNTIL(pt, (last_buffer = dequeue_lepton_buffer()) != NULL);
-#ifndef Y16
-		get_lepton_buffer_yuv(&last_buffer_yuv);
-#endif
 
 		uvc_xmit_row = 0;
 		uvc_xmit_plane = 0;
@@ -260,7 +233,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 		last_frame_count++;
 
-#ifndef ENABLE_LEPTON_AGC
+#ifdef Y16
 		switch (videoCommitControl.bFormatIndex)
 		{
 		case VS_FMT_INDEX(Y16):
@@ -350,7 +323,9 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
                   uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-                  uint8_t val = last_buffer_yuv->data[uvc_xmit_row][i].y;
+                  uint8_t val;
+                  rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
+                          &val, NULL, NULL);
 #endif
                   // AGC is on so just use lower 8 bits
                   packet[count++] = (uint8_t)val;
@@ -371,17 +346,12 @@ PT_THREAD( usb_task(struct pt *pt))
             case 2:
             {
               int incr = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(NV12) ? 1 : 2);
-              int plane_offset = uvc_xmit_plane - 1;
 
               while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
               {
                 for (i = 0; i < FRAME_LINE_LENGTH && uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE; i += incr)
                 {
-#ifdef Y16
                   packet[count++] = 128;
-#else
-                  packet[count++] = last_buffer_yuv->data[uvc_xmit_row][i + plane_offset].uv;
-#endif
                 }
 
                 uvc_xmit_row += 2;
@@ -416,7 +386,9 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
               uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-              uint8_t val = last_buffer_yuv->data[uvc_xmit_row][i].y;
+              uint8_t val;
+              rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
+                      &val, NULL, NULL);
 #endif
               // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
@@ -437,7 +409,9 @@ PT_THREAD( usb_task(struct pt *pt))
 #ifdef Y16
               uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
 #else
-              uint16_t val = last_buffer_yuv->data[uvc_xmit_row][i].y;
+              uint16_t val = 0;
+              rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
+                      (uint8_t*)&val, NULL, NULL);
 #endif
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);
@@ -468,8 +442,21 @@ PT_THREAD( usb_task(struct pt *pt))
 #else
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
-            memcpy(&packet[count], last_buffer_yuv->data[uvc_xmit_row], sizeof(yuv422_row_t));
-            count += sizeof(yuv422_row_t);
+            for (i = 0; i < FRAME_LINE_LENGTH; i++)
+            {
+              uint8_t y, uv;
+
+              if ((i % 2) == 0)
+                rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
+                        &y, &uv, NULL);
+              else
+                rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
+                        &y, NULL, &uv);
+
+              packet[count++] = uv;
+              packet[count++] = y;
+            }
+
             uvc_xmit_row++;
           }
 #endif

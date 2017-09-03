@@ -28,13 +28,9 @@ lepton_buffer lepton_buffers[RING_SIZE];
 lepton_buffer* completed_frames_buf[RING_SIZE] = { 0 };
 DECLARE_CIRC_BUF_HANDLE(completed_frames_buf);
 
-uint32_t completed_yuv_frame_count;
-yuv422_buffer_t yuv_buffers[2];
-
 struct rgb_to_yuv_state {
   struct pt pt;
   lepton_buffer *restrict rgb;
-  yuv422_buffer_t *restrict buffer;
 };
 
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
@@ -56,13 +52,6 @@ lepton_buffer* dequeue_lepton_buffer()
     return NULL;
   else
     return shift(CIRC_BUF_HANDLE(completed_frames_buf));
-}
-
-uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer)
-{
-  if (buffer != NULL)
-    *buffer = &yuv_buffers[completed_yuv_frame_count%2];
-	return completed_yuv_frame_count;
 }
 
 void init_lepton_task()
@@ -113,7 +102,6 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t last_tick = 0;
 	static uint32_t last_logged_count = 0;
 	static uint32_t current_frame_count = 0;
-	static struct pt rgb_to_yuv_pt;
 	static int transferring_timer = 0;
 	static uint8_t current_segment = 0;
 	static uint8_t last_end_line = 0;
@@ -240,16 +228,28 @@ PT_THREAD( lepton_task(struct pt *pt))
 		// Need to update completed buffer for clients?
 		if (g_lepton_type_3 == 0 || (current_segment > 0 && current_segment <= 4))
 		{
+			static int row;
+
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
 
 			HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
 
-			PT_SPAWN(
-				pt,
-				&rgb_to_yuv_pt,
-				rgb_to_yuv(&rgb_to_yuv_pt, completed_buffer, &yuv_buffers[(completed_yuv_frame_count + 1) % 2])
-			);
+#ifndef Y16
+			for (row = 0; row < IMAGE_NUM_LINES; row++)
+			{
+				uint16_t* lineptr = (uint16_t*)completed_buffer->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data;
+				while (lineptr < (uint16_t*)&completed_buffer->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
+				{
+				  uint8_t* bytes = (uint8_t*)lineptr;
+				  *lineptr++ = bytes[0] << 8 | bytes[1];
+				}
+				PT_YIELD(pt);
+			}
+#endif
+
+			if (!full(CIRC_BUF_HANDLE(completed_frames_buf)))
+				push(CIRC_BUF_HANDLE(completed_frames_buf), completed_buffer);
 		}
 
 		current_buffer = NULL;
@@ -264,48 +264,15 @@ static inline uint8_t clamp (float x)
   else               return (uint8_t)x;
 }
 
-PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buffer_t *restrict buffer))
+void rgb2yuv(const rgb_t val, uint8_t *y, uint8_t *u, uint8_t *v)
 {
-  PT_BEGIN(pt);
+	float r = val.r, g = val.g, b = val.b;
 
-  static int row, col;
+	float y1 = 0.299f * r + 0.587f * g + 0.114f * b;
 
-  for (row = 0; row < IMAGE_NUM_LINES; row++)
-  {
-#ifndef Y16
-    uint16_t* lineptr = (uint16_t*)lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data;
-    while (lineptr < (uint16_t*)&lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
-    {
-      uint8_t* bytes = (uint8_t*)lineptr;
-      *lineptr++ = bytes[0] << 8 | bytes[1];
-    }
-#endif
-
-    for (col = 0; col < FRAME_LINE_LENGTH; col++)
-    {
-#ifdef Y16
-      uint16_t val = lepton->lines.y16[IMAGE_OFFSET_LINES + row].data.image_data[col];
-      buffer->data[row][col] = (yuv422_t){ (uint8_t)val, 128 };
-#else
-      rgb_t val = lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[col];
-      float r = val.r, g = val.g, b = val.b;
-
-      float y1 = 0.299f * r + 0.587f * g + 0.114f * b;
-
-      buffer->data[row][col].y =    clamp (0.859f *      y1  +  16.0f);
-      if ((col % 2) == 0)
-        buffer->data[row][col].uv = clamp (0.496f * (b - y1) + 128.0f);
-      else
-        buffer->data[row][col].uv = clamp (0.627f * (r - y1) + 128.0f);
-#endif
-    }
-    PT_YIELD(pt);
-  }
-
-  completed_yuv_frame_count++;
-
-  if (!full(CIRC_BUF_HANDLE(completed_frames_buf)))
-    push(CIRC_BUF_HANDLE(completed_frames_buf), lepton);
-
-	PT_END(pt);
+	*y =   clamp (0.859f *      y1  +  16.0f);
+	if (u)
+		*u = clamp (0.496f * (b - y1) + 128.0f);
+	if (v)
+		*v = clamp (0.627f * (r - y1) + 128.0f);
 }

@@ -4,7 +4,6 @@
 // #define THERMAL_DATA_UART
 #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
-#define ENABLE_LEPTON_AGC
 // #define Y16
 
 #ifndef Y16

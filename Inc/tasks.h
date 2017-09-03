@@ -11,14 +11,13 @@ PT_THREAD( button_task(struct pt *pt));
 
 // Temporary tasks
 PT_THREAD( uart_lepton_send(struct pt *pt,char * buffer));
-PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict rgb, yuv422_buffer_t *restrict buffer));
 
 // Synchronization helpers
 lepton_buffer* dequeue_lepton_buffer(void);
 uint32_t get_lepton_buffer(lepton_buffer **buffer);
-uint32_t get_lepton_buffer_yuv(yuv422_buffer_t **buffer);
 
 //Other
 void change_overlay_mode(void);
+void rgb2yuv(const rgb_t val, uint8_t *y, uint8_t *u, uint8_t *v);
 
 #endif
