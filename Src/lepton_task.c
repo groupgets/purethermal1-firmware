@@ -121,6 +121,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 	while (1)
 	{
+#ifndef THERMAL_DATA_UART
 		if (g_uvc_stream_status == 0)
 		{
 			lepton_low_power();
@@ -142,6 +143,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			lepton_power_on();
 		}
+#endif
 
 		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 

@@ -30,7 +30,6 @@ extern volatile int restart_frame;
 PT_THREAD( uart_task(struct pt *pt))
 {
 	static uint16_t val;
-	static int last_frame_count = 0;
 	static int count;
 	static int i,j;
 	static lepton_buffer *last_buffer;
@@ -41,9 +40,7 @@ PT_THREAD( uart_task(struct pt *pt))
 
 	while (1)
 	{
-#ifdef THERMAL_DATA_UART 
-		 PT_WAIT_UNTIL(pt, get_lepton_buffer(NULL) != last_frame_count);
-		 last_frame_count = get_lepton_buffer(&last_buffer);
+		PT_WAIT_UNTIL(pt, (last_buffer = dequeue_lepton_buffer()) != NULL);
 
 		 count = 0;
 		 for (j = 0; j < 60; j++)
@@ -96,9 +93,6 @@ PT_THREAD( uart_task(struct pt *pt))
 		   LEPTON_USART_PORT->DR = (*ptr++ );
 		 }
 
-#else
-		 PT_YIELD(pt);
-#endif
 	}
 	PT_END(pt);
 }

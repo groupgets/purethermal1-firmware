@@ -203,8 +203,11 @@ int main(void)
   /* USER CODE BEGIN 3 */
 
 	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
+#ifndef THERMAL_DATA_UART
 	  PT_SCHEDULE(usb_task(&usb_task_pt));
+#else
 	  PT_SCHEDULE(uart_task(&uart_task_pt));
+#endif
 	  PT_SCHEDULE(button_task(&button_task_pt));
 
   }
