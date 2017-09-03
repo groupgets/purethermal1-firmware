@@ -87,26 +87,28 @@ typedef struct __attribute__((packed)) _rgb {
   uint8_t b;
 } rgb_t;
 
-#ifdef Y16
-typedef struct __attribute__((packed)) _vospi_packet {
+typedef struct __attribute__((packed)) _vospi_packet_y16 {
   uint16_t header[2];
   union {
     uint16_t image_data[FRAME_LINE_LENGTH];
     telemetry_data_l2 telemetry_data;
   } data;
-} vospi_packet;
-#else
-typedef struct __attribute__((packed)) _vospi_packet {
+} vospi_packet_y16;
+
+typedef struct __attribute__((packed)) _vospi_packet_rgb {
   uint16_t header[2];
   union {
     rgb_t image_data[FRAME_LINE_LENGTH];
     telemetry_data_l2 telemetry_data;
   } data;
-} vospi_packet;
-#endif
+} vospi_packet_rgb;
 
 typedef struct _lepton_buffer {
-  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_MAX_LINES];
+  union {
+	uint8_t data[0];
+    vospi_packet_y16 y16[IMAGE_NUM_LINES + TELEMETRY_MAX_LINES];
+    vospi_packet_rgb rgb[IMAGE_NUM_LINES + TELEMETRY_MAX_LINES];
+  } lines;
   uint8_t number;
   lepton_status status;
 } lepton_buffer;

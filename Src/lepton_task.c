@@ -163,8 +163,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		current_frame_count++;
 
-		current_segment = ((current_buffer->lines[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
-		last_end_line = (current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
+#ifdef Y16
+		current_segment = ((current_buffer->lines.y16[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+		last_end_line = (current_buffer->lines.y16[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
+#else
+		current_segment = ((current_buffer->lines.rgb[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+		last_end_line = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
+#endif
 
 		if (last_end_line != (IMAGE_NUM_LINES - 1))
 		{
@@ -185,8 +190,11 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 					transferring_timer = HAL_GetTick();
 					PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
-
-				} while (current_buffer->status == LEPTON_STATUS_OK && (current_buffer->lines[0].header[0] & 0x0f00) == 0x0f00);
+#ifdef Y16
+				} while (current_buffer->status == LEPTON_STATUS_OK && (current_buffer->lines.y16[0].header[0] & 0x0f00) == 0x0f00);
+#else
+				} while (current_buffer->status == LEPTON_STATUS_OK && (current_buffer->lines.rgb[0].header[0] & 0x0f00) == 0x0f00);
+#endif
 
 				// we picked up the start of a new packet, so read the rest of it in
 				lepton_transfer(current_buffer, IMAGE_NUM_LINES - 1);
@@ -215,8 +223,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 			);
 #endif
 
+#ifdef Y16
 			if (g_telemetry_num_lines > 0)
-				print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
+				print_telemetry_temps(&current_buffer->lines.y16[TELEMETRY_OFFSET_LINES].data.telemetry_data);
+#else
+			if (g_telemetry_num_lines > 0)
+				print_telemetry_temps(&current_buffer->lines.rgb[TELEMETRY_OFFSET_LINES].data.telemetry_data);
+#endif
 
 			read_tmp007_regs();
 
@@ -260,8 +273,8 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buff
   for (row = 0; row < IMAGE_NUM_LINES; row++)
   {
 #ifndef Y16
-    uint16_t* lineptr = (uint16_t*)lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data;
-    while (lineptr < (uint16_t*)&lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
+    uint16_t* lineptr = (uint16_t*)lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data;
+    while (lineptr < (uint16_t*)&lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
     {
       uint8_t* bytes = (uint8_t*)lineptr;
       *lineptr++ = bytes[0] << 8 | bytes[1];
@@ -271,10 +284,10 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buff
     for (col = 0; col < FRAME_LINE_LENGTH; col++)
     {
 #ifdef Y16
-      uint16_t val = lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[col];
+      uint16_t val = lepton->lines.y16[IMAGE_OFFSET_LINES + row].data.image_data[col];
       buffer->data[row][col] = (yuv422_t){ (uint8_t)val, 128 };
 #else
-      rgb_t val = lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[col];
+      rgb_t val = lepton->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[col];
       float r = val.r, g = val.g, b = val.b;
 
       float y1 = 0.299f * r + 0.587f * g + 0.114f * b;

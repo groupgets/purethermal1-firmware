@@ -42,7 +42,7 @@ void lepton_transfer(lepton_buffer *buf, int nlines)
 
   // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
 
-  status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH * nlines);
+  status = setup_lepton_spi_rx(&hspi2, buf->lines.data, FRAME_TOTAL_LENGTH * nlines);
 
   if (status != HAL_OK)
   {
@@ -62,15 +62,13 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 static void lepton_spi_rx_dma_cplt(DMA_HandleTypeDef *hdma)
 {
   SPI_HandleTypeDef* hspi = ( SPI_HandleTypeDef* )((DMA_HandleTypeDef* )hdma)->Parent;
-  vospi_packet *packet = (vospi_packet*)hspi->pRxBuffPtr;
-  lepton_buffer *buffer;
+  lepton_buffer *buffer = (lepton_buffer*)hspi->pRxBuffPtr;
 
   /* Disable Rx/Tx DMA Requests and reset some peripheral state */
   hspi->Instance->CR2 &= (uint32_t)(~(SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN));
   hspi->TxXferCount = hspi->RxXferCount = 0;
   hspi->State = HAL_SPI_STATE_READY;
 
-  buffer = (lepton_buffer*)(packet);
   buffer->status = LEPTON_STATUS_OK;
 }
 
