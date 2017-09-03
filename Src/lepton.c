@@ -36,13 +36,13 @@ lepton_status complete_lepton_transfer(lepton_buffer* buffer)
   return buffer->status;
 }
 
-void lepton_transfer_full(lepton_buffer *buf)
+void lepton_transfer(lepton_buffer *buf, int nlines)
 {
   HAL_StatusTypeDef status;
 
   // DEBUG_PRINTF("Transfer starting: %p@%p\r\n", buf, packet);
 
-  status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH * (IMAGE_NUM_LINES + TELEMETRY_NUM_LINES));
+  status = setup_lepton_spi_rx(&hspi2, (uint8_t*)(&buf->lines[0]), FRAME_TOTAL_LENGTH * nlines);
 
   if (status != HAL_OK)
   {

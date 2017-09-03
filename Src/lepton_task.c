@@ -125,7 +125,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		PT_WAIT_UNTIL(pt, current_buffer != NULL);
 
-		lepton_transfer_full(current_buffer);
+		lepton_transfer(current_buffer, IMAGE_NUM_LINES + TELEMETRY_NUM_LINES);
 
 		transferring_timer = HAL_GetTick();
 		PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
@@ -137,32 +137,45 @@ PT_THREAD( lepton_task(struct pt *pt))
 			continue;
 		}
 
-#ifdef Y16
-		current_frame_count =
-			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[1] << 16) |
-			(current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data.frame_counter[0] <<  0);
-#else
 		current_frame_count++;
-#endif
 
 		current_segment = ((current_buffer->lines[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
-		last_end_line = (current_buffer->lines[IMAGE_OFFSET_LINES + 59].header[0] & 0x00ff);
+		last_end_line = (current_buffer->lines[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
 
-		if (current_frame_count > 2 && last_end_line != (59))
+		if (last_end_line != (IMAGE_NUM_LINES - 1))
 		{
-			DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
-				current_buffer->status, last_end_line);
-
 			// flush out any old data since it's no good
 			while (dequeue_lepton_buffer() != NULL) {}
 
-			transferring_timer = HAL_GetTick();
-			PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 190);
+			if (current_frame_count > 2)
+			{
+				DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
+					current_buffer->status, last_end_line);
 
-			// Make sure we're not about to service an old irq when the interrupts are re-enabled
-			__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+				transferring_timer = HAL_GetTick();
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 185);
 
-			current_frame_count = 0;
+				// transfer packets until we've actually re-synchronized
+				do {
+					lepton_transfer(current_buffer, 1);
+
+					transferring_timer = HAL_GetTick();
+					PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
+
+				} while (current_buffer->status == LEPTON_STATUS_OK && (current_buffer->lines[0].header[0] & 0x0f00) == 0x0f00);
+
+				// we picked up the start of a new packet, so read the rest of it in
+				lepton_transfer(current_buffer, IMAGE_NUM_LINES - 1);
+
+				transferring_timer = HAL_GetTick();
+				PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
+
+				// Make sure we're not about to service an old irq when the interrupts are re-enabled
+				__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+
+				current_frame_count = 0;
+			}
+
 			current_buffer = NULL;
 
 			continue;
@@ -188,16 +201,8 @@ PT_THREAD( lepton_task(struct pt *pt))
 			last_logged_count = current_frame_count;
 		}
 
-		static uint32_t frame_count = 0;
-		if (current_segment == 1)
-			frame_count++;
-
 		// Need to update completed buffer for clients?
-#ifdef Y16
-		if (completed_frame_count != current_frame_count)
-#else
-		if (g_lepton_type_3 == 0 || (current_segment > 0 && current_segment <= 4))// && (frame_count % 3) == 0))
-#endif
+		if (g_lepton_type_3 == 0 || (current_segment > 0 && current_segment <= 4))
 		{
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
