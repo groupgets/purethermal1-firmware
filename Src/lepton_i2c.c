@@ -2,6 +2,7 @@
 #include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
 
+#include "lepton.h"
 #include "lepton_i2c.h"
 #include "project_config.h"
 
@@ -248,16 +249,33 @@ HAL_StatusTypeDef enable_telemetry(void)
 {
   LEP_RESULT result;
 
-  result = LEP_SetSysTelemetryLocation(&hport_desc, LEP_TELEMETRY_LOCATION_FOOTER);
-  if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not set telemetry location %d\r\n", result);
-    return HAL_ERROR;
-  }
+  if (g_lepton_type_3)
+  {
+    // can't handle telemetry on L3 as segments are handled now
 
-  result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_ENABLED);
-  if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not enable telemetry %d\r\n", result);
-    return HAL_ERROR;
+    result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_DISABLED);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not disable telemetry %d\r\n", result);
+      return HAL_ERROR;
+    }
+
+    g_telemetry_num_lines = 0;
+  }
+  else
+  {
+    result = LEP_SetSysTelemetryLocation(&hport_desc, LEP_TELEMETRY_LOCATION_FOOTER);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not set telemetry location %d\r\n", result);
+      return HAL_ERROR;
+    }
+
+    result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_ENABLED);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not enable telemetry %d\r\n", result);
+      return HAL_ERROR;
+    }
+
+    g_telemetry_num_lines = 3;
   }
 
   return HAL_OK;

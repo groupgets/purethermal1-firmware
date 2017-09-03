@@ -125,7 +125,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		PT_WAIT_UNTIL(pt, current_buffer != NULL);
 
-		lepton_transfer(current_buffer, IMAGE_NUM_LINES + TELEMETRY_NUM_LINES);
+		lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines);
 
 		transferring_timer = HAL_GetTick();
 		PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
@@ -191,9 +191,8 @@ PT_THREAD( lepton_task(struct pt *pt))
 			);
 #endif
 
-#ifdef Y16
-			print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
-#endif
+			if (g_telemetry_num_lines > 0)
+				print_telemetry_temps(&current_buffer->lines[TELEMETRY_OFFSET_LINES].data.telemetry_data);
 
 			read_tmp007_regs();
 

@@ -13,13 +13,13 @@
 #define FRAME_TOTAL_SIZE_Y16 (FRAME_TOTAL_LENGTH * sizeof(uint16_t) * 1)
 #define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
-#ifdef Y16
-#define TELEMETRY_NUM_LINES (3)
-#else
-#define TELEMETRY_NUM_LINES (0)
-#endif
+#define TELEMETRY_MAX_LINES (3)
 #define IMAGE_OFFSET_LINES (0)
 #define TELEMETRY_OFFSET_LINES (IMAGE_NUM_LINES)
+
+extern volatile uint8_t g_uvc_stream_status;
+extern volatile uint8_t g_lepton_type_3;
+extern volatile uint8_t g_telemetry_num_lines;
 
 typedef enum {
   LEPTON_STATUS_OK = 0,
@@ -106,7 +106,7 @@ typedef struct __attribute__((packed)) _vospi_packet {
 #endif
 
 typedef struct _lepton_buffer {
-  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_NUM_LINES];
+  vospi_packet lines[IMAGE_NUM_LINES + TELEMETRY_MAX_LINES];
   uint8_t number;
   lepton_status status;
 } lepton_buffer;
