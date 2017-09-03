@@ -250,7 +250,11 @@ PT_THREAD( usb_task(struct pt *pt))
 
 		if (image_num_segments > 1)
 		{
+#ifdef Y16
+			if (uvc_xmit_seg == 0 && ((last_buffer->lines[20].header[0] & 0x7000) >> 12) != 1)
+#else
 			if (uvc_xmit_seg == 0 && ((last_buffer_rgb->lines[20].header[0] & 0x7000) >> 12) != 1)
+#endif
 			{
 				// Skip this segment until we have the beginning of a frame
 				break;

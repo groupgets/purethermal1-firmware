@@ -236,12 +236,14 @@ PT_THREAD( rgb_to_yuv(struct pt *pt, lepton_buffer *restrict lepton, yuv422_buff
 
   for (row = 0; row < IMAGE_NUM_LINES; row++)
   {
+#ifndef Y16
     uint16_t* lineptr = (uint16_t*)lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data;
     while (lineptr < (uint16_t*)&lepton->lines[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])
     {
       uint8_t* bytes = (uint8_t*)lineptr;
       *lineptr++ = bytes[0] << 8 | bytes[1];
     }
+#endif
 
     for (col = 0; col < FRAME_LINE_LENGTH; col++)
     {
