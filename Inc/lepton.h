@@ -5,13 +5,6 @@
 
 #define FRAME_HEADER_LENGTH (2)
 #define FRAME_LINE_LENGTH (80)
-#ifdef Y16
-#define FRAME_TOTAL_LENGTH (FRAME_HEADER_LENGTH + FRAME_LINE_LENGTH)
-#else
-#define FRAME_TOTAL_LENGTH (FRAME_HEADER_LENGTH + FRAME_LINE_LENGTH + 40)
-#endif
-#define FRAME_TOTAL_SIZE_Y16 (FRAME_TOTAL_LENGTH * sizeof(uint16_t) * 1)
-#define FRAME_TOTAL_SIZE_RGB (FRAME_TOTAL_LENGTH * sizeof(uint8_t) * 3)
 #define IMAGE_NUM_LINES (60)
 #define TELEMETRY_MAX_LINES (3)
 #define IMAGE_OFFSET_LINES (0)
@@ -20,6 +13,7 @@
 extern volatile uint8_t g_uvc_stream_status;
 extern volatile uint8_t g_lepton_type_3;
 extern volatile uint8_t g_telemetry_num_lines;
+extern volatile uint8_t g_format_y16;
 
 typedef enum {
   LEPTON_STATUS_OK = 0,
@@ -111,6 +105,7 @@ typedef struct _lepton_buffer {
   } lines;
   uint8_t number;
   lepton_status status;
+  uint8_t segment;
 } lepton_buffer;
 
 lepton_status complete_lepton_transfer(lepton_buffer *);

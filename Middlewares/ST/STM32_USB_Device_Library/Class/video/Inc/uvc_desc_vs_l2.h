@@ -58,7 +58,6 @@
     .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, 80, 60),
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
-#ifndef Y16
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(RGB565, 1),
     .uvc_vs_frame  = UVC_FRAME_FORMAT(1, RGB565, 80, 60),
@@ -69,5 +68,4 @@
     .uvc_vs_frame  = UVC_FRAME_FORMAT(1, BGR3, 80, 60),
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
-#endif
 },

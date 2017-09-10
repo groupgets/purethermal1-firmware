@@ -164,17 +164,6 @@ int main(void)
 
   init_lepton_command_interface();
 
-#ifndef Y16
-  disable_telemetry_and_radiometry();
-#endif
-
-#ifdef Y16
-  enable_telemetry();
-#else
-  enable_lepton_agc();
-  enable_rgb888(PSUEDOCOLOR_LUT);
-#endif
-
   DEBUG_PRINTF("reading_tmp007_regs...\n\r");
 
   read_tmp007_regs();

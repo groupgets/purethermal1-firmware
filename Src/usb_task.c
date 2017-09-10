@@ -45,11 +45,7 @@ void HAL_RCC_CSSCallback(void) {
 UG_GUI gui; 
 static void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
 {
-#ifdef Y16
-	last_buffer->lines.y16[y].data.image_data[x] = c;
-#else
 	last_buffer->lines.rgb[y].data.image_data[x].g = c;
-#endif
 }
 #endif
 
@@ -147,55 +143,10 @@ static void draw_splash(int min, int max)
 
 }
 
-#ifdef Y16
-static void get_min_max(lepton_buffer *buffer, uint16_t * min, uint16_t * max)
-{
-	int i,j;
-	*min= 0xffff;
-	*max= 0;
-	for (j = 0; j < IMAGE_NUM_LINES; j++)
-	{
-		for (i = 0; i < FRAME_LINE_LENGTH; i++)
-		{
-			uint16_t val = buffer->lines.y16[j].data.image_data[i];
-
-			if( val > *max )
-			{
-				*max = val;
-			}
-			if( val < *min)
-			{
-				*min = val;
-			}
-		}
-	}
-}
-
-static void scale_image_8bit(lepton_buffer *buffer, uint16_t min, uint16_t max)
-{
-	int i,j;
-
-	for (j = 0; j < IMAGE_NUM_LINES; j++)
-	{
-		for (i = 0; i < FRAME_LINE_LENGTH; i++)
-		{
-			uint16_t val = buffer->lines.y16[j].data.image_data[i];
-			val -= min;
-			val = (( val * 255) / (max-min));
-
-			buffer->lines.y16[j].data.image_data[i] = val;
-		}
-	}
-}
-#endif
-
 PT_THREAD( usb_task(struct pt *pt))
 {
 	static int temperature;
 	static uint16_t count = 0, i;
-#ifdef Y16
-	static uint16_t current_min, current_max;
-#endif
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0, uvc_xmit_seg = 0;
@@ -220,11 +171,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 		if (image_num_segments > 1)
 		{
-#ifdef Y16
-			if (uvc_xmit_seg == 0 && ((last_buffer->lines.y16[20].header[0] & 0x7000) >> 12) != 1)
-#else
-			if (uvc_xmit_seg == 0 && ((last_buffer->lines.rgb[20].header[0] & 0x7000) >> 12) != 1)
-#endif
+			if (uvc_xmit_seg == 0 && last_buffer->segment != 1)
 			{
 				// Skip this segment until we have the beginning of a frame
 				continue;
@@ -232,20 +179,6 @@ PT_THREAD( usb_task(struct pt *pt))
 		}
 
 		last_frame_count++;
-
-#ifdef Y16
-		switch (videoCommitControl.bFormatIndex)
-		{
-		case VS_FMT_INDEX(Y16):
-			// leave the data alone
-			break;
-		default:
-			// do our hoky linear agc for 8-bit types
-			get_min_max(last_buffer, &current_min, &current_max);
-			scale_image_8bit(last_buffer, current_min, current_max);
-			break;
-		}
-#endif
 
 		if (((last_frame_count % 1800) > 0)   && ((last_frame_count % 1800) < 150)  )
 		{
@@ -311,13 +244,10 @@ PT_THREAD( usb_task(struct pt *pt))
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
-#ifdef Y16
-              uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
-#else
               uint8_t val;
               rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
                       &val, NULL, NULL);
-#endif
+
               // AGC is on, so just use lower 8 bits
               packet[count++] = (uint8_t)val;
             }
@@ -334,13 +264,7 @@ PT_THREAD( usb_task(struct pt *pt))
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
-#ifdef Y16
               uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
-#else
-              uint16_t val = 0;
-              rgb2yuv(last_buffer->lines.rgb[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i],
-                      (uint8_t*)&val, NULL, NULL);
-#endif
               packet[count++] = (uint8_t)((val >> 0) & 0xFF);
               packet[count++] = (uint8_t)((val >> 8) & 0xFF);
             }
@@ -353,21 +277,6 @@ PT_THREAD( usb_task(struct pt *pt))
         default:
         case VS_FMT_INDEX(YUYV):
         {
-#ifdef Y16
-          // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
-          {
-            for (i = 0; i < FRAME_LINE_LENGTH; i++)
-            {
-              uint16_t val = last_buffer->lines.y16[IMAGE_OFFSET_LINES + uvc_xmit_row].data.image_data[i];
-              // AGC is on so just use lower 8 bits
-              packet[count++] = (uint8_t)val;
-              packet[count++] = 128;
-            }
-
-            uvc_xmit_row++;
-          }
-#else
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
@@ -387,11 +296,9 @@ PT_THREAD( usb_task(struct pt *pt))
 
             uvc_xmit_row++;
           }
-#endif
 
           break;
         }
-#ifndef Y16
         case VS_FMT_INDEX(BGR3):
         {
           while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
@@ -428,7 +335,6 @@ PT_THREAD( usb_task(struct pt *pt))
 
           break;
         }
-#endif
       }
 
       // Check if image is done

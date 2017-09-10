@@ -75,7 +75,7 @@
 #include "version.h"
 #define USBD_SERIALNUMBER_STRING_FS "v" BUILD_GIT_SHA
 #else
-#define USBD_SERIALNUMBER_STRING_FS "v0.0.0"
+#define USBD_SERIALNUMBER_STRING_FS "v1.0.0"
 #endif
 
 /* USER CODE END 0*/

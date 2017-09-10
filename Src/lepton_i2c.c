@@ -226,7 +226,20 @@ HAL_StatusTypeDef enable_lepton_agc()
   return HAL_OK;
 }
 
-HAL_StatusTypeDef disable_telemetry_and_radiometry(void)
+HAL_StatusTypeDef disable_lepton_agc()
+{
+  LEP_RESULT result;
+
+  result = LEP_SetAgcEnableState(&hport_desc, LEP_AGC_DISABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable AGC\r\n");
+    return HAL_ERROR;
+  }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef disable_telemetry(void)
 {
   LEP_RESULT result;
 
@@ -236,11 +249,7 @@ HAL_StatusTypeDef disable_telemetry_and_radiometry(void)
     return HAL_ERROR;
   }
 
-  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_DISABLE);
-  if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
-    return HAL_ERROR;
-  }
+  g_telemetry_num_lines = 0;
 
   return HAL_OK;
 }
@@ -249,34 +258,19 @@ HAL_StatusTypeDef enable_telemetry(void)
 {
   LEP_RESULT result;
 
-  if (g_lepton_type_3)
-  {
-    // can't handle telemetry on L3 as segments are handled now
-
-    result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_DISABLED);
-    if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not disable telemetry %d\r\n", result);
-      return HAL_ERROR;
-    }
-
-    g_telemetry_num_lines = 0;
+  result = LEP_SetSysTelemetryLocation(&hport_desc, LEP_TELEMETRY_LOCATION_FOOTER);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set telemetry location %d\r\n", result);
+    return HAL_ERROR;
   }
-  else
-  {
-    result = LEP_SetSysTelemetryLocation(&hport_desc, LEP_TELEMETRY_LOCATION_FOOTER);
-    if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not set telemetry location %d\r\n", result);
-      return HAL_ERROR;
-    }
 
-    result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_ENABLED);
-    if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not enable telemetry %d\r\n", result);
-      return HAL_ERROR;
-    }
-
-    g_telemetry_num_lines = 3;
+  result = LEP_SetSysTelemetryEnableState(&hport_desc, LEP_TELEMETRY_ENABLED);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not enable telemetry %d\r\n", result);
+    return HAL_ERROR;
   }
+
+  g_telemetry_num_lines = 3;
 
   return HAL_OK;
 }
@@ -288,6 +282,12 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
 
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("Current format: %d\r\n", fmt);
+
+  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_DISABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+    return HAL_ERROR;
+  }
 
   result = LEP_SetOemVideoOutputFormat(&hport_desc, LEP_VIDEO_OUTPUT_FORMAT_RGB888);
   if (result != LEP_OK) {
@@ -303,6 +303,32 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
     DEBUG_PRINTF("Could not set color lut: %d\r\n", result);
     return HAL_ERROR;
   }
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef enable_raw14()
+{
+  LEP_RESULT result;
+  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
+
+  LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
+  DEBUG_PRINTF("Current format: %d\r\n", fmt);
+
+  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_ENABLE);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  result = LEP_SetOemVideoOutputFormat(&hport_desc, LEP_VIDEO_OUTPUT_FORMAT_RAW14);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set output format %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
+  DEBUG_PRINTF("New format: %d\r\n", fmt);
 
   return HAL_OK;
 }
@@ -349,7 +375,6 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
 HAL_StatusTypeDef lepton_low_power()
 {
   LEP_RESULT result;
-  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
 
   result = LEP_RunOemLowPowerMode2( &hport_desc );
   if (result != LEP_OK) {
@@ -363,7 +388,6 @@ HAL_StatusTypeDef lepton_low_power()
 HAL_StatusTypeDef lepton_power_on()
 {
   LEP_RESULT result;
-  LEP_OEM_VIDEO_OUTPUT_FORMAT_E fmt;
 
   result = LEP_RunOemPowerOn( &hport_desc );
   if (result != LEP_OK) {
