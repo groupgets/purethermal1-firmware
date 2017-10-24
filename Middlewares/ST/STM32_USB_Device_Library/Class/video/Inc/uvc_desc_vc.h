@@ -106,11 +106,11 @@
     'a','g','c','-',
     '0','0','0','0'
   },
-  .bNumControls = 0x13,                        // Number of controls in this terminal
+  .bNumControls = 0x14,                        // Number of controls in this terminal
   .bNrInPins = 0x01,                           // Number of input pins in this terminal
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-  .bmControls = { 0xff, 0xff, 0x07, 0x00 },    // Registers 0x00 to 0x48
+  .bmControls = { 0xff, 0xff, 0x0f, 0x00 },    // Registers 0x00 to 0x48
   .iExtension = 0x00,                          // String desc index : Not used
 },
 
@@ -148,11 +148,11 @@
     'r','a','d','-',
     '0','0','0','0'
   },
-  .bNumControls = 47,                          // Number of controls in this terminal
+  .bNumControls = 48,                          // Number of controls in this terminal
   .bNrInPins = 0x01,                           // Number of input pins in this terminal
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x08,                        // Size of controls field for this terminal : 1 byte
-  .bmControls = { 0xFF, 0xFF, 0xFF, 0x81, 0xFC, 0xCF, 0xFF, 0x01 },    // Registers 0x00 to 0x48
+  .bmControls = { 0xFF, 0xFF, 0xFF, 0x81, 0xFC, 0xCF, 0xFF, 0x03 },    // Registers 0x00 to 0x48
   .iExtension = 0x00,                          // String desc index : Not used
 },
 
@@ -169,11 +169,11 @@
     's','y','s','-',
     '0','0','0','0'
   },
-  .bNumControls = 0x12,                        // Number of controls in this terminal
+  .bNumControls = 0x17,                        // Number of controls in this terminal
   .bNrInPins = 0x01,                           // Number of input pins in this terminal
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-  .bmControls = { 0xFF, 0xFF, 0x03, 0x00 },    // Registers 0x00 to 0x48
+  .bmControls = { 0xFF, 0xFF, 0x7F, 0x00 },    // Registers 0x00 to 0x48
   .iExtension = 0x00,                          // String desc index : Not used
 },
 
@@ -190,11 +190,11 @@
     'v','i','d','-',
     '0','0','0','0'
   },
-  .bNumControls = 0x0a,                        // Number of controls in this terminal
+  .bNumControls = 0x0e,                        // Number of controls in this terminal
   .bNrInPins = 0x01,                           // Number of input pins in this terminal
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-  .bmControls = { 0xFF, 0x03, 0x00, 0x00 },    // Registers 0x00 to 0x48
+  .bmControls = { 0xFF, 0x3F, 0x00, 0x00 },    // Registers 0x00 to 0x48
   .iExtension = 0x00,                          // String desc index : Not used
 },
 

@@ -78,6 +78,7 @@ static int8_t getAttributeLen_AGC(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_AGC_POLICY:
   case LEP_CID_AGC_HEQ_SCALE_FACTOR:
   case LEP_CID_AGC_CALC_ENABLE_STATE:
+  case LEP_CID_AGC_HEQ_LINEAR_PERCENT:
     *pbuf = 4;
     break;
   default:
@@ -158,6 +159,7 @@ static int8_t getAttributeLen_RAD(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_RAD_SHUTTER_TCP:
   case LEP_CID_RAD_LENS_TCP:
   case LEP_CID_RAD_SPOTMETER_ROI:
+  case LEP_CID_RAD_RADIO_CAL_VALUES:
     *pbuf = 8;
     break;
   case LEP_CID_RAD_TSHUTTER_MODE:
@@ -193,6 +195,12 @@ static int8_t getAttributeLen_SYS(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_SYS_FFC_SHUTTER_MODE_OBJ:
     *pbuf = 32;
     break;
+  case LEP_CID_SYS_GAIN_MODE_OBJ:
+    *pbuf = 28;
+    break;
+  case LEP_CID_SYS_BORESIGHT_VALUES:
+    *pbuf = 12;
+    break;
   case LEP_CID_SYS_CAM_STATUS:
   case LEP_CID_SYS_FLIR_SERIAL_NUMBER:
   case LEP_CID_SYS_SCENE_STATISTICS:
@@ -205,6 +213,9 @@ static int8_t getAttributeLen_SYS(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_SYS_NUM_FRAMES_TO_AVERAGE:
   case LEP_CID_SYS_SHUTTER_POSITION:
   case LEP_CID_SYS_FFC_STATUS:
+  case LEP_CID_SYS_GAIN_MODE:
+  case LEP_CID_SYS_FFC_STATE:
+  case LEP_CID_SYS_GAIN_MODE_DESIRED_FLAG:
     *pbuf = 4;
     break;
   case LEP_CID_SYS_PING:
@@ -226,6 +237,9 @@ static int8_t getAttributeLen_VID(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_VID_LUT_TRANSFER:
     *pbuf = 1024;
     break;
+  case LEP_CID_VID_BORESIGHT_COORDINATES:
+    *pbuf = 32;
+    break;
   case LEP_CID_VID_FOCUS_ROI:
     *pbuf = 8;
     break;
@@ -236,6 +250,9 @@ static int8_t getAttributeLen_VID(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_VID_FOCUS_THRESHOLD:
   case LEP_CID_VID_SBNUC_ENABLE:
   case LEP_CID_VID_FREEZE_ENABLE:
+  case LEP_CID_VID_BORESIGHT_CALC_ENABLE:
+  case LEP_CID_VID_VIDEO_OUTPUT_FORMAT:
+  case LEP_CID_VID_LOW_GAIN_COLOR_LUT:
     *pbuf = 4;
     break;
   default:
