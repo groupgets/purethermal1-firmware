@@ -69,7 +69,7 @@
 
 
 #ifdef LEP_USE_DYNAMIC_ALLOCATION
-    #include <stdlib.h>
+    #include "stdlib.h"
 #endif
 
 /******************************************************************************/
@@ -232,6 +232,34 @@ LEP_RESULT LEP_RunCommand(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
     return(result);
 }
 
+
+LEP_RESULT LEP_SelectDevice(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr, 
+                            LEP_PROTOCOL_DEVICE_E device)
+{
+    LEP_RESULT result = LEP_OK;
+
+    /* Validate the port descriptor
+    */ 
+    if( portDescPtr == NULL )
+    {
+        return(LEP_COMM_PORT_NOT_OPEN);
+    }
+
+    /* Select Device
+    */
+    if( portDescPtr->portType == LEP_CCI_TWI )
+    {
+        result = LEP_I2C_SelectDevice(portDescPtr, device);
+    }
+    else if( portDescPtr->portType == LEP_CCI_SPI )
+    {
+
+    }
+    else
+        result = LEP_COMM_INVALID_PORT_ERROR;
+
+    return(result);
+}
 
 /******************************************************************************/
 /**

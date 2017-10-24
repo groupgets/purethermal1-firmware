@@ -94,6 +94,15 @@
 /** EXPORTED PUBLIC FUNCTIONS                                                **/
 /******************************************************************************/
 
+LEP_RESULT LEP_I2C_SelectDevice(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr, 
+                                LEP_PROTOCOL_DEVICE_E device)
+{
+    LEP_RESULT result;
+
+    result = LEP_I2C_MasterSelectDevice( portDescPtr, device );
+
+    return(result);
+}
 
 LEP_RESULT LEP_I2C_OpenPort(LEP_UINT16 portID,
                             LEP_UINT16 *baudRateInkHz,
@@ -108,7 +117,7 @@ LEP_RESULT LEP_I2C_OpenPort(LEP_UINT16 portID,
       return(LEP_COMM_INVALID_PORT_ERROR);
    }
 
-   *deviceAddress = 0x2A;
+   *deviceAddress = 0x2a;
    result = LEP_I2C_MasterReadData( portID,
                                 *deviceAddress,
                                 LEP_I2C_STATUS_REG,
@@ -118,7 +127,7 @@ LEP_RESULT LEP_I2C_OpenPort(LEP_UINT16 portID,
    if(result != LEP_OK)
    {
       /*
-       *    Try 0x00 as the device address if 0x2A didn't work. In this case, we are not in Virgin Boot Mode.
+       *    Try 0x00 as the device address if 0x2a didn't work. In this case, we are in Virgin Boot Mode.
        *
        */
       *deviceAddress = 0x00;

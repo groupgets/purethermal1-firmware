@@ -90,6 +90,9 @@ extern "C"
 /** EXPORTED PUBLIC FUNCTIONS                                                **/
 /******************************************************************************/
 
+    extern LEP_RESULT LEP_I2C_MasterSelectDevice(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr, 
+                                                 LEP_PROTOCOL_DEVICE_E device);
+
     extern LEP_RESULT LEP_I2C_MasterOpen(LEP_UINT16 portID, 
                                          LEP_UINT16 *portBaudRate);
 
