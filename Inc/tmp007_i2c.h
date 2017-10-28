@@ -1,6 +1,7 @@
 #ifndef TMP007_I2C_H_
 #define TMP007_I2C_H_
 
+#if defined(TMP007)
 #define TMP007_VOBJ       0x00
 #define TMP007_TDIE       0x01
 #define TMP007_CONFIG     0x02
@@ -31,6 +32,7 @@ uint16_t tmp007_read_reg(unsigned int reg);
 long get_mili_celisius(void);
 int convert_C_to_F(int C);
 int read_tmp007_regs(void);
+#endif
 
 #endif
 

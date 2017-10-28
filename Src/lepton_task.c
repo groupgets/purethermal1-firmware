@@ -252,7 +252,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 					print_telemetry_temps(&current_buffer->lines.rgb[TELEMETRY_OFFSET_LINES].data.telemetry_data);
 			}
 
+#if defined(TMP007)
 			read_tmp007_regs();
+#endif
 
 			last_tick = curtick;
 			last_logged_count = current_frame_count;

@@ -40,7 +40,7 @@ void HAL_RCC_CSSCallback(void) {
 	DEBUG_PRINTF("Oh no! HAL_RCC_CSSCallback()\r\n");
 }
 
-#ifdef TMP007_OVERLAY 
+#if defined(TMP007) && defined(TMP007_OVERLAY)
 #include "ugui.h"
 UG_GUI gui; 
 static void pixel_set(UG_S16 x , UG_S16 y ,UG_COLOR c )
@@ -155,7 +155,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 	PT_BEGIN(pt);
 
-#ifdef TMP007_OVERLAY 
+#if defined(TMP007) && defined(TMP007_OVERLAY)
 	UG_Init(&gui,pixel_set,80,60);
 	UG_FontSelect(&FONT_8X8);     
 #endif
@@ -192,7 +192,7 @@ PT_THREAD( usb_task(struct pt *pt))
 		else
 		{
 
-#ifdef TMP007_OVERLAY 
+#if defined(TMP007) && defined(TMP007_OVERLAY)
 			if(overlay_mode == 1)
 			{
 				temperature = get_last_mili_celisius()/1000;

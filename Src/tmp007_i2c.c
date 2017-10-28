@@ -14,6 +14,7 @@
 #define DEBUG_PRINTF(...)
 #endif
 
+#if defined(TMP007)
 extern I2C_HandleTypeDef hi2c1;
 
 int tmp007_init = 0;
@@ -110,3 +111,4 @@ int read_tmp007_regs(void)
 
 	return 1;
 }
+#endif

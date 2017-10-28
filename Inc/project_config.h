@@ -2,7 +2,8 @@
 #define _PROJECT_CONFIG_H_
 
 // #define THERMAL_DATA_UART
-#define TMP007_OVERLAY
+// #define TMP007
+// #define TMP007_OVERLAY
 #define SPLASHSCREEN_OVERLAY
 // #define Y16
 

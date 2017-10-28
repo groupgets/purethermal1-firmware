@@ -164,9 +164,11 @@ int main(void)
 
   init_lepton_command_interface();
 
+#if defined(TMP007)
   DEBUG_PRINTF("reading_tmp007_regs...\n\r");
 
   read_tmp007_regs();
+#endif
 
   DEBUG_PRINTF("Initialized...\n\r");
 
