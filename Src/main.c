@@ -530,9 +530,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : BUCK_ON_Pin LDO_ON_Pin */
   GPIO_InitStruct.Pin = BUCK_ON_Pin|LDO_ON_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(GPIOB, BUCK_ON_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, LDO_ON_Pin, GPIO_PIN_SET);
+
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, ESP_GPIO2_Pin|ESP_GPIO0_Pin|ESP_CH_PD_Pin|SYSTEM_LED_Pin 
