@@ -13,7 +13,7 @@
 
 extern LEP_CAMERA_PORT_DESC_T hport_desc;
 
-static uint16_t vc_terminal_id_to_module_base(VC_TERMINAL_ID entity_id)
+uint16_t vc_terminal_id_to_module_base(VC_TERMINAL_ID entity_id)
 {
   switch(entity_id)
   {

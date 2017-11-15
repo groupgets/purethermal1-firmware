@@ -33,6 +33,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_uvc_if.h"
 #include "usbd_uvc_lepton_xu.h"
+#include "lepton.h"
+#include "tasks.h"
 
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -44,6 +46,7 @@ extern volatile uint8_t g_lepton_type_3;
 
 // #define UVC_VC_DEBUG
 // #define UVC_VS_DEBUG
+// #define UVC_VC_FORCE_SYNCHRONOUS
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -280,7 +283,23 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
       break;
     case UVC_GET_CUR:
       if (length > 1)
+      {
+#ifdef UVC_VC_FORCE_SYNCHRONOUS
         VC_LEP_GetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
+#else
+#ifdef UVC_VC_DEBUG
+        DEBUG_PRINTF(" dispatching \r\n");
+#endif
+        if (enqueue_attribute_get_task((struct uvc_request) {
+              .entity_id = entity_id,
+              .control_id = (cs_value - 1) << 2,
+              .length = length,
+            }) == HAL_OK)
+          return (USBD_BUSY);
+        else
+          return (USBD_FAIL);
+#endif
+      }
       break;
     case UVC_GET_MAX:
       VC_LEP_GetMaxValue(entity_id, (cs_value - 1) << 2, pbuf, length);

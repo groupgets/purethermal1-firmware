@@ -384,6 +384,8 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
           USBD_CtlSendData (pdev, 
                             (uint8_t *)hcdc->data,
                             req->wLength);
+        else if (ret == USBD_BUSY)
+          ret = USBD_OK; // response was dispatched, nothing more to do here
         else
           USBD_CtlError (pdev, req);
       }
