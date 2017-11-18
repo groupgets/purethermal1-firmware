@@ -290,7 +290,8 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
 #ifdef UVC_VC_DEBUG
         DEBUG_PRINTF(" dispatching \r\n");
 #endif
-        if (enqueue_attribute_get_task((struct uvc_request) {
+        if (enqueue_attribute_xfer_task((struct uvc_request) {
+              .type = UVC_REQUEST_TYPE_ATTR_GET,
               .entity_id = entity_id,
               .control_id = (cs_value - 1) << 2,
               .length = length,
@@ -396,10 +397,26 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
+#ifdef UVC_VC_FORCE_SYNCHRONOUS
     if (length == 1)
       VC_LEP_RunCommand(entity_id, (cs_value - 1) << 2);
     else
       VC_LEP_SetAttribute(entity_id, (cs_value - 1) << 2, pbuf, length);
+#else
+#ifdef UVC_VC_DEBUG
+    DEBUG_PRINTF(" dispatching \r\n");
+#endif
+    if (enqueue_attribute_xfer_task((struct uvc_request) {
+          .type = UVC_REQUEST_TYPE_ATTR_SET,
+          .entity_id = entity_id,
+          .control_id = (cs_value - 1) << 2,
+          .length = length,
+          .buffer = pbuf,
+        }) == HAL_OK)
+      return (USBD_OK);
+    else
+      return (USBD_FAIL);
+#endif
     break;
   case VC_CONTROL_PU_ID:
     break;

@@ -78,7 +78,7 @@ static struct pt lepton_task_pt;
 static struct pt usb_task_pt;
 static struct pt uart_task_pt;
 static struct pt button_task_pt;
-static struct pt lepton_attribute_get_task_pt;
+static struct pt lepton_attribute_xfer_task_pt;
 
 /* USER CODE END PV */
 
@@ -180,7 +180,7 @@ int main(void)
   PT_INIT(&lepton_task_pt);
   PT_INIT(&usb_task_pt);
   PT_INIT(&uart_task_pt);
-  PT_INIT(&lepton_attribute_get_task_pt);
+  PT_INIT(&lepton_attribute_xfer_task_pt);
 
   /* USER CODE END 2 */
 
@@ -200,7 +200,7 @@ int main(void)
 #endif
 	  PT_SCHEDULE(button_task(&button_task_pt));
 
-	  PT_SCHEDULE(lepton_attribute_get_task(&lepton_attribute_get_task_pt));
+	  PT_SCHEDULE(lepton_attribute_xfer_task(&lepton_attribute_xfer_task_pt));
   }
   /* USER CODE END 3 */
 

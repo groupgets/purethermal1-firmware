@@ -26,36 +26,53 @@
 #define DEBUG_PRINTF(...)
 #endif
 
-#define MAX_I2C_BUFFER_SIZE 1024
+#define MAX_I2C_BUFFER_SIZE 2048
+#define REQUEST_QUEUE_SIZE 2
 
 extern USBD_HandleTypeDef  *hUsbDevice_0;
 extern LEP_CAMERA_PORT_DESC_T hport_desc;
 
-struct uvc_request* attribute_get_requests_buf[4] = { 0 };
-DECLARE_CIRC_BUF_HANDLE(attribute_get_requests_buf);
+static struct uvc_request uvc_requests[REQUEST_QUEUE_SIZE];
+static uint8_t uvc_request_buffers[REQUEST_QUEUE_SIZE][MAX_I2C_BUFFER_SIZE];
 
-HAL_StatusTypeDef enqueue_attribute_get_task(struct uvc_request req)
+struct uvc_request* attribute_xfer_requests[REQUEST_QUEUE_SIZE] = { 0 };
+DECLARE_CIRC_BUF_HANDLE(attribute_xfer_requests);
+
+HAL_StatusTypeDef enqueue_attribute_xfer_task(struct uvc_request req)
 {
-  if (full(CIRC_BUF_HANDLE(attribute_get_requests_buf))) {
+  if (full(CIRC_BUF_HANDLE(attribute_xfer_requests))) {
     return HAL_ERROR;
   }
   else {
     static uint32_t reqnum = 0;
-    static struct uvc_request uvc_requests[4];
-    struct uvc_request *preq = &uvc_requests[reqnum++ % 4];
+
+    struct uvc_request *preq = &uvc_requests[reqnum];
+    uint8_t* buffer = uvc_request_buffers[reqnum];
+
+    /* for set transfers, make a copy of the data so it's not overwritten by another incoming request */
+    if (req.type == UVC_REQUEST_TYPE_ATTR_SET)
+    {
+      memcpy(buffer, req.buffer, req.length);
+    }
+
+    /* assign static storage to use for this request */
+    req.buffer = buffer;
+
     *preq = req;
-    push(CIRC_BUF_HANDLE(attribute_get_requests_buf), preq);
+
+    push(CIRC_BUF_HANDLE(attribute_xfer_requests), preq);
+    reqnum = ((reqnum + 1) % REQUEST_QUEUE_SIZE);
     return HAL_OK;
   }
 }
 
-HAL_StatusTypeDef dequeue_attribute_get_task(struct uvc_request *req)
+HAL_StatusTypeDef dequeue_attribute_xfer_task(struct uvc_request *req)
 {
-  if (empty(CIRC_BUF_HANDLE(attribute_get_requests_buf))) {
+  if (empty(CIRC_BUF_HANDLE(attribute_xfer_requests))) {
     return HAL_ERROR;
   }
   else {
-    struct uvc_request *preq = shift(CIRC_BUF_HANDLE(attribute_get_requests_buf));
+    struct uvc_request *preq = shift(CIRC_BUF_HANDLE(attribute_xfer_requests));
     *req = *preq;
     return HAL_OK;
   }
@@ -218,10 +235,274 @@ PT_THREAD( LEP_I2C_GetAttribute_PT(struct pt *pt, LEP_CAMERA_PORT_DESC_T_PTR por
     PT_END(pt);
 }
 
-PT_THREAD( lepton_attribute_get_task(struct pt *pt))
+PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
+                                 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                 LEP_COMMAND_ID commandID,
+                                 LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+    static LEP_UINT16 statusReg;
+    static LEP_INT16 statusCode;
+    static LEP_UINT32 done;
+    static LEP_UINT16 timeoutCount;
+
+    PT_BEGIN(pt);
+
+    timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
+
+    /* Implement the Lepton TWI WRITE Protocol
+    */
+    /* First wait until the Camera is ready to receive a new
+    ** command by polling the STATUS REGISTER BUSY Bit until it
+    ** reports NOT BUSY.
+    */ 
+    do
+    {
+        /* Read the Status REGISTER and peek at the BUSY Bit
+        */ 
+        result = LEP_I2C_MasterReadRegister( portDescPtr->portID,
+                                             portDescPtr->deviceAddress,
+                                             LEP_I2C_STATUS_REG,
+                                             &statusReg);
+        if(result != LEP_OK)
+        {
+            *return_code = result;
+            PT_EXIT(pt);
+        }
+        done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
+        /* Add timout check */
+        if( timeoutCount-- == 0 )
+        {
+            /* Timed out waiting for command busy to go away
+            */ 
+            *return_code = LEP_TIMEOUT_ERROR;
+            PT_EXIT(pt);
+        }
+
+        PT_YIELD(pt);
+    }while( !done );
+
+    if( result == LEP_OK )
+    {
+        /* Set the Lepton's DATA LENGTH REGISTER first to inform the
+        ** Lepton Camera no 16-bit DATA words being transferred.
+        */ 
+        result = LEP_I2C_MasterWriteRegister( portDescPtr->portID,
+                                              portDescPtr->deviceAddress,
+                                              LEP_I2C_DATA_LENGTH_REG, 
+                                              (LEP_UINT16)0);
+
+        PT_YIELD(pt);
+
+        if( result == LEP_OK )
+        {
+            /* Now issue the Run Command
+            */ 
+            result = LEP_I2C_MasterWriteRegister( portDescPtr->portID,
+                                                  portDescPtr->deviceAddress,
+                                                  LEP_I2C_COMMAND_REG, 
+                                                  commandID);
+
+            PT_YIELD(pt);
+
+            if( result == LEP_OK )
+            {
+                /* Now wait until the Camera has completed this command by
+                ** polling the statusReg REGISTER BUSY Bit until it reports NOT
+                ** BUSY.
+                */ 
+                do
+                {
+                    /* Read the statusReg REGISTER and peek at the BUSY Bit
+                    */ 
+                    result = LEP_I2C_MasterReadRegister( portDescPtr->portID,
+                                                         portDescPtr->deviceAddress,
+                                                         LEP_I2C_STATUS_REG,
+                                                         &statusReg);
+                    if(result != LEP_OK)
+                    {
+                        *return_code = result;
+                        PT_EXIT(pt);
+                    }
+                    done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
+                    /* Timeout? */
+
+                    PT_YIELD(pt);
+                }while( !done );
+
+                statusCode = (statusReg >> 8) ? ((statusReg >> 8) | 0xFF00) : 0;
+                if(statusCode)
+                {
+                  *return_code = (LEP_RESULT)statusCode;
+                  PT_EXIT(pt);
+                }
+            }
+        }
+    }
+
+    /* Check statusReg word for Errors?
+    */
+
+    *return_code = result;
+
+    PT_END(pt);
+}
+
+PT_THREAD( LEP_I2C_SetAttribute_PT(struct pt *pt,
+                                   LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                   LEP_COMMAND_ID commandID, 
+                                   LEP_ATTRIBUTE_T_PTR attributePtr,
+                                   LEP_UINT16 attributeWordLength,
+                                   LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+    static LEP_UINT16 statusReg;
+    static LEP_INT16 statusCode;
+    static LEP_UINT32 done;
+    static LEP_UINT16 timeoutCount;
+
+    PT_BEGIN(pt);
+
+    timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
+
+    /* Implement the Lepton TWI WRITE Protocol
+    */
+    /* First wait until the Camera is ready to receive a new
+    ** command by polling the STATUS REGISTER BUSY Bit until it
+    ** reports NOT BUSY.
+    */ 
+    do
+    {
+        /* Read the Status REGISTER and peek at the BUSY Bit
+        */ 
+        result = LEP_I2C_MasterReadData( portDescPtr->portID,
+                                         portDescPtr->deviceAddress,
+                                         LEP_I2C_STATUS_REG,
+                                         &statusReg,
+                                         1 );
+        if(result != LEP_OK)
+        {
+           *return_code = result;
+           PT_EXIT(pt);
+        }
+        done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
+        /* Add timout check */
+        if( timeoutCount-- == 0 )
+        {
+            /* Timed out waiting for command busy to go away
+            */ 
+          *return_code = LEP_TIMEOUT_ERROR;
+          PT_EXIT(pt);
+        }
+
+        PT_YIELD(pt);
+    }while( !done );
+
+    if( result == LEP_OK )
+    {
+        /* Now WRITE the DATA to the DATA REGISTER(s)
+        */ 
+        if( attributeWordLength <= 16 )
+        {
+            /* WRITE to the DATA Registers - always start from DATA 0
+            */ 
+            result = LEP_I2C_MasterWriteData(portDescPtr->portID,
+                                             portDescPtr->deviceAddress,
+                                             LEP_I2C_DATA_0_REG,
+                                             attributePtr,
+                                             attributeWordLength );
+        }
+        else if( attributeWordLength <= 1024 )
+        {
+            /* WRITE to the DATA Block Buffer
+            */     
+            result = LEP_I2C_MasterWriteData(portDescPtr->portID,
+                                             portDescPtr->deviceAddress,
+                                             LEP_I2C_DATA_BUFFER_0,
+                                             attributePtr,
+                                             attributeWordLength );
+
+        }
+        else
+            result = LEP_RANGE_ERROR;
+    }
+
+    PT_YIELD(pt);
+
+    if( result == LEP_OK )
+    {
+        /* Set the Lepton's DATA LENGTH REGISTER first to inform the
+        ** Lepton Camera how many 16-bit DATA words we want to read.
+        */ 
+        result = LEP_I2C_MasterWriteData( portDescPtr->portID,
+                                          portDescPtr->deviceAddress,
+                                          LEP_I2C_DATA_LENGTH_REG, 
+                                          &attributeWordLength, 
+                                          1);
+
+        PT_YIELD(pt);
+
+        if( result == LEP_OK )
+        {
+            /* Now issue the SET Attribute Command
+            */ 
+            result = LEP_I2C_MasterWriteData( portDescPtr->portID,
+                                              portDescPtr->deviceAddress,
+                                              LEP_I2C_COMMAND_REG, 
+                                              &commandID, 
+                                              1);
+
+            PT_YIELD(pt);
+
+            if( result == LEP_OK )
+            {
+                /* Now wait until the Camera has completed this command by
+                ** polling the statusReg REGISTER BUSY Bit until it reports NOT
+                ** BUSY.
+                */ 
+                do
+                {
+                    /* Read the statusReg REGISTER and peek at the BUSY Bit
+                    */ 
+                    result = LEP_I2C_MasterReadData( portDescPtr->portID,
+                                                     portDescPtr->deviceAddress,
+                                                     LEP_I2C_STATUS_REG,
+                                                     &statusReg,
+                                                     1 );
+                    if(result != LEP_OK)
+                    {
+                        *return_code = result;
+                        PT_EXIT(pt);
+                    }
+                    done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
+
+                    PT_YIELD(pt);
+                }while( !done );
+
+                    /* Check statusReg word for Errors?
+                   */ 
+                   statusCode = (statusReg >> 8) ? ((statusReg >> 8) | 0xFF00) : 0;
+                   if(statusCode)
+                   {
+                     *return_code = (LEP_RESULT)statusCode;
+                     PT_EXIT(pt);
+                   }
+
+            }
+        }
+    }
+
+    /* Check statusReg word for Errors?
+    */
+
+    *return_code = result;
+
+    PT_END(pt);
+}
+
+PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 {
   static struct uvc_request req;
-  static uint8_t pbuf[MAX_I2C_BUFFER_SIZE];
   static LEP_RESULT result;
   static uint16_t module_base;
   static struct pt lep_pt;
@@ -231,38 +512,69 @@ PT_THREAD( lepton_attribute_get_task(struct pt *pt))
 
   while (1)
   {
-    PT_WAIT_UNTIL(pt, dequeue_attribute_get_task(&req) == HAL_OK);
+    PT_WAIT_UNTIL(pt, dequeue_attribute_xfer_task(&req) == HAL_OK);
 
-    if (req.length < 1 || req.length > sizeof(pbuf))
+    if (req.length < 1 || req.length > MAX_I2C_BUFFER_SIZE)
       continue;
 
     module_base = vc_terminal_id_to_module_base(req.entity_id);
 
-    // If reading from the OTP (serial number, part number, etc.), we
-    // sometimes get back a -16 or -17 (correctable bit errors), so just try
-    // one extra time regardless of what the problem was
-    retries = 1;
+    if (req.type == UVC_REQUEST_TYPE_ATTR_GET)
+    {
+      // If reading from the OTP (serial number, part number, etc.), we
+      // sometimes get back a -16 or -17 (correctable bit errors), so just try
+      // one extra time regardless of what the problem was
+      retries = 1;
 
-    do {
-      PT_INIT(&lep_pt);
+      do {
+        PT_INIT(&lep_pt);
 
-      PT_WAIT_THREAD(pt, LEP_I2C_GetAttribute_PT(&lep_pt, &hport_desc,
-                                          ( LEP_COMMAND_ID )(module_base + req.control_id),
-                                          ( LEP_ATTRIBUTE_T_PTR )pbuf,
-                                          req.length >> 1,
-                                          &result));
+        PT_WAIT_THREAD(pt, LEP_I2C_GetAttribute_PT(&lep_pt, &hport_desc,
+                                                   ( LEP_COMMAND_ID )(module_base + req.control_id) | LEP_GET_TYPE,
+                                                   ( LEP_ATTRIBUTE_T_PTR )req.buffer,
+                                                   req.length >> 1,
+                                                   &result));
 
-      PT_YIELD(pt);
-    } while (result != LEP_OK && retries--);
+        PT_YIELD(pt);
+      } while (result != LEP_OK && retries--);
 
-    HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+      HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
 
-    if (result == LEP_OK)
-      USBD_CtlSendData(hUsbDevice_0, pbuf, req.length);
-    else
-      USBD_CtlError(hUsbDevice_0, 0);
+      if (result == LEP_OK)
+        USBD_CtlSendData(hUsbDevice_0, req.buffer, req.length);
+      else
+        USBD_CtlError(hUsbDevice_0, 0);
 
-    HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+      HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+    }
+    else if (req.type == UVC_REQUEST_TYPE_ATTR_SET)
+    {
+      if (req.length == 1)
+      {
+        if ((module_base + req.control_id) == (FLR_CID_SYS_RUN_FFC & 0xfffc))
+          req.control_id = FLR_CID_SYS_RUN_FFC - module_base;
+
+        PT_INIT(&lep_pt);
+
+        PT_WAIT_THREAD(pt, LEP_I2C_RunCommand_PT(&lep_pt, &hport_desc,
+                                                 ( LEP_COMMAND_ID )(module_base + req.control_id) | LEP_RUN_TYPE,
+                                                 &result));
+      }
+      else
+      {
+
+        PT_INIT(&lep_pt);
+
+        PT_WAIT_THREAD(pt, LEP_I2C_SetAttribute_PT(&lep_pt, &hport_desc,
+                                                   ( LEP_COMMAND_ID )(module_base + req.control_id) | LEP_SET_TYPE,
+                                                   ( LEP_ATTRIBUTE_T_PTR )req.buffer,
+                                                   req.length >> 1,
+                                                   &result));
+
+        if (result != LEP_OK)
+           USBD_CtlError(hUsbDevice_0, 0);
+      }
+    }
   }
 
   PT_END(pt);
