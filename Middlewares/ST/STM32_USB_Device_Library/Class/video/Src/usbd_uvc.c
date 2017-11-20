@@ -579,8 +579,6 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
     }
 
     hcdc->CmdOpCode = 0xFF; 
-    if (ret == USBD_FAIL)
-      USBD_CtlError (pdev, 0);
   }
   return ret;
 }

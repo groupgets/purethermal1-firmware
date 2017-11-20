@@ -413,7 +413,7 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
           .length = length,
           .buffer = pbuf,
         }) == HAL_OK)
-      return (USBD_OK);
+      return (USBD_BUSY);
     else
       return (USBD_FAIL);
 #endif

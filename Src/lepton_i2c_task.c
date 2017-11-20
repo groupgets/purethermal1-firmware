@@ -570,10 +570,16 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
                                                    ( LEP_ATTRIBUTE_T_PTR )req.buffer,
                                                    req.length >> 1,
                                                    &result));
-
-        if (result != LEP_OK)
-           USBD_CtlError(hUsbDevice_0, 0);
       }
+
+      HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+      if (result == LEP_OK)
+        USBD_CtlSendStatus(hUsbDevice_0);
+      else
+        USBD_CtlError(hUsbDevice_0, 0);
+
+      HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
     }
   }
 
