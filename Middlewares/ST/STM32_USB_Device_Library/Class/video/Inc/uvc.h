@@ -508,5 +508,15 @@ struct UVC_FRAME_UNCOMPRESSED(n) {			\
 	uint32_t dwFrameInterval[n];			\
 } __attribute__ ((packed))
 
+#define UVC_FRAMES_FORMAT_UNCOMPRESSED(n) \
+		uvc_vs_frame_format_desc_##n
+
+#define DECLARE_UVC_FRAMES_FORMAT_UNCOMPRESSED(n) \
+struct UVC_FRAMES_FORMAT_UNCOMPRESSED(n) { \
+	struct uvc_format_uncompressed uvc_vs_format; \
+	struct UVC_FRAME_UNCOMPRESSED(1) uvc_vs_frame[n]; \
+	struct uvc_color_matching_descriptor uvc_vs_color; \
+} __attribute__ ((packed));
+
 #endif /* __UVC_H */
 

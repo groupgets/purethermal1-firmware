@@ -23,7 +23,7 @@
   .bNumFormats = VS_NUM_FORMATS,       // 4 four format descriptors follow
   .wTotalLength =
     SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_input_header_desc) + 
-    SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_frames_formats),
+    SIZEOF_M(struct usbd_uvc_cfg, uvc_vs_frames_formats_desc),
   .bEndpointAddress = UVC_IN_EP,             // 0x83 EP 3 IN
   .bmInfo = 0x00,                            // 0 no dynamic format change supported
   .bTerminalLink = VC_OUTPUT_TERMINAL_ID,    // 2 supplies terminal ID 2 (Output terminal)
@@ -37,35 +37,39 @@
     { 0x00 },                                // bmaControls(2)           0 no VS specific controls
     { 0x00 },                                // bmaControls(3)           0 no VS specific controls
     { 0x00 },                                // bmaControls(4)           0 no VS specific controls
-    { 0x00 },                                // bmaControls(4)           0 no VS specific controls
-    { 0x00 },                                // bmaControls(4)           0 no VS specific controls
   },
 },
 
-.uvc_vs_frames_formats = {
+.uvc_vs_frames_formats_desc = {
+.uvc_vs_frames_format_1 =
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(YUYV, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, YUYV, 80, 60),
+    .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, YUYV, 80, 60) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
+.uvc_vs_frames_format_2 =
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(Y16, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, Y16, 80, 60),
+    .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, Y16, 80, 60),
+                       UVC_FRAME_FORMAT(VS_FRAME_INDEX_TELEMETRIC, Y16, 80, 63) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
+.uvc_vs_frames_format_3 =
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(GREY, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, GREY, 80, 60),
+    .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, GREY, 80, 60) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
+.uvc_vs_frames_format_4 =
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(RGB565, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, RGB565, 80, 60),
+    .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, RGB565, 80, 60) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
+.uvc_vs_frames_format_5 =
   {
     .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(BGR3, 1),
-    .uvc_vs_frame  = UVC_FRAME_FORMAT(1, BGR3, 80, 60),
+    .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, BGR3, 80, 60) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
   },
 },

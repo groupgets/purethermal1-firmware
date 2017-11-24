@@ -112,6 +112,13 @@ enum _vs_fmt_size {
 #define VS_FMT_GUID(NAME) { VS_FMT_GUID_ ## NAME }
 #define VS_FMT_SIZE(NAME) VS_FMT_SIZE_ ## NAME
 
+enum _vs_frame_indexes {
+  VS_FRAME_INDEX_DEFAULT = 1,
+  VS_FRAME_INDEX_TELEMETRIC,
+};
+
+#define VS_FRAME_INDEX(NAME) VS_FRAME_INDEX_ ## NAME
+
 #define USB_UVC_VCIF_NUM                              0
 #define USB_UVC_VSIF_NUM                              (char)1
 

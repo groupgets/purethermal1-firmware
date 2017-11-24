@@ -133,10 +133,10 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			if (g_format_y16)
 			{
-				if (g_lepton_type_3)
-					disable_telemetry();
-				else
+				if (videoCommitControl.bFrameIndex == VS_FRAME_INDEX_TELEMETRIC)
 					enable_telemetry();
+				else
+					disable_telemetry();
 				disable_lepton_agc();
 				enable_raw14();
 			}
@@ -178,17 +178,17 @@ PT_THREAD( lepton_task(struct pt *pt))
 		if (g_format_y16)
 		{
 			current_segment = ((current_buffer->lines.y16[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
-			last_end_line = (current_buffer->lines.y16[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
+			last_end_line = (current_buffer->lines.y16[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 		else
 		{
 			current_segment = ((current_buffer->lines.rgb[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
-			last_end_line = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES - 1].header[0] & 0x00ff);
+			last_end_line = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 
 		current_buffer->segment = current_segment;
 
-		if (last_end_line != (IMAGE_NUM_LINES - 1))
+		if (last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
 		{
 			// flush out any old data since it's no good
 			while (dequeue_lepton_buffer() != NULL) {}
@@ -217,7 +217,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 				} while (current_buffer->status == LEPTON_STATUS_OK && (last_header & 0x0f00) == 0x0f00);
 
 				// we picked up the start of a new packet, so read the rest of it in
-				lepton_transfer(current_buffer, IMAGE_NUM_LINES - 1);
+				lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines - 1);
 
 				transferring_timer = HAL_GetTick();
 				PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
@@ -244,7 +244,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 #endif
 
 
-			if (g_telemetry_num_lines > 0)
+			if (g_telemetry_num_lines > 0 && g_lepton_type_3 == 0)
 			{
 				if (g_format_y16)
 					print_telemetry_temps(&current_buffer->lines.y16[TELEMETRY_OFFSET_LINES].data.telemetry_data);
@@ -272,7 +272,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			if (!g_format_y16)
 			{
-				for (row = 0; row < IMAGE_NUM_LINES; row++)
+				for (row = 0; row < (IMAGE_NUM_LINES + g_telemetry_num_lines); row++)
 				{
 					uint16_t* lineptr = (uint16_t*)completed_buffer->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data;
 					while (lineptr < (uint16_t*)&completed_buffer->lines.rgb[IMAGE_OFFSET_LINES + row].data.image_data[FRAME_LINE_LENGTH])

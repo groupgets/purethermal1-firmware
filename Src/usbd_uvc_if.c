@@ -35,6 +35,7 @@
 #include "usbd_uvc_lepton_xu.h"
 #include "lepton.h"
 #include "tasks.h"
+#include "uvc_desc.h"
 
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -43,6 +44,7 @@
 #endif
 
 extern volatile uint8_t g_lepton_type_3;
+extern volatile uint8_t g_telemetry_num_lines;
 
 // #define UVC_VC_DEBUG
 // #define UVC_VS_DEBUG
@@ -484,31 +486,38 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
           cmd == UVC_GET_MAX ||
           cmd == UVC_GET_CUR)
       {
-        uint8_t w = 80, h = 60;
+        struct uvc_vs_frames_formats_descriptor *frames_formats;
+        struct UVC_FRAME_UNCOMPRESSED(1) *frame;
+
         if (g_lepton_type_3)
         {
-          w = 160;
-          h = 120;
+          frames_formats = &USBD_UVC_CfgFSDesc_L3.uvc_vs_frames_formats_desc;
+        }
+        else
+        {
+          frames_formats = &USBD_UVC_CfgFSDesc_L2.uvc_vs_frames_formats_desc;
         }
 
-        switch(videoProbeControl.bFormatIndex) {
-        case VS_FMT_INDEX(GREY):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(GREY));
+        switch (videoProbeControl.bFormatIndex) {
+        case VS_FMT_INDEX(YUYV):
+          frame = frames_formats->uvc_vs_frames_format_1.uvc_vs_frame;
           break;
         case VS_FMT_INDEX(Y16):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(Y16));
+          frame = frames_formats->uvc_vs_frames_format_2.uvc_vs_frame;
           break;
-        case VS_FMT_INDEX(BGR3):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(BGR3));
+        case VS_FMT_INDEX(GREY):
+          frame = frames_formats->uvc_vs_frames_format_3.uvc_vs_frame;
           break;
         case VS_FMT_INDEX(RGB565):
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(RGB565));
+          frame = frames_formats->uvc_vs_frames_format_4.uvc_vs_frame;
           break;
-        case VS_FMT_INDEX(YUYV):
+        case VS_FMT_INDEX(BGR3):
+          frame = frames_formats->uvc_vs_frames_format_5.uvc_vs_frame;
+          break;
         default:
-          rtnBuf->dwMaxVideoFrameSize = MAX_FRAME_SIZE(w,h,VS_FMT_SIZE(YUYV));
-          break;
+          return USBD_FAIL;
         }
+        rtnBuf->dwMaxVideoFrameSize = frame[videoProbeControl.bFrameIndex - 1].dwMaxVideoFrameBufferSize;
       }
       else
       {

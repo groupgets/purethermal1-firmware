@@ -270,7 +270,7 @@ HAL_StatusTypeDef enable_telemetry(void)
     return HAL_ERROR;
   }
 
-  g_telemetry_num_lines = 3;
+  g_telemetry_num_lines = g_lepton_type_3 ? 1 : 3;
 
   return HAL_OK;
 }

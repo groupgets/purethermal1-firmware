@@ -18,6 +18,7 @@
 
 extern volatile uint8_t g_lepton_type_3;
 extern volatile uint8_t g_uvc_stream_status;
+extern volatile uint8_t g_telemetry_num_lines;
 extern struct uvc_streaming_control videoCommitControl;
 
 static int overlay_mode = 0;
@@ -260,7 +261,7 @@ PT_THREAD( usb_task(struct pt *pt))
         case VS_FMT_INDEX(Y16):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < (IMAGE_NUM_LINES + g_telemetry_num_lines) && count < VIDEO_PACKET_SIZE)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
@@ -338,7 +339,7 @@ PT_THREAD( usb_task(struct pt *pt))
       }
 
       // Check if image is done
-      if (uvc_xmit_row == IMAGE_NUM_LINES)
+      if (uvc_xmit_row == (IMAGE_NUM_LINES + g_telemetry_num_lines))
       {
         if (++uvc_xmit_seg == image_num_segments)
         {
@@ -367,7 +368,7 @@ PT_THREAD( usb_task(struct pt *pt))
         // DEBUG_PRINTF("Frame complete\r\n");
         break;
       }
-      else if (uvc_xmit_row == IMAGE_NUM_LINES)
+      else if (uvc_xmit_row == (IMAGE_NUM_LINES + g_telemetry_num_lines))
       {
         break;
       }
