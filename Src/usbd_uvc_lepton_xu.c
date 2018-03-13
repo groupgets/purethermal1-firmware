@@ -9,6 +9,7 @@
 #include "LEPTON_OEM.h"
 #include "LEPTON_RAD.h"
 
+#include "custom_uvc_i2c.h"
 #include <limits.h>
 
 extern LEP_CAMERA_PORT_DESC_T hport_desc;
@@ -272,6 +273,22 @@ static int8_t getAttributeLen_VID(uint16_t module_register, uint16_t *pbuf)
   return 0;
 }
 
+static int8_t getAttributeLen_CUST(uint16_t offset, uint16_t *pbuf)
+{
+  switch (offset >> 2)
+  {
+  case CUST_CONTROL_COMMAND:
+	*pbuf = sizeof(custom_command);
+	break;
+  case CUST_CONTROL_READ:
+    *pbuf = sizeof(struct custom_response);
+    break;
+  default:
+    *pbuf = sizeof(LEP_RESULT);
+    break;
+  }
+  return 0;
+}
 
 int8_t VC_LEP_GetAttributeLen (VC_TERMINAL_ID entity_id, uint16_t offset, uint16_t* pbuf)
 {
@@ -292,6 +309,8 @@ int8_t VC_LEP_GetAttributeLen (VC_TERMINAL_ID entity_id, uint16_t offset, uint16
     return getAttributeLen_SYS(module_register, pbuf);
   case VC_CONTROL_XU_LEP_VID_ID:
     return getAttributeLen_VID(module_register, pbuf);
+  case VC_CONTROL_XU_LEP_CUST_ID:
+	return getAttributeLen_CUST(offset, pbuf);
   default:
     return -1;
   }
@@ -618,6 +637,9 @@ int8_t VC_LEP_GetMaxValue (VC_TERMINAL_ID entity_id, uint16_t offset, void* pbuf
     return getMaxValue_SYS(module_register, pbuf, len);
   case VC_CONTROL_XU_LEP_VID_ID:
     return getMaxValue_VID(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_CUST_ID:
+	memset(pbuf, 0xff, len);
+	return 0;
   default:
     return -1;
   }

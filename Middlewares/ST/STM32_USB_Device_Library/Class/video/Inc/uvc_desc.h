@@ -45,6 +45,7 @@ struct usbd_uvc_cfg {
   struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4) uvc_vc_xu_lep_sys;
   struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4) uvc_vc_xu_lep_vid;
   struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4) uvc_vc_xu_lep_rad_2;
+  struct UVC_EXTENSION_UNIT_DESCRIPTOR(1, 4) uvc_vc_xu_lep_cust;
   struct uvc_output_terminal_descriptor uvc_vc_output_terminal;
   struct usb_endpoint_descriptor uvc_vc_ep;
   struct uvc_control_endpoint_descriptor uvc_vc_cs_ep;

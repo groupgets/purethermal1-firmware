@@ -19,6 +19,7 @@
 #include "LEPTON_RAD.h"
 #include "LEPTON_I2C_Reg.h"
 #include "crc16.h"
+#include "custom_uvc_i2c.h"
 
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
@@ -500,6 +501,8 @@ PT_THREAD( LEP_I2C_SetAttribute_PT(struct pt *pt,
     PT_END(pt);
 }
 
+struct custom_command custom_command = {0};
+
 PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 {
   static struct uvc_request req;
@@ -507,6 +510,8 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
   static uint16_t module_base;
   static struct pt lep_pt;
   static int retries;
+  static int cust_response_length;
+  static struct custom_response *response;
 
   PT_BEGIN(pt);
 
@@ -516,6 +521,80 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 
     if (req.length < 1 || req.length > MAX_I2C_BUFFER_SIZE)
       continue;
+
+	if (req.entity_id == VC_CONTROL_XU_LEP_CUST_ID) {
+		req.control_id >>= 2;
+		if (req.control_id == CUST_CONTROL_COMMAND) {
+			result = LEP_OK;
+			if (req.type == UVC_REQUEST_TYPE_ATTR_GET) {
+				req.length = sizeof(custom_command);
+				memcpy(req.buffer, &custom_command, sizeof(custom_command));
+
+				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+				if (result == LEP_OK)
+					USBD_CtlSendData(hUsbDevice_0, req.buffer, req.length);
+				else
+					USBD_CtlError(hUsbDevice_0, 0);
+
+				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+
+			} else if (req.type == UVC_REQUEST_TYPE_ATTR_SET) {
+				memcpy(&custom_command, req.buffer,
+						req.length > sizeof(custom_command) ?
+								sizeof(custom_command) : req.length);
+				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+				if (result == LEP_OK)
+					USBD_CtlSendStatus(hUsbDevice_0);
+				else
+					USBD_CtlError(hUsbDevice_0, 0);
+
+				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+
+			}
+		} else {
+			if (req.type == UVC_REQUEST_TYPE_ATTR_SET) {
+				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+				USBD_CtlError(hUsbDevice_0, 0);
+				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+			} else if (req.type == UVC_REQUEST_TYPE_ATTR_GET) {
+		        PT_INIT(&lep_pt);
+
+		        response = (struct custom_response *)(req.buffer);
+
+		        if (req.control_id == CUST_CONTROL_READ) {
+			        PT_WAIT_THREAD(pt, LEP_I2C_GetAttribute_PT(&lep_pt, &hport_desc,
+			                                                   custom_command.command_id | LEP_GET_TYPE,
+			                                                   ( LEP_ATTRIBUTE_T_PTR )response->data,
+			                                                   custom_command.length >> 1,
+			                                                   &result));
+			        cust_response_length = sizeof(struct custom_response);
+		        }
+		        if (req.control_id == CUST_CONTROL_WRITE) {
+			        PT_WAIT_THREAD(pt, LEP_I2C_SetAttribute_PT(&lep_pt, &hport_desc,
+			                                                   custom_command.command_id | LEP_SET_TYPE,
+			                                                   ( LEP_ATTRIBUTE_T_PTR ) custom_command.buffer,
+															   custom_command.length >> 1,
+			                                                   &result));
+			        cust_response_length = sizeof(LEP_RESULT);
+		        }
+		        if (req.control_id == CUST_CONTROL_RUN) {
+			        PT_WAIT_THREAD(pt, LEP_I2C_RunCommand_PT(&lep_pt, &hport_desc,
+			                                                 custom_command.command_id | LEP_RUN_TYPE,
+			                                                 &result));
+			        cust_response_length = sizeof(LEP_RESULT);
+		        }
+
+		        response->result = result;
+
+				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+				USBD_CtlSendData(hUsbDevice_0, req.buffer, cust_response_length);
+				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+			}
+		}
+		continue;
+	}
 
     module_base = vc_terminal_id_to_module_base(req.entity_id);
 

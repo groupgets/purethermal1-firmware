@@ -274,6 +274,7 @@ static int8_t UVC_VC_ControlGet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_2_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
+  case VC_CONTROL_XU_LEP_CUST_ID:
 #ifdef UVC_VC_DEBUG
     DEBUG_PRINTF("UVC_VC_CONTROL_XU(%d)\r\n", entity_id);
 #endif
@@ -401,6 +402,7 @@ static int8_t UVC_VC_ControlSet  (VC_TERMINAL_ID entity_id, uint8_t cmd, uint8_t
   case VC_CONTROL_XU_LEP_RAD_2_ID:
   case VC_CONTROL_XU_LEP_SYS_ID:
   case VC_CONTROL_XU_LEP_VID_ID:
+  case VC_CONTROL_XU_LEP_CUST_ID:
 #ifdef UVC_VC_FORCE_SYNCHRONOUS
     if (length == 1)
       VC_LEP_RunCommand(entity_id, (cs_value - 1) << 2);
