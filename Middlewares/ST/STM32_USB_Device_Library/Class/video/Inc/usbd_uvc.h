@@ -66,6 +66,16 @@
 
 #define CAM_FPS                                       9
 
+enum CUST_COMTROL_IDS {
+	CUST_CONTROL_COMMAND=0,
+	CUST_CONTROL_READ,
+	CUST_CONTROL_WRITE,
+	CUST_CONTROL_RUN,
+	CUST_CONTROL_END
+};
+
+
+
 enum _vs_fmt_indexes {
   VS_FMT_INDEX_YUYV = 1,
   VS_FMT_INDEX_Y16,
@@ -138,6 +148,7 @@ typedef enum _vs_terminal_id {
   VC_CONTROL_XU_LEP_RAD_2_ID,
   VC_CONTROL_XU_LEP_SYS_2_ID,
   VC_CONTROL_XU_LEP_VID_2_ID,
+  VC_CONTROL_XU_LEP_CUST_ID = 0xfe,
   VC_OUTPUT_TERMINAL_ID = 0xff
 } VC_TERMINAL_ID;
 

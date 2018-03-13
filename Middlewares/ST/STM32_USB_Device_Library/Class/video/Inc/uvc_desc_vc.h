@@ -57,6 +57,7 @@
     SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_sys) +
     SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_vid) +
     SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_rad_2) +
+    SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_cust) +
     SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_output_terminal), // header+units+terminals
   .dwClockFrequency = 0x005B8D80,          // 6.000000 MHz
   .bInCollection = 0x01,                   // 1 one streaming interface
@@ -217,6 +218,27 @@
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
   .bmControls = { 0xFF, 0x3F, 0x00, 0x00 },    // Registers 0x00 to 0x48
+  .iExtension = 0x00,                          // String desc index : Not used
+},
+
+/* Extension Unit Descriptor */
+.uvc_vc_xu_lep_cust = {
+  .bLength =
+    SIZEOF_M(struct usbd_uvc_cfg, uvc_vc_xu_lep_cust), // Descriptor size
+  .bDescriptorType = 0x24,                     // Class specific interface desc type
+  .bDescriptorSubType = 0x06,                  // Extension Unit Descriptor type
+  .bUnitID = VC_CONTROL_XU_LEP_CUST_ID,     // ID of this terminal
+  .guidExtensionCode = {                       // 16 byte GUID
+    'p','t','1','-',
+    'l','e','p','-',
+    'c','u','s','t',
+    '0','0','0','0'
+  },
+  .bNumControls = CUST_CONTROL_END,                           // Number of controls in this terminal
+  .bNrInPins = 0x01,                           // Number of input pins in this terminal
+  .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
+  .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
+  .bmControls = { 0xf, 0, 0, 0 },    //
   .iExtension = 0x00,                          // String desc index : Not used
 },
 
