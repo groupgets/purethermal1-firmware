@@ -236,11 +236,9 @@ PT_THREAD( LEP_I2C_GetAttribute_PT(struct pt *pt, LEP_CAMERA_PORT_DESC_T_PTR por
     PT_END(pt);
 }
 
-PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
-                                 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
-                                 LEP_COMMAND_ID commandID,
-                                 LEP_RESULT *return_code))
-{
+PT_THREAD( LEP_I2C_WaitForBusyBit(struct pt *pt,
+								 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+								 LEP_RESULT *return_code)) {
     static LEP_RESULT result;
     static LEP_UINT16 statusReg;
     static LEP_INT16 statusCode;
@@ -251,12 +249,6 @@ PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
 
     timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
 
-    /* Implement the Lepton TWI WRITE Protocol
-    */
-    /* First wait until the Camera is ready to receive a new
-    ** command by polling the STATUS REGISTER BUSY Bit until it
-    ** reports NOT BUSY.
-    */ 
     do
     {
         /* Read the Status REGISTER and peek at the BUSY Bit
@@ -282,6 +274,36 @@ PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
 
         PT_YIELD(pt);
     }while( !done );
+
+    statusCode = (statusReg >> 8) ? ((statusReg >> 8) | 0xFF00) : 0;
+    if(statusCode)
+    {
+      *return_code = (LEP_RESULT)statusCode;
+    }
+
+    PT_END(pt);
+}
+
+PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
+                                 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                 LEP_COMMAND_ID commandID,
+                                 LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+    static struct pt wait_pt;
+
+    PT_BEGIN(pt);
+
+    /* First wait until the Camera is ready to receive a new
+    ** command by polling the STATUS REGISTER BUSY Bit until it
+    ** reports NOT BUSY.
+    */
+    PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
+                                              &result));
+
+    /* Implement the Lepton TWI WRITE Protocol
+    */
+
 
     if( result == LEP_OK )
     {
@@ -312,29 +334,12 @@ PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
                 ** polling the statusReg REGISTER BUSY Bit until it reports NOT
                 ** BUSY.
                 */ 
-                do
-                {
-                    /* Read the statusReg REGISTER and peek at the BUSY Bit
-                    */ 
-                    result = LEP_I2C_MasterReadRegister( portDescPtr->portID,
-                                                         portDescPtr->deviceAddress,
-                                                         LEP_I2C_STATUS_REG,
-                                                         &statusReg);
-                    if(result != LEP_OK)
-                    {
-                        *return_code = result;
-                        PT_EXIT(pt);
-                    }
-                    done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
-                    /* Timeout? */
+                PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
+                                                          &result));
 
-                    PT_YIELD(pt);
-                }while( !done );
-
-                statusCode = (statusReg >> 8) ? ((statusReg >> 8) | 0xFF00) : 0;
-                if(statusCode)
+                if(result)
                 {
-                  *return_code = (LEP_RESULT)statusCode;
+                  *return_code = (LEP_RESULT)result;
                   PT_EXIT(pt);
                 }
             }
@@ -501,7 +506,7 @@ PT_THREAD( LEP_I2C_SetAttribute_PT(struct pt *pt,
     PT_END(pt);
 }
 
-struct custom_command custom_command = {0};
+union custom_uvc custom_uvc = {0};
 
 PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 {
@@ -509,6 +514,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
   static LEP_RESULT result;
   static uint16_t module_base;
   static struct pt lep_pt;
+  static struct pt wait_pt;
   static int retries;
   static int cust_response_length;
   static struct custom_response *response;
@@ -527,8 +533,8 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 		if (req.control_id == CUST_CONTROL_COMMAND) {
 			result = LEP_OK;
 			if (req.type == UVC_REQUEST_TYPE_ATTR_GET) {
-				req.length = sizeof(custom_command);
-				memcpy(req.buffer, &custom_command, sizeof(custom_command));
+				req.length = sizeof(custom_uvc);
+				memcpy(req.buffer, &custom_uvc, sizeof(custom_uvc));
 
 				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
 
@@ -540,9 +546,9 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
 
 			} else if (req.type == UVC_REQUEST_TYPE_ATTR_SET) {
-				memcpy(&custom_command, req.buffer,
-						req.length > sizeof(custom_command) ?
-								sizeof(custom_command) : req.length);
+				memcpy(&custom_uvc, req.buffer,
+						req.length > sizeof(custom_uvc) ?
+								sizeof(custom_uvc) : req.length);
 				HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
 
 				if (result == LEP_OK)
@@ -565,24 +571,56 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 
 		        if (req.control_id == CUST_CONTROL_READ) {
 			        PT_WAIT_THREAD(pt, LEP_I2C_GetAttribute_PT(&lep_pt, &hport_desc,
-			                                                   custom_command.command_id | LEP_GET_TYPE,
+			                                                   custom_uvc.command.id | LEP_GET_TYPE,
 			                                                   ( LEP_ATTRIBUTE_T_PTR )response->data,
-			                                                   custom_command.length >> 1,
+			                                                   custom_uvc.command.length >> 1,
 			                                                   &result));
 			        cust_response_length = sizeof(struct custom_response);
 		        }
 		        if (req.control_id == CUST_CONTROL_WRITE) {
 			        PT_WAIT_THREAD(pt, LEP_I2C_SetAttribute_PT(&lep_pt, &hport_desc,
-			                                                   custom_command.command_id | LEP_SET_TYPE,
-			                                                   ( LEP_ATTRIBUTE_T_PTR ) custom_command.buffer,
-															   custom_command.length >> 1,
+			                                                   custom_uvc.command.id | LEP_SET_TYPE,
+			                                                   ( LEP_ATTRIBUTE_T_PTR ) custom_uvc.command.buffer,
+															   custom_uvc.command.length >> 1,
 			                                                   &result));
 			        cust_response_length = sizeof(LEP_RESULT);
 		        }
 		        if (req.control_id == CUST_CONTROL_RUN) {
 			        PT_WAIT_THREAD(pt, LEP_I2C_RunCommand_PT(&lep_pt, &hport_desc,
-			                                                 custom_command.command_id | LEP_RUN_TYPE,
+			                                                 custom_uvc.command.id | LEP_RUN_TYPE,
 			                                                 &result));
+			        cust_response_length = sizeof(LEP_RESULT);
+		        }
+		        if (req.control_id == CUST_CONTROL_DIRECT_READ) {
+		            PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
+		                                                      &result));
+
+		            if( result == LEP_OK )
+		            {
+						result = LEP_I2C_MasterReadData( hport_desc.portID,
+															 hport_desc.deviceAddress,
+															 custom_uvc.direct.address,
+															 (LEP_UINT16 *)response->data,
+															 custom_uvc.direct.length);
+
+		                PT_YIELD(pt);
+		            }
+			        cust_response_length = sizeof(struct custom_response);
+		        }
+		        if (req.control_id == CUST_CONTROL_DIRECT_WRITE) {
+		            PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
+		                                                      &result));
+
+		            if( result == LEP_OK )
+		            {
+						result = LEP_I2C_MasterWriteData( hport_desc.portID,
+													     hport_desc.deviceAddress,
+														 custom_uvc.direct.address,
+														 custom_uvc.direct.data,
+														 custom_uvc.direct.length);
+
+		                PT_YIELD(pt);
+		            }
 			        cust_response_length = sizeof(LEP_RESULT);
 		        }
 

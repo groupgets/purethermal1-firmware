@@ -238,7 +238,7 @@
   .bNrInPins = 0x01,                           // Number of input pins in this terminal
   .baSourceID = { 0x02 },                      // Source ID : 2 : Connected to Proc Unit
   .bControlSize = 0x04,                        // Size of controls field for this terminal : 1 byte
-  .bmControls = { 0xf, 0, 0, 0 },    //
+  .bmControls = { (1 << CUST_CONTROL_END) - 1, 0, 0, 0 },    //
   .iExtension = 0x00,                          // String desc index : Not used
 },
 
