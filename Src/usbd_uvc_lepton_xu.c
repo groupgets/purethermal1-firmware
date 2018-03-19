@@ -278,8 +278,9 @@ static int8_t getAttributeLen_CUST(uint16_t offset, uint16_t *pbuf)
   switch (offset >> 2)
   {
   case CUST_CONTROL_COMMAND:
-	*pbuf = sizeof(custom_command);
+	*pbuf = sizeof(custom_uvc);
 	break;
+  case CUST_CONTROL_DIRECT_READ:
   case CUST_CONTROL_READ:
     *pbuf = sizeof(struct custom_response);
     break;

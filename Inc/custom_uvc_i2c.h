@@ -8,11 +8,18 @@
 #ifndef CUSTOM_UVC_I2C_H_
 #define CUSTOM_UVC_I2C_H_
 
-extern struct custom_command {
-  LEP_COMMAND_ID command_id; // note 16 bit
-  uint16_t length;
-  uint8_t buffer[512];
-} custom_command;
+extern union custom_uvc {
+	struct {
+	  LEP_COMMAND_ID id; // note 16 bit
+	  uint16_t length;
+	  uint8_t buffer[512];
+	} command;
+	struct {
+      LEP_UINT16 address;
+      LEP_UINT16 length;
+	  uint8_t data[512];
+	} direct;
+} custom_uvc;
 
 struct custom_response {
 	LEP_RESULT result;
