@@ -27,6 +27,16 @@ uint16_t vc_terminal_id_to_module_base(VC_TERMINAL_ID entity_id)
     return LEP_SYS_MODULE_BASE;
   case VC_CONTROL_XU_LEP_VID_ID:
     return LEP_VID_MODULE_BASE;
+  case VC_CONTROL_XU_LEP_AGC_2_ID:
+    return vc_terminal_id_to_module_base(VC_CONTROL_XU_LEP_AGC_ID) + (WINDOWS_MAX_CONTROLS * 4);
+  case VC_CONTROL_XU_LEP_OEM_2_ID:
+    return vc_terminal_id_to_module_base(VC_CONTROL_XU_LEP_OEM_ID) + (WINDOWS_MAX_CONTROLS * 4);
+  case VC_CONTROL_XU_LEP_RAD_2_ID:
+    return vc_terminal_id_to_module_base(VC_CONTROL_XU_LEP_RAD_ID) + (WINDOWS_MAX_CONTROLS * 4);
+  case VC_CONTROL_XU_LEP_SYS_2_ID:
+    return vc_terminal_id_to_module_base(VC_CONTROL_XU_LEP_SYS_ID) + (WINDOWS_MAX_CONTROLS * 4);
+  case VC_CONTROL_XU_LEP_VID_2_ID:
+    return vc_terminal_id_to_module_base(VC_CONTROL_XU_LEP_VID_ID) + (WINDOWS_MAX_CONTROLS * 4);
   default:
     return 0;
   }
@@ -275,6 +285,8 @@ int8_t VC_LEP_GetAttributeLen (VC_TERMINAL_ID entity_id, uint16_t offset, uint16
   case VC_CONTROL_XU_LEP_OEM_ID:
     return getAttributeLen_OEM(module_register, pbuf);
   case VC_CONTROL_XU_LEP_RAD_ID:
+    return getAttributeLen_RAD(module_register, pbuf);
+  case VC_CONTROL_XU_LEP_RAD_2_ID:
     return getAttributeLen_RAD(module_register, pbuf);
   case VC_CONTROL_XU_LEP_SYS_ID:
     return getAttributeLen_SYS(module_register, pbuf);
@@ -599,6 +611,8 @@ int8_t VC_LEP_GetMaxValue (VC_TERMINAL_ID entity_id, uint16_t offset, void* pbuf
   case VC_CONTROL_XU_LEP_OEM_ID:
     return getMaxValue_OEM(module_register, pbuf, len);
   case VC_CONTROL_XU_LEP_RAD_ID:
+    return getMaxValue_RAD(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_RAD_2_ID:
     return getMaxValue_RAD(module_register, pbuf, len);
   case VC_CONTROL_XU_LEP_SYS_ID:
     return getMaxValue_SYS(module_register, pbuf, len);

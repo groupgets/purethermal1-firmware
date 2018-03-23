@@ -123,6 +123,7 @@ enum _vs_frame_indexes {
 #define USB_UVC_VSIF_NUM                              (char)1
 
 #define VIDEO_TOTAL_IF_NUM                            2
+#define WINDOWS_MAX_CONTROLS 31
 
 typedef enum _vs_terminal_id {
   VC_INPUT_TERMINAL_ID = 1,
@@ -132,6 +133,11 @@ typedef enum _vs_terminal_id {
   VC_CONTROL_XU_LEP_RAD_ID,
   VC_CONTROL_XU_LEP_SYS_ID,
   VC_CONTROL_XU_LEP_VID_ID,
+  VC_CONTROL_XU_LEP_AGC_2_ID,
+  VC_CONTROL_XU_LEP_OEM_2_ID,
+  VC_CONTROL_XU_LEP_RAD_2_ID,
+  VC_CONTROL_XU_LEP_SYS_2_ID,
+  VC_CONTROL_XU_LEP_VID_2_ID,
   VC_OUTPUT_TERMINAL_ID
 } VC_TERMINAL_ID;
 
