@@ -281,7 +281,7 @@ static int8_t getAttributeLen_CUST(uint16_t offset, uint16_t *pbuf)
 	*pbuf = sizeof(custom_uvc);
 	break;
   case CUST_CONTROL_DIRECT_READ:
-  case CUST_CONTROL_READ:
+  case CUST_CONTROL_GET:
     *pbuf = sizeof(struct custom_response);
     break;
   default:
