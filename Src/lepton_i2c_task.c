@@ -569,7 +569,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 
 		        response = (struct custom_response *)(req.buffer);
 
-		        if (req.control_id == CUST_CONTROL_READ) {
+		        if (req.control_id == CUST_CONTROL_GET) {
 			        PT_WAIT_THREAD(pt, LEP_I2C_GetAttribute_PT(&lep_pt, &hport_desc,
 			                                                   custom_uvc.command.id | LEP_GET_TYPE,
 			                                                   ( LEP_ATTRIBUTE_T_PTR )response->data,
@@ -577,7 +577,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 			                                                   &result));
 			        cust_response_length = sizeof(struct custom_response);
 		        }
-		        if (req.control_id == CUST_CONTROL_WRITE) {
+		        if (req.control_id == CUST_CONTROL_SET) {
 			        PT_WAIT_THREAD(pt, LEP_I2C_SetAttribute_PT(&lep_pt, &hport_desc,
 			                                                   custom_uvc.command.id | LEP_SET_TYPE,
 			                                                   ( LEP_ATTRIBUTE_T_PTR ) custom_uvc.command.buffer,
