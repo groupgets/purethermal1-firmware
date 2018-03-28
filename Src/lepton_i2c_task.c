@@ -601,7 +601,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 															 hport_desc.deviceAddress,
 															 custom_uvc.direct.address,
 															 (LEP_UINT16 *)response->data,
-															 custom_uvc.direct.length);
+															 custom_uvc.direct.length >> 1);
 
 		                PT_YIELD(pt);
 		            }
@@ -617,7 +617,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 													     hport_desc.deviceAddress,
 														 custom_uvc.direct.address,
 														 custom_uvc.direct.data,
-														 custom_uvc.direct.length);
+														 custom_uvc.direct.length >> 1);
 
 		                PT_YIELD(pt);
 		            }
