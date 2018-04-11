@@ -88,7 +88,6 @@ static int8_t getAttributeLen_AGC(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_AGC_POLICY:
   case LEP_CID_AGC_HEQ_SCALE_FACTOR:
   case LEP_CID_AGC_CALC_ENABLE_STATE:
-  case LEP_CID_AGC_HEQ_LINEAR_PERCENT:
     *pbuf = 4;
     break;
   default:
