@@ -298,6 +298,18 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("New format: %d\r\n", fmt);
 
+  if (pcolor_lut == -1) {
+    // due to what I believe is a lepton bug,
+    // even if we don't want to change the palette
+    // we need to set it or we'll get noise on the
+    // video stream
+    result = LEP_GetVidPcolorLut(&hport_desc, &pcolor_lut);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not get color lut: %d\r\n", result);
+      pcolor_lut = PSUEDOCOLOR_LUT;
+    }
+  }
+
   result = LEP_SetVidPcolorLut(&hport_desc, pcolor_lut);
   if (result != LEP_OK) {
     DEBUG_PRINTF("Could not set color lut: %d\r\n", result);
