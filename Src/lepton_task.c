@@ -144,7 +144,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 			{
 				disable_telemetry();
 				enable_lepton_agc();
-				enable_rgb888(PSUEDOCOLOR_LUT);
+				enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 means attempt to continue using the current palette (PcolorLUT)
 			}
 
 			// flush out any old data
