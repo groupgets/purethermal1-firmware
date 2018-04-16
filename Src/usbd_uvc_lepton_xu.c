@@ -169,6 +169,7 @@ static int8_t getAttributeLen_RAD(uint16_t module_register, uint16_t *pbuf)
   case LEP_CID_RAD_SHUTTER_TCP:
   case LEP_CID_RAD_LENS_TCP:
   case LEP_CID_RAD_SPOTMETER_ROI:
+  case LEP_CID_RAD_SPOTMETER_OBJ_KELVIN:
   case LEP_CID_RAD_RADIO_CAL_VALUES:
     *pbuf = 8;
     break;
