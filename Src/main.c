@@ -4,7 +4,7 @@
   * Description        : Main program body
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2016 STMicroelectronics
+  * COPYRIGHT(c) 2017 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -47,6 +47,14 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 #include "tasks.h"
 #include "project_config.h"
+
+typedef enum {
+	PT_BOARD_PT1,
+	PT_BOARD_PT2
+} pt_board_t;
+
+pt_board_t pt_board;
+unsigned int pt_hse_value;
 
 /* USER CODE END Includes */
 
@@ -101,6 +109,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
+void board_detect();
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -116,6 +126,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+  board_detect();
 
   /* USER CODE END 1 */
 
@@ -198,7 +209,9 @@ int main(void)
 #else
 	  PT_SCHEDULE(uart_task(&uart_task_pt));
 #endif
+	  if (pt_board == PT_BOARD_PT1) {
 	  PT_SCHEDULE(button_task(&button_task_pt));
+	  }
 
 	  PT_SCHEDULE(lepton_attribute_xfer_task(&lepton_attribute_xfer_task_pt));
   }
@@ -222,10 +235,20 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 11;
-  RCC_OscInitStruct.PLL.PLLN = 295;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 8;
+  if (pt_board == PT_BOARD_PT1)
+  {
+	  RCC_OscInitStruct.PLL.PLLM = 11;
+	  RCC_OscInitStruct.PLL.PLLN = 295;
+	  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+	  RCC_OscInitStruct.PLL.PLLQ = 8;
+  }
+  else
+  {
+	  RCC_OscInitStruct.PLL.PLLM = 4;
+	  RCC_OscInitStruct.PLL.PLLN = 96;
+	  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+	  RCC_OscInitStruct.PLL.PLLQ = 4;
+  }
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -528,9 +551,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : BUCK_ON_Pin LDO_ON_Pin */
   GPIO_InitStruct.Pin = BUCK_ON_Pin|LDO_ON_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_EVT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(GPIOB, BUCK_ON_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, LDO_ON_Pin, GPIO_PIN_SET);
+
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, ESP_GPIO2_Pin|ESP_GPIO0_Pin|ESP_CH_PD_Pin|SYSTEM_LED_Pin 
@@ -543,6 +570,46 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void board_detect()
+{
+	int gpioval;
+	GPIO_InitTypeDef GPIO_InitStruct;
+
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+
+	/* Set pb4 to a low output on power up, then right after flip to an input without pull-up.
+	 * The line is floating on pt1 and it will read 0
+	 * It is externally pulled up on pt2 and will read 1 */
+
+	GPIO_InitStruct.Pin = GPIO_PIN_4;
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+
+	GPIO_InitStruct.Pin = GPIO_PIN_4;
+	GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	gpioval = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4);
+
+	/* what board do we have? */
+	pt_board = (gpioval ? PT_BOARD_PT2 : PT_BOARD_PT1);
+
+	/* set the hse value for that board */
+	switch (pt_board) {
+	case PT_BOARD_PT1:
+		pt_hse_value = 14318182U;
+		break;
+	case PT_BOARD_PT2:
+	default:
+		pt_hse_value = 8000000U;
+		break;
+	}
+}
 
 /* USER CODE END 4 */
 
