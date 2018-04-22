@@ -7,8 +7,6 @@
 // #define SPLASHSCREEN_OVERLAY
 // #define Y16
 
-#define PT1LITE
-
 // Values from LEP_PCOLOR_LUT_E in Middlewares/lepton_sdk/Inc/LEPTON_VID.h
 #define PSUEDOCOLOR_LUT LEP_VID_FUSION_LUT
 

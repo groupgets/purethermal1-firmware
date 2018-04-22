@@ -37,6 +37,9 @@
 
 /* USER CODE BEGIN Includes */
 
+extern unsigned int pt_hse_value;
+#define HSE_VALUE (pt_hse_value)
+
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/
