@@ -238,7 +238,7 @@ PT_THREAD( LEP_I2C_GetAttribute_PT(struct pt *pt, LEP_CAMERA_PORT_DESC_T_PTR por
 
 PT_THREAD( LEP_I2C_WaitForBusyBit(struct pt *pt,
 								 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
-								 LEP_RESULT *return_code)) {
+								 LEP_RESULT *return_code, LEP_INT16 *return_status)) {
     static LEP_RESULT result;
     static LEP_UINT16 statusReg;
     static LEP_INT16 statusCode;
@@ -278,7 +278,10 @@ PT_THREAD( LEP_I2C_WaitForBusyBit(struct pt *pt,
     statusCode = (statusReg >> 8) ? ((statusReg >> 8) | 0xFF00) : 0;
     if(statusCode)
     {
-      *return_code = (LEP_RESULT)statusCode;
+        if (return_status)
+            *return_status = statusCode;
+        else
+            *return_code = (LEP_RESULT)statusCode;
     }
 
     PT_END(pt);
@@ -291,19 +294,20 @@ PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
 {
     static LEP_RESULT result;
     static struct pt wait_pt;
+    LEP_INT16 status;
 
     PT_BEGIN(pt);
 
     /* First wait until the Camera is ready to receive a new
     ** command by polling the STATUS REGISTER BUSY Bit until it
     ** reports NOT BUSY.
+    ** Ignore the status reported from any previous operation.
     */
     PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
-                                              &result));
+                                              &result, &status));
 
     /* Implement the Lepton TWI WRITE Protocol
     */
-
 
     if( result == LEP_OK )
     {
@@ -335,7 +339,7 @@ PT_THREAD( LEP_I2C_RunCommand_PT(struct pt *pt,
                 ** BUSY.
                 */ 
                 PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
-                                                          &result));
+                                                          &result, NULL));
 
                 if(result)
                 {
@@ -593,7 +597,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 		        }
 		        if (req.control_id == CUST_CONTROL_DIRECT_READ) {
 		            PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
-		                                                      &result));
+		                                                      &result, NULL));
 
 		            if( result == LEP_OK )
 		            {
@@ -609,7 +613,7 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 		        }
 		        if (req.control_id == CUST_CONTROL_DIRECT_WRITE) {
 		            PT_WAIT_THREAD(pt, LEP_I2C_WaitForBusyBit(&wait_pt, &hport_desc,
-		                                                      &result));
+		                                                      &result, NULL));
 
 		            if( result == LEP_OK )
 		            {
