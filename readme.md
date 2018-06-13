@@ -70,8 +70,6 @@ the compiled firmware (see next section for required hardware):
 
 ## Installing Release Firmware
 
-[Old instructions for flashing PureThermal 1 over USB](https://files.groupgets.com/purethermal/pt1_firmware_guide_over_usb.md) (warning: this only works on early PureThermal 1 devices).
-
 **Required Hardware**
 
 * [STLInk/V2]()
@@ -125,6 +123,64 @@ the compiled firmware (see next section for required hardware):
 3. Select "Target" then "Connect" to connect the software to the PureThermal 1.
 4. Next select "File" then "Open file...", now navigate to the folder which contains the PureThermal 1 firmware and select & open the firmware you want to flash (pt1-vX.XX.X.bin or pt1-vX.XX.X+Y16).
 5. Finally click "Target" then "Program & Verify...", make sure that the "Reset after programming" box is selected then press the "Start" button.
+
+### Installing firmware via DFU-Mode (for PT2 boards and really old PT1 boards)
+
+Make sure you use at least 1.1.0 becuase earlier versions didn't support the PT1 and PT2 board from the same binary. 
+
+If you're not compiling from source you can download the firmware from [https://github.com/groupgets/purethermal1-firmware/releases](https://github.com/groupgets/purethermal1-firmware/releases) and substitute the .bin file in the tgz for main.bin in the commands below.
+
+#### Entering bootloader (DFU) mode
+
+
+1. Locate the buttons to press on your PureThermal board.
+
+    ![PT2 Buttons](images/PT2DfuButtons.jpg)
+2. Press and hold the BOOT button
+3. Without releasing BOOT, press and release RST
+4. Release BOOT
+5. When you successfully enter DFU mode, the indicator LED will stop blinking and dim to half brightness
+
+#### Linux / MacOS
+
+Install dfu-util:
+
+    sudo apt-get install dfu-util
+
+or 
+
+    brew install dfu-util
+
+or your system's package manager. 
+
+Then run:
+
+    dfu-util -a 0 -D main.bin -s 0x08000000
+
+or use:
+
+    scripts/flash.sh
+
+#### Windows
+
+DfuSe USB drivers. 
+http://www.st.com/web/en/catalog/tools/FM147/CL1794/SC961/SS1533/PF257916#
+
+win32 DFU tools
+https://files.groupgets.com/purethermal/win32_dfu.zip
+
+To install DFU drivers, may need to use the device manager to select the st drivers
+
+extract `win32_dfu.zip` to the current folder.
+
+    win32_dfu\bin2dfu --i main.bin --a 0x08000000 --o main.dfu
+    win32_dfu\DfuSeCommand -c -d --fn main.dfu
+
+or use:
+
+    scripts/make_and_flash.bat
+
+
 
 ## Debugging
 
