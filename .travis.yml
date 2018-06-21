@@ -1,0 +1,55 @@
+language: cpp
+
+os:
+  - linux
+
+dist: trusty
+
+compiler:
+  - gcc
+
+env:
+  matrix:
+    - PPA=terry.guo/gcc-arm-embedded
+
+before_install:
+  - 'sudo add-apt-repository -y ppa:$PPA'
+
+install:
+  - 'sudo apt-get -qy install gcc-arm-none-eabi'
+  - 'sudo pip install IntelHex'
+
+script:
+  - 'make'
+  - 'export VERS=pt1-v$(git describe --tags)'
+  - 'RELDIR=$TRAVIS_BUILD_DIR/release/$VERS'
+  - 'mkdir -p $RELDIR'
+  - 'cp $TRAVIS_BUILD_DIR/main.bin $RELDIR/$VERS.bin'
+  - '$TRAVIS_BUILD_DIR/scripts/dfu-convert -i $TRAVIS_BUILD_DIR/main.hex $RELDIR/$VERS.dfu'
+  - 'md5sum $RELDIR/$VERS.bin > $RELDIR/$VERS.bin.md5'
+  - 'md5sum $RELDIR/$VERS.dfu > $RELDIR/$VERS.dfu.md5'
+  - 'cd $TRAVIS_BUILD_DIR/release'
+  - 'tar czvf $VERS.tar.gz $VERS'
+
+deploy:
+  - provider: s3
+    access_key_id: AKIAJGQ2AT747PZ7POLA
+    secret_access_key:
+      secure: Fye3aL47jgbarsxwHaEqjJZwDqNDc6hsJQCW3y7fFCzA1COSpBOHCiExnBFRPY1t9SQkFCWq4NWX0Vgcs6KzlmPBiAV/oqagfk8UM6LObRTxIkYfly9Qjwge/vMZzU5mHlEqTKRsose1C5ds+Lp5P0anq3LrKidROBKYIHloQsxg0M0BNHlPltPeNhKczQlrvcx/QW1uRsAO1b0B1bmcKK3Djd/E384KpprqzhlS/GEwlsWYMaNcksUlW+TMNNrHez1vOL+GpCVa9Ec80Tvrhuz65ss9nOWDpi8I5Gci6SXoskLWxfDj5B8T00tOTibuWfe7+yU57STpZ5qIiJuC8tJrjkialFfAY8N/2TdjLtA4kIPetuJXg3Wu9E/qCCl+6L10S2RRryRMC7z9RQKo245HwiQtPnNqzlVTOwJ78glbSlJ2ut9c/PU5ToWfhUr4rj2UBcUh22WkhYgZbtW6wt7dSskAglwKej2weng6OjVCB65lDdUPvjb7Ps4cXQuBu1EnbSVBcqgdPlh0mS5AjvCt6Ncet4aYz/dW2RVDu1eH24QrrepGZfmLn0t/NaiobNtAOoetgfAWAZ/izZYWPQbq+ytGBInCl1Hv9LWvUpGATbH4Uzvv5p6CVsipkHdijf27U/ql4Pbcc3aJqnhsCnxCOlw5RwPi3VImMfDTMJI=
+    bucket: groupgets-ci
+    local-dir: ${TRAVIS_BUILD_DIR}/release
+    upload-dir: purethermal1-firmware/${TRAVIS_BRANCH}
+    acl: public_read
+    skip_cleanup: true
+    on:
+      repo: groupgets/purethermal1-firmware
+      all_branches: true
+  - provider: releases
+    api_key:
+      secure: g+72wZw5mIlxA9h4GvxXeHJMbAQUqmvuhZDbqr30uEO74xnMbe0Txqy/yPYJLlM/dB2deS8QypKqHa8AOjjYpFKk/7tfdVM3QAM2tDkOuLuIiTP4cY3FYAcqCcSN47ZMFatxfTKGGvrxgQ/4/FlC2Y6y+ydjTJrxAyo8Nx6zEgHK4gBY9MMEJZLAQQ1w5o6u1ITZ+d8Aq9fXGj6uzX02qwNpToinUeetUpykKubk1IUSH/ZeOi+IDbTh4KbyIoWCEDZUn9LZ1TrEpW4SjGBXr3GlZ8qWAlnqtWg/74KM8Ov/EcZNE0P1NZEdUdvBLvh6IQVYVcVgHAzH14fcuZmledo0p9Z2y59pbiJFomG4Kk4yaaATlPlXsFFuzcDMy9odVja3Av9ZKmzZmDWyo1Q+cKaeJcODOx7JhFBB8kV+XAf56ahdZZ2x7MjCRAMRIvaGXVOgDOPPSEcdB+2jebZ0s0oW0InF6Jy+nZzJMwboZ8HrH6S2U4zLOHnbj/sluMTDsqV/5U9HqxuCYwvAYlapYfLdYSAUnlI5phKrzFdLZjHgUETAKu3oh7cNc2KgfZm1JNysAEsqTh4eYHT2/UGx7a6lz1BKhKMntAM9JkuWZS7Aq3DVTA8QU1F3XZKi6XQWeGUPFajq9xMBNfGcU1CXJL1dnaWSPJh/XDWxUMGUejc=
+    file_glob: true
+    file: "${TRAVIS_BUILD_DIR}/release/*.tar.gz"
+    skip_cleanup: true
+    on:
+      repo: groupgets/purethermal1-firmware
+      tags: true
