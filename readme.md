@@ -1,11 +1,11 @@
-# PureThermal 1 Reference Firmware
+# PureThermal 1/2/Mini Reference Firmware
 
 [![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/GetThermal)
 
-The [PureThermal 1](https://groupgets.com/manufacturers/groupgets-labs/products/pure-thermal-1-flir-lepton-dev-kit)
-is an embedded development platform for the FLIR Lepton thermal imager, created by
-GroupGets Labs. It is based around the STM32F4, a powerful ARM Cortex-M MCU by ST Microelectronics, and its
-various IO capabilities and open source firmware to make it easy integrate a FLIR Lepton into any environment.
+The [PureThermal 1](https://groupgets.com/manufacturers/groupgets-labs/products/pure-thermal-1-flir-lepton-dev-kit), [PureThermal 2](https://groupgets.com/manufacturers/getlab/products/purethermal-2-flir-lepton-smart-i-o-module), and [PureThermal Mini](https://store.groupgets.com/products/purethermal-mini-flir-lepton-smart-i-o-module) series of boards are
+are an embedded development platform for the FLIR Lepton thermal imager, created by
+GroupGets's [GetLab](https://groupgets.com/manufacturers/getlab). It is based around the STM32F4, a powerful ARM Cortex-M MCU by ST Microelectronics, and its
+various IO capabilities as well as an open source firmware to make it easy integrate a FLIR Lepton into any environment.
 
 
 ## Purpose of This Project
@@ -26,7 +26,7 @@ however, other toolchains that work for the STM32 (such as Mentor's Sourcery too
 The following are compiler installation instructions for various platforms, required for building the firmware.
 
 
-#### Ubuntu 10.04/12.04/14.04/14.10 32/64-bit
+#### Ubuntu 32/64-bit
 
     sudo add-apt-repository ppa:terry.guo/gcc-arm-embedded
     sudo apt-get update
@@ -72,11 +72,12 @@ the compiled firmware (see next section for required hardware):
 
 ## Installing Release Firmware
 
+### PureThermal 1
 **Required Hardware**
 
-* [STLInk/V2]()
-* [ARM MCU JTAG Adapter for PureThermal 1]( https://groupgets.com/manufacturers/getlab/products/arm-mcu-jtag-adapter-for-purethermal-1)
-* [PureThermal 1 - FLIR Lepton Smart I/O Module]( https://groupgets.com/manufacturers/getlab/products/purethermal-1-flir-lepton-smart-i-o-module)
+* [STLInk/V2](https://store.groupgets.com/collections/flir-lepton-accessories/products/st-link-v2)
+* [ARM MCU JTAG Adapter for PureThermal 1](https://groupgets.com/manufacturers/getlab/products/arm-mcu-jtag-adapter-for-purethermal-1)
+* [PureThermal 1 - FLIR Lepton Smart I/O Module](https://groupgets.com/manufacturers/getlab/products/purethermal-1-flir-lepton-smart-i-o-module)
 * Micro USB Cable
 
 **Hardware Instructions**
@@ -95,7 +96,7 @@ the compiled firmware (see next section for required hardware):
 
         brew install stlink
 
-2. Navigate to the folder which contains the PureThermal 1 firmware (pt1-vx.xx.x.bin or pt1-vx.xx.x+Y16), or build with the instructions above.
+2. Navigate to the folder which contains the PureThermal 1 firmware (pt1-vx.xx.x.bin), or build with the instructions above.
 3. Use the following command to erase the firmware on the PureThermal 1:
 
         st-flash erase
@@ -104,9 +105,6 @@ the compiled firmware (see next section for required hardware):
 
         st-flash --reset write pt1-vX.XX.X.bin 0x08000000
 
-    Y16 Firmware:
-
-        st-flash --reset write pt1-vX.XX.X+Y16.bin 0x08000000
 
     Output of a Makefile build:
 
@@ -123,10 +121,10 @@ the compiled firmware (see next section for required hardware):
 1. [Download the STM32 ST-LINK Utility](http://www.st.com/en/embedded-software/stsw-link004.html) (STSW-LINK004)
 2. Install STM32 ST-Link Utility and then open the software.
 3. Select "Target" then "Connect" to connect the software to the PureThermal 1.
-4. Next select "File" then "Open file...", now navigate to the folder which contains the PureThermal 1 firmware and select & open the firmware you want to flash (pt1-vX.XX.X.bin or pt1-vX.XX.X+Y16).
+4. Next select "File" then "Open file...", now navigate to the folder which contains the PureThermal 1 firmware and select & open the firmware you want to flash (pt1-vX.XX.X.bin).
 5. Finally click "Target" then "Program & Verify...", make sure that the "Reset after programming" box is selected then press the "Start" button.
 
-### Installing firmware via DFU-Mode (for PT2 boards and really old PT1 boards)
+### Installing firmware over USB via DFU-Mode (for PureThermal 2 & PureThermal Mini boards)
 
 Make sure you use at least 1.1.0 becuase earlier versions didn't support the PT1 and PT2 board from the same binary. 
 
@@ -136,12 +134,10 @@ If you're not compiling from source you can download the firmware from [https://
 
 
 1. Locate the buttons to press on your PureThermal board.
-
-    ![PT2 Buttons](images/PT2DfuButtons.jpg)
-2. Press and hold the BOOT button
-3. Without releasing BOOT, press and release RST
-4. Release BOOT
-5. When you successfully enter DFU mode, the indicator LED will stop blinking and dim to half brightness
+2. While plugged in, press and hold the BOOT button.
+3. Without releasing BOOT, press and release RST.
+4. Release BOOT.
+5. When you successfully enter DFU mode, the indicator LED will stop blinking and dim to half brightness.
 
 #### Linux / MacOS
 
@@ -159,28 +155,50 @@ Then run:
 
     dfu-util -a 0 -D main.bin -s 0x08000000
 
+if you get an error "Invalid DFU suffix signature"
+
+run
+
+    dfu-util --list
+    
+You should see a list of DFU devices in or connected to your computer, such as the example below:
+
+    Found Runtime: [05ac:8290] ver=0161, devnum=2, cfg=1, intf=5, path="20-3", alt=0, name="UNKNOWN", serial="UNKNOWN"
+    Found DFU: [0483:df11] ver=2200, devnum=4, cfg=1, intf=0, path="20-1", alt=3, name="@Device Feature/0xFFFF0000/01*004 e", serial="3061B4493536"
+    Found DFU: [0483:df11] ver=2200, devnum=4, cfg=1, intf=0, path="20-1", alt=2, name="@OTP Memory /0x1FFF7800/01*512 e,01*016 e", serial="3061B4493536"
+    Found DFU: [0483:df11] ver=2200, devnum=4, cfg=1, intf=0, path="20-1", alt=1, name="@Option Bytes  /0x1FFFC000/01*016 e", serial="3061B4493536"
+    Found DFU: [0483:df11] ver=2200, devnum=4, cfg=1, intf=0, path="20-1", alt=0, name="@Internal Flash  /0x08000000/04*016Kg,01*064Kg,07*128Kg", serial="3061B4493536"
+
+If you are a large number of devices you can unplug the PureThermal board and run the dfu-util --list command again and compare the output.
+
+To specify a specific device to flash run (replace the ?? with the device id of the PureThermal board plugged into your comptuter)
+
+    dfu-util -a 0 -d ????:???? -D main.bin -s 0x08000000
+
 or use:
 
     scripts/flash.sh
 
 #### Windows
 
-DfuSe USB drivers. 
+DfuSe USB drivers, on the page below under the "GET SOFTWARE" section at the bottom of the page.
 http://www.st.com/web/en/catalog/tools/FM147/CL1794/SC961/SS1533/PF257916#
 
 win32 DFU tools
 https://files.groupgets.com/purethermal/win32_dfu.zip
 
-To install DFU drivers, may need to use the device manager to select the st drivers
+To install DFU drivers, may need to use the device manager to select the st drivers.
 
-extract `win32_dfu.zip` to the current folder.
+Extract `win32_dfu.zip` to the folder with your firmware. Then run the .bat file which you can [download from /scripts here](https://github.com/groupgets/purethermal1-firmware/tree/master/scripts)
+
+
+or use the following commands in CMD.
+
+CD to folder where you put the (.bin) firmware and extracted win32 DFU tools.
 
     win32_dfu\bin2dfu --i main.bin --a 0x08000000 --o main.dfu
     win32_dfu\DfuSeCommand -c -d --fn main.dfu
 
-or use:
-
-    scripts/make_and_flash.bat
 
 
 
