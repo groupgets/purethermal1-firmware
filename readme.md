@@ -1,4 +1,4 @@
-# PureThermal 1 Reference Firmware
+# PureThermal 1/2/mini Reference Firmware
 
 [![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/GetThermal)
 
