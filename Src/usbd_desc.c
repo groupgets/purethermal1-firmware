@@ -36,6 +36,7 @@
 #include "usbd_core.h"
 #include "usbd_desc.h"
 #include "usbd_conf.h"
+#include "uuid.h"
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
   * @{
@@ -60,7 +61,7 @@
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "GroupGets"
 #define USBD_PID_FS     0x0100
-#define USBD_PRODUCT_STRING_FS     "PureThermal 1"
+#define USBD_PRODUCT_STRING_FS     "PureThermal"
 #define USBD_SERIALNUMBER_STRING_FS     "v1.0.0"
 #define USBD_CONFIGURATION_STRING_FS     "Video Streaming Configuration"
 #define USBD_INTERFACE_STRING_FS     "Video Streaming Interface"
@@ -245,14 +246,10 @@ uint8_t *  USBD_FS_LangIDStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  if(speed == 0)
-  {   
-    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
-  }
-  else
-  {
-    USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);    
-  }
+  char product_str[64];
+  snprintf(product_str, sizeof(product_str), "%s (fw:%s)",
+           USBD_PRODUCT_STRING_FS, USBD_SERIALNUMBER_STRING_FS);
+  USBD_GetString ((uint8_t*)product_str, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
@@ -278,14 +275,14 @@ uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t
 */
 uint8_t *  USBD_FS_SerialStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  if(speed  == USBD_SPEED_HIGH)
-  {    
-    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);
-  }
-  else
-  {
-    USBD_GetString (USBD_SERIALNUMBER_STRING_FS, USBD_StrDesc, length);    
-  }
+  char uuid_str[37];
+
+  /* 96/128 bits available from stm32, zero pad remainder to form a V4 UUID */
+  snprintf(uuid_str, sizeof(uuid_str), "%04x%04x-%04x-%04x-%04x-%04x00000000",
+           STM32_ID[0], STM32_ID[1], STM32_ID[2], STM32_ID[3], STM32_ID[4], STM32_ID[5]);
+
+  USBD_GetString ((uint8_t*)uuid_str, USBD_StrDesc, length);
+
   return USBD_StrDesc;
 }
 
