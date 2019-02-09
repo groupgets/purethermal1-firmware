@@ -57,6 +57,17 @@ static void set_lepton_type()
   LEP_SetOemGpioMode(&hport_desc, LEP_OEM_GPIO_MODE_VSYNC);
 }
 
+static void set_startup_defaults()
+{
+  LEP_RESULT result;
+
+  /* set a default color lut so radiometric parts produce reasonable pseudocolor images */
+  result = LEP_SetVidPcolorLut(&hport_desc, PSUEDOCOLOR_LUT);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set default color lut: %d\r\n", result);
+  }
+}
+
 static HAL_StatusTypeDef print_cust_serial_number()
 {
   LEP_RESULT result;
@@ -380,6 +391,8 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
     return HAL_ERROR;
 
   set_lepton_type();
+
+  set_startup_defaults();
 
   return HAL_OK;
 }
