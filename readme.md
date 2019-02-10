@@ -1,6 +1,6 @@
 # PureThermal 1/2/mini Reference Firmware
 
-[![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/GetThermal)
+[![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/purethermal1-firmware)
 
 The [PureThermal 1](https://groupgets.com/manufacturers/groupgets-labs/products/pure-thermal-1-flir-lepton-dev-kit)
 is an embedded development platform for the FLIR Lepton thermal imager, created by
