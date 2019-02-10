@@ -1,6 +1,6 @@
 # PureThermal 1/2/Mini Reference Firmware
 
-[![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/GetThermal)
+[![Build Status](https://travis-ci.org/groupgets/purethermal1-firmware.svg?branch=master)](https://travis-ci.org/groupgets/purethermal1-firmware)
 
 The [PureThermal 1](https://groupgets.com/manufacturers/groupgets-labs/products/pure-thermal-1-flir-lepton-dev-kit), [PureThermal 2](https://groupgets.com/manufacturers/getlab/products/purethermal-2-flir-lepton-smart-i-o-module), and [PureThermal Mini](https://store.groupgets.com/products/purethermal-mini-flir-lepton-smart-i-o-module) series of boards are
 are an embedded development platform for the FLIR Lepton thermal imager, created by
