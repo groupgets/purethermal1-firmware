@@ -286,6 +286,29 @@ HAL_StatusTypeDef enable_telemetry(void)
   return HAL_OK;
 }
 
+// Using END as an illegal value to mean this has never been set
+LEP_RAD_ENABLE_E cachedTLinearState = LEP_END_RAD_ENABLE;
+
+HAL_StatusTypeDef restore_cached_values()
+{
+  LEP_RESULT result;
+
+  // if we have cached a tlinear value, set it back to that value
+  if (LEP_END_RAD_ENABLE != cachedTLinearState) {
+    // clear the cached tlinear state so we don't overwrite it multiple times
+    // (this function will get called everytime any stream stops)
+    result = LEP_SetRadTLinearEnableState(&hport_desc, cachedTLinearState);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+      return HAL_ERROR;
+    }
+    cachedTLinearState = LEP_END_RAD_ENABLE;
+  }
+
+  return HAL_OK;
+}
+
+
 HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
 {
   LEP_RESULT result;
@@ -294,9 +317,19 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("Current format: %d\r\n", fmt);
 
-  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_DISABLE);
+  // cache the old tlinear state so we can set it back if we got to raw14
+  if (cachedTLinearState == LEP_END_RAD_ENABLE) {
+    result = LEP_GetRadTLinearEnableState(&hport_desc, &cachedTLinearState);
+    if (result != LEP_OK) {
+      DEBUG_PRINTF("Could not get tlinear state %d\r\n", result);
+      return HAL_ERROR;
+    }
+  }
+
+  // disable tlinear because it messes with the AGC
+  result = LEP_SetRadTLinearEnableState(&hport_desc, LEP_RAD_DISABLE);
   if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+    DEBUG_PRINTF("Could not set tlinear state %d\r\n", result);
     return HAL_ERROR;
   }
 
@@ -337,12 +370,6 @@ HAL_StatusTypeDef enable_raw14()
 
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("Current format: %d\r\n", fmt);
-
-  result = LEP_SetRadEnableState(&hport_desc, LEP_RAD_ENABLE);
-  if (result != LEP_OK) {
-    DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
-    return HAL_ERROR;
-  }
 
   result = LEP_SetOemVideoOutputFormat(&hport_desc, LEP_VIDEO_OUTPUT_FORMAT_RAW14);
   if (result != LEP_OK) {
