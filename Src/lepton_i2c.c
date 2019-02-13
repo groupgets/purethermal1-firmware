@@ -286,23 +286,23 @@ HAL_StatusTypeDef enable_telemetry(void)
   return HAL_OK;
 }
 
-// Using END as an illegal value to mean this has never been set
-LEP_RAD_ENABLE_E cachedTLinearState = LEP_END_RAD_ENABLE;
+// Using END as an illegal value to mean this isn't currently caching a value
+static LEP_RAD_ENABLE_E cached_TLinear_state = LEP_END_RAD_ENABLE;
 
 HAL_StatusTypeDef restore_cached_values()
 {
   LEP_RESULT result;
 
   // if we have cached a tlinear value, set it back to that value
-  if (LEP_END_RAD_ENABLE != cachedTLinearState) {
+  if (LEP_END_RAD_ENABLE != cached_TLinear_state) {
     // clear the cached tlinear state so we don't overwrite it multiple times
     // (this function will get called everytime any stream stops)
-    result = LEP_SetRadTLinearEnableState(&hport_desc, cachedTLinearState);
+    result = LEP_SetRadTLinearEnableState(&hport_desc, cached_TLinear_state);
     if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not disable radiometry %d\r\n", result);
+      DEBUG_PRINTF("Could not restore tlinear setting %d\r\n", result);
       return HAL_ERROR;
     }
-    cachedTLinearState = LEP_END_RAD_ENABLE;
+    cached_TLinear_state = LEP_END_RAD_ENABLE;
   }
 
   return HAL_OK;
@@ -317,9 +317,9 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("Current format: %d\r\n", fmt);
 
-  // cache the old tlinear state so we can set it back if we got to raw14
-  if (cachedTLinearState == LEP_END_RAD_ENABLE) {
-    result = LEP_GetRadTLinearEnableState(&hport_desc, &cachedTLinearState);
+  // cache the old tlinear state so we can set it back if we go to raw14
+  if (cached_TLinear_state == LEP_END_RAD_ENABLE) {
+    result = LEP_GetRadTLinearEnableState(&hport_desc, &cached_TLinear_state);
     if (result != LEP_OK) {
       DEBUG_PRINTF("Could not get tlinear state %d\r\n", result);
       return HAL_ERROR;
