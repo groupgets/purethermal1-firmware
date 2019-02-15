@@ -119,7 +119,14 @@ PT_THREAD( lepton_task(struct pt *pt))
 		if (g_uvc_stream_status == 0)
 		{
 			lepton_low_power();
-			restore_cached_values();
+			if (g_format_y16)
+			{
+				// no cleanup after y16
+			}
+			else
+			{
+				disable_rgb888();
+			}
 
 			// Start slow blink (1 Hz)
 			while (g_uvc_stream_status == 0)

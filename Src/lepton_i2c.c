@@ -286,23 +286,16 @@ HAL_StatusTypeDef enable_telemetry(void)
   return HAL_OK;
 }
 
-// Using END as an illegal value to mean this isn't currently caching a value
-static LEP_RAD_ENABLE_E cached_TLinear_state = LEP_END_RAD_ENABLE;
+static LEP_RAD_ENABLE_E rgb888_cached_tlinear_state;
 
-HAL_StatusTypeDef restore_cached_values()
+HAL_StatusTypeDef disable_rgb888()
 {
   LEP_RESULT result;
 
-  // if we have cached a tlinear value, set it back to that value
-  if (LEP_END_RAD_ENABLE != cached_TLinear_state) {
-    // clear the cached tlinear state so we don't overwrite it multiple times
-    // (this function will get called everytime any stream stops)
-    result = LEP_SetRadTLinearEnableState(&hport_desc, cached_TLinear_state);
-    if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not restore tlinear setting %d\r\n", result);
-      return HAL_ERROR;
-    }
-    cached_TLinear_state = LEP_END_RAD_ENABLE;
+  result = LEP_SetRadTLinearEnableState(&hport_desc, rgb888_cached_tlinear_state);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not restore tlinear setting %d\r\n", result);
+    return HAL_ERROR;
   }
 
   return HAL_OK;
@@ -317,13 +310,11 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
   LEP_GetOemVideoOutputFormat(&hport_desc, &fmt);
   DEBUG_PRINTF("Current format: %d\r\n", fmt);
 
-  // cache the old tlinear state so we can set it back if we go to raw14
-  if (cached_TLinear_state == LEP_END_RAD_ENABLE) {
-    result = LEP_GetRadTLinearEnableState(&hport_desc, &cached_TLinear_state);
-    if (result != LEP_OK) {
-      DEBUG_PRINTF("Could not get tlinear state %d\r\n", result);
-      return HAL_ERROR;
-    }
+  // save the tlinear state to restore when we end rgb888
+  result = LEP_GetRadTLinearEnableState(&hport_desc, &rgb888_cached_tlinear_state);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not get tlinear state %d\r\n", result);
+    return HAL_ERROR;
   }
 
   // disable tlinear because it messes with the AGC
