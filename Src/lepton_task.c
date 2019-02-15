@@ -106,6 +106,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static int transferring_timer = 0;
 	static uint8_t current_segment = 0;
 	static uint8_t last_end_line = 0;
+	static uint8_t has_started_a_stream = 0;
 	curtick = last_tick = HAL_GetTick();
 
 #ifdef THERMAL_DATA_UART
@@ -119,13 +120,16 @@ PT_THREAD( lepton_task(struct pt *pt))
 		if (g_uvc_stream_status == 0)
 		{
 			lepton_low_power();
-			if (g_format_y16)
+			if (has_started_a_stream)
 			{
-				// no cleanup after y16
-			}
-			else
-			{
-				disable_rgb888();
+				if (g_format_y16)
+				{
+					// no cleanup after y16
+				}
+				else
+				{
+					disable_rgb888();
+				}
 			}
 
 			// Start slow blink (1 Hz)
@@ -154,6 +158,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 				enable_lepton_agc();
 				enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 means attempt to continue using the current palette (PcolorLUT)
 			}
+			has_started_a_stream = 1;
 
 			// flush out any old data
 			while (dequeue_lepton_buffer() != NULL) {}
