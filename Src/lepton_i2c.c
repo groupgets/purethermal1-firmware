@@ -293,7 +293,9 @@ HAL_StatusTypeDef disable_rgb888()
   LEP_RESULT result;
 
   result = LEP_SetRadTLinearEnableState(&hport_desc, rgb888_cached_tlinear_state);
-  if (result != LEP_OK) {
+  if (result == LEP_UNDEFINED_FUNCTION_ERROR) {
+    DEBUG_PRINTF("LEP_SetRadTLinearEnableState() not available on this lepton\r\n");
+  } else if (result != LEP_OK) {
     DEBUG_PRINTF("Could not restore tlinear setting %d\r\n", result);
     return HAL_ERROR;
   }
@@ -312,14 +314,18 @@ HAL_StatusTypeDef enable_rgb888(LEP_PCOLOR_LUT_E pcolor_lut)
 
   // save the tlinear state to restore when we end rgb888
   result = LEP_GetRadTLinearEnableState(&hport_desc, &rgb888_cached_tlinear_state);
-  if (result != LEP_OK) {
+  if (result == LEP_UNDEFINED_FUNCTION_ERROR) {
+    DEBUG_PRINTF("LEP_GetRadTLinearEnableState() not available on this lepton\r\n");
+  } else if (result != LEP_OK) {
     DEBUG_PRINTF("Could not get tlinear state %d\r\n", result);
     return HAL_ERROR;
   }
 
   // disable tlinear because it messes with the AGC
   result = LEP_SetRadTLinearEnableState(&hport_desc, LEP_RAD_DISABLE);
-  if (result != LEP_OK) {
+  if (result == LEP_UNDEFINED_FUNCTION_ERROR) {
+    DEBUG_PRINTF("LEP_SetRadTLinearEnableState() not available on this lepton\r\n");
+  } else if (result != LEP_OK) {
     DEBUG_PRINTF("Could not set tlinear state %d\r\n", result);
     return HAL_ERROR;
   }
