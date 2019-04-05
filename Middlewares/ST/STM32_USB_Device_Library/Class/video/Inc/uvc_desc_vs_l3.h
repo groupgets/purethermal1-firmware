@@ -49,7 +49,7 @@
   },
 .uvc_vs_frames_format_2 =
   {
-    .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(Y16, 1),
+    .uvc_vs_format = UVC_FORMAT_UNCOMPRESSED_DESCRIPTOR(Y16, 2),
     .uvc_vs_frame  = { UVC_FRAME_FORMAT(VS_FRAME_INDEX_DEFAULT, Y16, 160, 120),
                        UVC_FRAME_FORMAT(VS_FRAME_INDEX_TELEMETRIC, Y16, 160, 122) },
     .uvc_vs_color  = UVC_COLOR_MATCHING_DESCRIPTOR(),
