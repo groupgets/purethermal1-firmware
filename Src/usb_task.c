@@ -151,7 +151,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0, uvc_xmit_seg = 0;
-	static uint8_t packet[VIDEO_PACKET_SIZE];
+	static uint8_t packet[VIDEO_PACKET_SIZE_MAX];
 	static int image_num_segments;
 
 	PT_BEGIN(pt);
@@ -241,7 +241,7 @@ PT_THREAD( usb_task(struct pt *pt))
         case VS_FMT_INDEX(GREY):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < g_uvc_stream_packet_size)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
@@ -261,7 +261,7 @@ PT_THREAD( usb_task(struct pt *pt))
         case VS_FMT_INDEX(Y16):
         {
           // while (uvc_xmit_row < 60 && count < VALDB(videoCommitControl.dwMaxPayloadTransferSize))
-          while (uvc_xmit_row < (IMAGE_NUM_LINES + g_telemetry_num_lines) && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < (IMAGE_NUM_LINES + g_telemetry_num_lines) && count < g_uvc_stream_packet_size)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
@@ -278,7 +278,7 @@ PT_THREAD( usb_task(struct pt *pt))
         default:
         case VS_FMT_INDEX(YUYV):
         {
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < g_uvc_stream_packet_size)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
@@ -302,7 +302,7 @@ PT_THREAD( usb_task(struct pt *pt))
         }
         case VS_FMT_INDEX(BGR3):
         {
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < g_uvc_stream_packet_size)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {
@@ -318,7 +318,7 @@ PT_THREAD( usb_task(struct pt *pt))
         }
         case VS_FMT_INDEX(RGB565):
         {
-          while (uvc_xmit_row < IMAGE_NUM_LINES && count < VIDEO_PACKET_SIZE)
+          while (uvc_xmit_row < IMAGE_NUM_LINES && count < g_uvc_stream_packet_size)
           {
             for (i = 0; i < FRAME_LINE_LENGTH; i++)
             {

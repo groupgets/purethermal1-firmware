@@ -74,6 +74,7 @@
 // #define UVC_SETUP_REQ_DEBUG
 
 volatile uint8_t g_uvc_stream_status = 0;
+volatile uint16_t g_uvc_stream_packet_size = 0;
 volatile uint8_t g_lepton_type_3 = 0;
 volatile uint8_t g_telemetry_num_lines = 0;
 volatile uint8_t g_format_y16 = 0;
@@ -228,7 +229,7 @@ static uint8_t  USBD_UVC_Init (USBD_HandleTypeDef *pdev,
   USBD_LL_OpenEP(pdev,
                  UVC_IN_EP,
                  USBD_EP_TYPE_ISOC,
-                 VIDEO_PACKET_SIZE);
+                 VIDEO_PACKET_SIZE_MAX);
 
   USBD_LL_OpenEP(pdev,
                  UVC_CMD_EP,
@@ -323,22 +324,22 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
       {
         USBD_LL_FlushEP (pdev,USB_ENDPOINT_OUT(0));
 
-        if (address == USB_UVC_VSIF_NUM)
+        if (address == USB_UVC_VCIF_NUM)
         {
-          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlGet(req->bRequest,
-                                                            (uint8_t *)hcdc->data,
-                                                            req->wLength,
-                                                            req->wIndex,
-                                                            req->wValue);
+          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlGet(entity_id,
+                                                                      req->bRequest,
+                                                                      (uint8_t *)hcdc->data,
+                                                                      req->wLength,
+                                                                      req->wIndex,
+                                                                      req->wValue);
         }
         else
         {
-          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlGet(entity_id,
-                                                            req->bRequest,
-                                                            (uint8_t *)hcdc->data,
-                                                            req->wLength,
-                                                            req->wIndex,
-                                                            req->wValue);
+          ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlGet(req->bRequest,
+                                                                      (uint8_t *)hcdc->data,
+                                                                      req->wLength,
+                                                                      req->wIndex,
+                                                                      req->wValue);
         }
 
         if (ret == USBD_OK)
@@ -407,12 +408,17 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
 
         // TODO: refactor this to callback user code instead of doing this here
 
-        if (ifalt == 1) {
-          DEBUG_PRINTF("USB_REQ_SET_INTERFACE: 1\r\n");
+        if (ifalt > 0) {
+          struct uvc_vs_alt_setting *alt;
+          // DEBUG_PRINTF("USB_REQ_SET_INTERFACE: 1\r\n");
           g_uvc_stream_status = 1;
+          alt = &(g_lepton_type_3 ? USBD_UVC_CfgFSDesc_L3 : USBD_UVC_CfgFSDesc_L2).uvc_vs_alt[ifalt - USB_UVC_VSIF_ALT_START];
+          g_uvc_stream_packet_size = alt->ep.wMaxPacketSize;
+
         } else {
           DEBUG_PRINTF("USB_REQ_SET_INTERFACE: %d\r\n", req->wValue);
           g_uvc_stream_status = 0;
+          g_uvc_stream_packet_size = 0;
         }
       }
       else
@@ -521,15 +527,7 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
     uint8_t address = (hcdc->CmdIndex >> 0) & 0xff;
     uint8_t entity_id = (hcdc->CmdIndex >> 8) & 0xff;
 
-    if (address == USB_UVC_VSIF_NUM)
-    {
-      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
-                                                        (uint8_t *)hcdc->data,
-                                                        hcdc->CmdLength,
-                                                        hcdc->CmdIndex,
-                                                        hcdc->CmdValue);
-    }
-    else
+    if (address == USB_UVC_VCIF_NUM)
     {
       ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->ControlSet(entity_id,
                                                         hcdc->CmdOpCode,
@@ -538,6 +536,15 @@ static uint8_t  USBD_UVC_EP0_RxReady (USBD_HandleTypeDef *pdev)
                                                         hcdc->CmdIndex,
                                                         hcdc->CmdValue);
     }
+    else
+    {
+      ret = ((USBD_UVC_ItfTypeDef *)pdev->pUserData)->VS_CtrlSet(hcdc->CmdOpCode,
+                                                        (uint8_t *)hcdc->data,
+                                                        hcdc->CmdLength,
+                                                        hcdc->CmdIndex,
+                                                        hcdc->CmdValue);
+    }
+
 
     hcdc->CmdOpCode = 0xFF; 
   }

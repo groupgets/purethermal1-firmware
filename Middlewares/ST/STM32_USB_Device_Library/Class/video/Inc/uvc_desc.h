@@ -31,6 +31,11 @@ struct uvc_vs_frames_formats_descriptor {
   struct UVC_FRAMES_FORMAT_UNCOMPRESSED(1) uvc_vs_frames_format_5;
 };
 
+struct uvc_vs_alt_setting {
+	struct usb_interface_descriptor intf;
+	struct usb_endpoint_descriptor ep;
+};
+
 struct usbd_uvc_cfg {
   struct usb_config_descriptor usb_configuration;
   struct usb_interface_assoc_descriptor usb_uvc_association;
@@ -54,8 +59,7 @@ struct usbd_uvc_cfg {
   struct _UVC_INPUT_HEADER_DESCRIPTOR(1, VS_NUM_FORMATS) uvc_vs_input_header_desc;
   struct uvc_vs_frames_formats_descriptor uvc_vs_frames_formats_desc;
 
-  struct usb_interface_descriptor uvc_vs_if_alt1_desc;
-  struct usb_endpoint_descriptor uvc_vs_if_alt1_ep;
+  struct uvc_vs_alt_setting uvc_vs_alt[USB_UVC_VSIF_ALT_COUNT];
 } __attribute__ ((packed));
 
 extern struct usbd_uvc_cfg USBD_UVC_CfgFSDesc_L2;

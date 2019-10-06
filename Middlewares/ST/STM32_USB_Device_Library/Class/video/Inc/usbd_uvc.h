@@ -60,11 +60,19 @@
 
 #define UVC_IN_EP                                     0x81  /* EP1 for data IN */
 #define UVC_CMD_EP                                    0x82  /* EP2 for UVC commands */
-#define VIDEO_PACKET_SIZE                             ((unsigned int)(962))
+#define VIDEO_PACKET_SIZE_ALT1                        ((unsigned int)(642)) /* 642 */
+#define VIDEO_PACKET_SIZE_ALT2                        ((unsigned int)(962))
+#define VIDEO_PACKET_SIZE_MAX                         ((unsigned int)(1023))
 #define VIDEO_MAX_SETUP_PACKET_SIZE                   ((unsigned int)(1024))
 #define CMD_PACKET_SIZE                               ((unsigned int)(8))
 
 #define CAM_FPS                                       9
+
+/* min 162 for L2 Y16, 482 for L3 Y16 */
+static const unsigned int VIDEO_PACKET_SIZE_ALT[] = {
+	VIDEO_PACKET_SIZE_ALT1,
+	VIDEO_PACKET_SIZE_ALT2
+};
 
 enum CUST_COMTROL_IDS {
 	CUST_CONTROL_COMMAND=0,
@@ -132,9 +140,10 @@ enum _vs_frame_indexes {
 #define VS_FRAME_INDEX(NAME) VS_FRAME_INDEX_ ## NAME
 
 #define USB_UVC_VCIF_NUM                              0
-#define USB_UVC_VSIF_NUM                              (char)1
+#define USB_UVC_VSIF_ALT_START                        1
+#define USB_UVC_VSIF_ALT_COUNT                        2
 
-#define VIDEO_TOTAL_IF_NUM                            2
+#define VIDEO_TOTAL_IF_NUM                            (1 + USB_UVC_VSIF_ALT_COUNT)
 #define WINDOWS_MAX_CONTROLS 31
 
 typedef enum _vs_terminal_id {
@@ -261,12 +270,6 @@ struct uvc_input_terminal_desc {
   */ 
 
 #define SIZEOF_M(type, member) sizeof(((type *)0)->member)
-
-#define UVC_DATA_HS_IN_PACKET_SIZE                    VIDEO_PACKET_SIZE
-#define UVC_DATA_HS_OUT_PACKET_SIZE                   VIDEO_PACKET_SIZE
-
-#define UVC_DATA_FS_IN_PACKET_SIZE                    VIDEO_PACKET_SIZE
-#define UVC_DATA_FS_OUT_PACKET_SIZE                   VIDEO_PACKET_SIZE
 
 #define UVC_LEN_IF_ASSOCIATION_DESC                   (char)8
 

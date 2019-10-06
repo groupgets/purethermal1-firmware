@@ -120,7 +120,7 @@ __ALIGN_BEGIN struct uvc_streaming_control videoCommitControl __ALIGN_END =
   .wCompWindowSize = 0,
   .wDelay = 0,
   .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
-  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
+  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE_ALT1,
   .dwClockFrequency = 0,
   .bmFramingInfo = 0,
   .bPreferedVersion = 0,
@@ -140,7 +140,7 @@ __ALIGN_BEGIN struct uvc_streaming_control videoProbeControl __ALIGN_END =
   .wCompWindowSize = 0,
   .wDelay = 0,
   .dwMaxVideoFrameSize = MAX_FRAME_SIZE(80,60,VS_FMT_SIZE(YUYV)),
-  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE,
+  .dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE_ALT1,
   .dwClockFrequency = 0,
   .bmFramingInfo = 0,
   .bPreferedVersion = 0,
@@ -482,7 +482,6 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
 
       rtnBuf->bFormatIndex = videoProbeControl.bFormatIndex;
       rtnBuf->bFrameIndex = videoProbeControl.bFrameIndex;
-      rtnBuf->dwMaxPayloadTransferSize = VIDEO_PACKET_SIZE;
       rtnBuf->dwFrameInterval = INTERVAL;
 
       if (cmd == UVC_GET_DEF ||
@@ -492,6 +491,7 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
       {
         struct uvc_vs_frames_formats_descriptor *frames_formats;
         struct UVC_FRAME_UNCOMPRESSED(1) *frame;
+        uint16_t payload_size;
 
         if (g_lepton_type_3)
         {
@@ -505,23 +505,29 @@ static int8_t UVC_VS_ControlGet  (uint8_t cmd, uint8_t* pbuf, uint16_t length, u
         switch (videoProbeControl.bFormatIndex) {
         case VS_FMT_INDEX(YUYV):
           frame = frames_formats->uvc_vs_frames_format_1.uvc_vs_frame;
+          payload_size = VIDEO_PACKET_SIZE_ALT[0];
           break;
         case VS_FMT_INDEX(Y16):
           frame = frames_formats->uvc_vs_frames_format_2.uvc_vs_frame;
+          payload_size = VIDEO_PACKET_SIZE_ALT[0];
           break;
         case VS_FMT_INDEX(GREY):
           frame = frames_formats->uvc_vs_frames_format_3.uvc_vs_frame;
+          payload_size = VIDEO_PACKET_SIZE_ALT[0];
           break;
         case VS_FMT_INDEX(RGB565):
           frame = frames_formats->uvc_vs_frames_format_4.uvc_vs_frame;
+          payload_size = VIDEO_PACKET_SIZE_ALT[0];
           break;
         case VS_FMT_INDEX(BGR3):
           frame = frames_formats->uvc_vs_frames_format_5.uvc_vs_frame;
+          payload_size = VIDEO_PACKET_SIZE_ALT[1];
           break;
         default:
           return USBD_FAIL;
         }
         rtnBuf->dwMaxVideoFrameSize = frame[videoProbeControl.bFrameIndex - 1].dwMaxVideoFrameBufferSize;
+        rtnBuf->dwMaxPayloadTransferSize = payload_size;
       }
       else
       {

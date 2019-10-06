@@ -5,7 +5,7 @@
 .uvc_vs_if_alt0_desc = {
   .bLength = USB_DT_INTERFACE_SIZE,                // 9
   .bDescriptorType = USB_DESC_TYPE_INTERFACE,      // 4
-  .bInterfaceNumber = USB_UVC_VSIF_NUM,            // 1 index of this interface
+  .bInterfaceNumber = USB_UVC_VSIF_ALT_START,      // 1 index of this interface
   .bAlternateSetting = 0x00,                       // 0 index of this setting
   .bNumEndpoints = 0x00,                           // 0 no EP used
   .bInterfaceClass = UVC_CC_VIDEO,                 // 14 Video
