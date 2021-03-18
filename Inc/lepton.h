@@ -13,8 +13,10 @@
 extern volatile uint8_t g_uvc_stream_status;
 extern volatile uint16_t g_uvc_stream_packet_size;
 extern volatile uint8_t g_lepton_type_3;
+extern volatile uint8_t g_lepton_type_p5;
 extern volatile uint8_t g_telemetry_num_lines;
 extern volatile uint8_t g_format_y16;
+extern volatile uint8_t g_frame_index;
 
 typedef enum {
   LEPTON_STATUS_OK = 0,
@@ -114,6 +116,7 @@ void lepton_transfer(lepton_buffer *buf, int nlines);
 
 void print_image_binary_background(void);
 void lepton_init(void );
+void lepton_deinit(void );
 
 #endif
 

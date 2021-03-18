@@ -17,4 +17,13 @@
 #define USART_DEBUG_SPEED (921600)
 #endif
 
+#ifdef GIT_VERSION
+#include "version.h"
+#else
+#define BUILD_GIT_SHA "1.0.0"
+#define BUILD_DATE "2000-01-01 00:00:00"
+#endif
+
+#define USBD_SERIALNUMBER_STRING_FS "v" BUILD_GIT_SHA
+
 #endif

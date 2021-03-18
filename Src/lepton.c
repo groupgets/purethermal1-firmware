@@ -106,6 +106,67 @@ void lepton_init(void )
   init_lepton_task();
 }
 
+void lepton_deinit(void )
+{
+  /* Disable SPI peripheral */
+  __HAL_SPI_DISABLE(&hspi2);
+
+  //LEPTON_PW_DWN_LOW;
+  HAL_Delay(100);
+  LEPTON_RESET_L_LOW;
+}
+
+void sleep_ms(int cnt)
+{
+	volatile int i;
+
+	i=cnt*13800;
+	while(1){
+		if(--i <= 0)
+			break;
+	}
+}
+
+void lepton_init_nd(void )
+{
+  LEPTON_RESET_L_LOW;
+  LEPTON_PW_DWN_LOW;
+
+  sleep_ms(190);
+  LEPTON_PW_DWN_HIGH;
+
+  sleep_ms(190);
+  LEPTON_RESET_L_HIGH;
+
+  hspi2.hdmarx->XferCpltCallback = lepton_spi_rx_dma_cplt;
+
+  /* Set the SPI Tx DMA transfer complete callback as NULL because the communication closing
+  is performed in DMA reception complete callback  */
+  hspi2.hdmatx->XferCpltCallback = NULL;
+  hspi2.hdmatx->XferErrorCallback = NULL;
+
+  /* Clear DBM bit */
+  hspi2.hdmarx->Instance->CR &= (uint32_t)(~DMA_SxCR_DBM);
+  hspi2.hdmatx->Instance->CR &= (uint32_t)(~DMA_SxCR_DBM);
+
+  /*Init field not used in handle to zero */
+  hspi2.RxISR = 0;
+  hspi2.TxISR = 0;
+
+  /* Enable SPI peripheral */
+  __HAL_SPI_ENABLE(&hspi2);
+}
+
+void lepton_deinit_nd(void )
+{
+  /* Disable SPI peripheral */
+  __HAL_SPI_DISABLE(&hspi2);
+
+  //LEPTON_PW_DWN_LOW;
+  sleep_ms(100);
+  LEPTON_RESET_L_LOW;
+}
+
 static inline HAL_StatusTypeDef start_lepton_spi_dma(DMA_HandleTypeDef *hdma, uint32_t SrcAddress, uint32_t DstAddress, uint32_t DataLength)
 {
   hdma->Instance->CR &= ~DMA_SxCR_EN;

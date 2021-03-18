@@ -47,6 +47,7 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 #include "tasks.h"
 #include "project_config.h"
+#include "LEPTON_CPU.h"
 
 typedef enum {
 	PT_BOARD_PT1,
@@ -170,6 +171,9 @@ int main(void)
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);
 
+  SetCpuFwVersion(*((LEP_UINT64*)BUILD_GIT_SHA));
+  DEBUG_PRINTF("Firmware version %s\n\r", BUILD_GIT_SHA);
+
   lepton_init();
 
   HAL_Delay(1000);
@@ -193,6 +197,9 @@ int main(void)
   PT_INIT(&uart_task_pt);
   PT_INIT(&lepton_attribute_xfer_task_pt);
 
+  SetFWRebootFlg(0);
+  SetLeptonRebootFlg(0);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -214,6 +221,9 @@ int main(void)
 	  }
 
 	  PT_SCHEDULE(lepton_attribute_xfer_task(&lepton_attribute_xfer_task_pt));
+
+	  CheckFWReboot();
+
   }
   /* USER CODE END 3 */
 
@@ -609,6 +619,38 @@ void board_detect()
 		pt_hse_value = 8000000U;
 		break;
 	}
+}
+
+void board_lepton_init(void)
+{
+	lepton_init_nd();
+	sleep_ms(1000);
+	init_lepton_command_interface();
+
+	if (g_format_y16)
+	{
+		if (g_frame_index == VS_FRAME_INDEX_TELEMETRIC)
+			enable_telemetry();
+		else
+			disable_telemetry();
+		disable_lepton_agc();
+		enable_raw14();
+	}
+	else
+	{
+		disable_telemetry();
+		enable_lepton_agc();
+		enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 means attempt to continue using the current palette (PcolorLUT)
+	}
+
+	SetFWRebootFlg(0);
+	SetLeptonRebootFlg(0);
+}
+
+void board_lepton_deinit(void)
+{
+	deinit_lepton_command_interface();
+	lepton_deinit_nd();
 }
 
 /* USER CODE END 4 */

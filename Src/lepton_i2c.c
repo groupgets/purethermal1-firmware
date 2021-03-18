@@ -28,6 +28,17 @@ extern I2C_HandleTypeDef hi2c1;
 LEP_CAMERA_PORT_DESC_T hport_desc;
 
 extern volatile uint8_t g_lepton_type_3;
+extern volatile uint8_t g_lepton_type_p5;
+
+LEP_UINT16 Get_lepton_type(void)
+{
+	uint8_t major,minor;
+
+	major = (g_lepton_type_3 == 1 ? 3 : 2);
+	minor = (g_lepton_type_p5 == 1 ? 5 : 0);
+
+	return (LEP_UINT16)((major<<8) | minor);
+}
 
 static void set_lepton_type()
 {
@@ -40,17 +51,27 @@ static void set_lepton_type()
   // 500-0690-00 : 25 deg (l2)
   // 500-0763-01 : shuttered 50 deg + radiometric (l2.5)
   // 500-0726-01 : shuttered 50 deg (l3)
+  // 500-0771-01 : (l3.5)
+  g_lepton_type_p5 = 0;
 
   if (result != LEP_OK ||
       strncmp(part_number.value, "500-06xx", 6) == 0 ||
       strncmp(part_number.value, "500-0763", 8) == 0)
   {
     g_lepton_type_3 = 0;
+
+    if(strncmp(part_number.value, "500-0763", 8) == 0){
+    	g_lepton_type_p5 = 1;
+    }
   }
   else
   {
     // let default case be l3, because this will be more likely to cover new products
     g_lepton_type_3 = 1;
+
+    if(strncmp(part_number.value, "500-0771", 8) == 0){
+    	g_lepton_type_p5 = 1;
+    }
   }
 
   LEP_SetOemGpioVsyncPhaseDelay(&hport_desc,LEP_OEM_VSYNC_DELAY_PLUS_2);
@@ -417,6 +438,15 @@ HAL_StatusTypeDef init_lepton_command_interface(void)
   set_lepton_type();
 
   set_startup_defaults();
+
+  return HAL_OK;
+}
+
+HAL_StatusTypeDef deinit_lepton_command_interface(void)
+{
+  LEP_RESULT result;
+
+  result = LEP_ClosePort(&hport_desc);
 
   return HAL_OK;
 }

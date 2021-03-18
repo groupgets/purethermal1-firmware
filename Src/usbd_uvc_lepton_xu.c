@@ -8,6 +8,7 @@
 #include "LEPTON_VID.h"
 #include "LEPTON_OEM.h"
 #include "LEPTON_RAD.h"
+#include "LEPTON_CPU.h"
 
 #include "custom_uvc_i2c.h"
 #include <limits.h>
@@ -273,6 +274,33 @@ static int8_t getAttributeLen_VID(uint16_t module_register, uint16_t *pbuf)
   return 0;
 }
 
+static int8_t getAttributeLen_CPU(uint16_t offset, uint16_t *pbuf)
+{
+  switch (offset >> 2)
+  {
+  case CPU_BASIC_ADDRESS:
+    *pbuf = sizeof(LEP_CPU_BASIC_REG_T);
+    break;
+  case CPU_BASIC_REGISTER:
+    *pbuf = sizeof(LEP_CPU_BASIC_RES_T);
+    break;
+  case CPU_FW_REBOOT:
+  case CPU_LEPTON_REBOOT:
+    *pbuf = 1;
+	break;
+  case CPU_FW_VERSION:
+    *pbuf = 8;
+	break;
+  case CPU_LEPTON_VERSION:
+    *pbuf = 2;
+	break;
+  default:
+    *pbuf = 2;
+    break;
+  }
+  return 0;
+}
+
 static int8_t getAttributeLen_CUST(uint16_t offset, uint16_t *pbuf)
 {
   switch (offset >> 2)
@@ -310,6 +338,8 @@ int8_t VC_LEP_GetAttributeLen (VC_TERMINAL_ID entity_id, uint16_t offset, uint16
     return getAttributeLen_SYS(module_register, pbuf);
   case VC_CONTROL_XU_LEP_VID_ID:
     return getAttributeLen_VID(module_register, pbuf);
+  case VC_CONTROL_XU_LEP_CPU_ID:
+    return getAttributeLen_CPU(offset, pbuf);
   case VC_CONTROL_XU_LEP_CUST_ID:
 	return getAttributeLen_CUST(offset, pbuf);
   default:
@@ -618,6 +648,25 @@ static int8_t getMaxValue_VID(uint16_t module_register, void *pbuf, uint16_t len
   return 0;
 }
 
+static int8_t getMaxValue_CPU(uint16_t offset, void *pbuf, uint16_t len)
+{
+  switch (offset>>2)
+  {
+  case CPU_BASIC_ADDRESS:
+  case CPU_BASIC_REGISTER:
+  case CPU_FW_REBOOT:
+  case CPU_LEPTON_REBOOT:
+  case CPU_FW_VERSION:
+  case CPU_LEPTON_VERSION:
+    memset(pbuf, 0xff, len);
+    break;
+  default:
+    *((uint16_t*)pbuf) = USHRT_MAX;
+    break;
+  }
+  return 0;
+}
+
 
 int8_t VC_LEP_GetMaxValue (VC_TERMINAL_ID entity_id, uint16_t offset, void* pbuf, uint16_t len)
 {
@@ -638,6 +687,8 @@ int8_t VC_LEP_GetMaxValue (VC_TERMINAL_ID entity_id, uint16_t offset, void* pbuf
     return getMaxValue_SYS(module_register, pbuf, len);
   case VC_CONTROL_XU_LEP_VID_ID:
     return getMaxValue_VID(module_register, pbuf, len);
+  case VC_CONTROL_XU_LEP_CPU_ID:
+    return getMaxValue_CPU(offset, pbuf, len);
   case VC_CONTROL_XU_LEP_CUST_ID:
 	memset(pbuf, 0xff, len);
 	return 0;

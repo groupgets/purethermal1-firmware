@@ -76,8 +76,10 @@
 volatile uint8_t g_uvc_stream_status = 0;
 volatile uint16_t g_uvc_stream_packet_size = 0;
 volatile uint8_t g_lepton_type_3 = 0;
+volatile uint8_t g_lepton_type_p5 = 0;
 volatile uint8_t g_telemetry_num_lines = 0;
 volatile uint8_t g_format_y16 = 0;
+volatile uint8_t g_frame_index = 0;
 
 /** @addtogroup STM32_USB_DEVICE_LIBRARY
   * @{

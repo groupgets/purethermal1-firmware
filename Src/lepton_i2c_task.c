@@ -17,6 +17,7 @@
 #include "LEPTON_VID.h"
 #include "LEPTON_OEM.h"
 #include "LEPTON_RAD.h"
+#include "LEPTON_CPU.h"
 #include "LEPTON_I2C_Reg.h"
 #include "crc16.h"
 #include "custom_uvc_i2c.h"
@@ -510,6 +511,96 @@ PT_THREAD( LEP_I2C_SetAttribute_PT(struct pt *pt,
     PT_END(pt);
 }
 
+PT_THREAD( LEP_I2C_CPU_GetAttribute_PT(struct pt *pt, LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+        LEP_COMMAND_ID commandID,
+        LEP_ATTRIBUTE_T_PTR attributePtr,
+        LEP_UINT16 attributeWordLength,
+        LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+
+    PT_BEGIN(pt);
+
+    switch(commandID){
+    case CPU_BASIC_ADDRESS:
+        result = LEP_GetCpuBasicAddress(( LEP_CPU_BASIC_REG_T_PTR )attributePtr, attributeWordLength);
+        break;
+    case CPU_BASIC_REGISTER:
+        result = LEP_GetCpuBasicRegister(( LEP_CPU_BASIC_RES_T_PTR )attributePtr, attributeWordLength);
+        break;
+    case CPU_FW_VERSION:
+        result = LEP_GetCpuFwVersion(( LEP_UINT64 * )attributePtr, attributeWordLength);
+        break;
+    case CPU_LEPTON_VERSION:
+        result = LEP_GetCpuLeptonVersion(( LEP_UINT16 * )attributePtr, attributeWordLength);
+        break;
+	default:
+    	result = LEP_OK;
+    	break;
+    }
+
+    *return_code = result;
+
+    PT_END(pt);
+}
+
+PT_THREAD( LEP_I2C_CPU_RunCommand_PT(struct pt *pt,
+                                 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                 LEP_COMMAND_ID commandID,
+                                 LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+
+    PT_BEGIN(pt);
+
+    switch(commandID){
+    case CPU_FW_REBOOT:
+        result = LEP_RunCpuFWReboot();
+        break;
+    case CPU_LEPTON_REBOOT:
+        result = LEP_RunCpuLeptonReboot();
+        break;
+  	default:
+    	result = LEP_OK;
+    	break;
+    }
+
+    *return_code = result;
+
+    PT_END(pt);
+}
+
+PT_THREAD( LEP_I2C_CPU_SetAttribute_PT(struct pt *pt,
+                                   LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                   LEP_COMMAND_ID commandID,
+                                   LEP_ATTRIBUTE_T_PTR attributePtr,
+                                   LEP_UINT16 attributeWordLength,
+                                   LEP_RESULT *return_code))
+{
+    static LEP_RESULT result;
+
+    PT_BEGIN(pt);
+
+    switch(commandID){
+    case CPU_BASIC_ADDRESS:
+        result = LEP_SetCpuBasicAddress(( LEP_CPU_BASIC_REG_T_PTR )attributePtr, attributeWordLength);
+        break;
+    case CPU_BASIC_REGISTER:
+        result = LEP_SetCpuBasicRegister(( LEP_CPU_BASIC_RES_T_PTR )attributePtr, attributeWordLength);
+        break;
+    case CPU_FW_VERSION:
+        result = LEP_SetCpuFwVersion(( LEP_UINT64 * )attributePtr, attributeWordLength);
+        break;
+    default:
+    	result = LEP_OK;
+    	break;
+    }
+
+    *return_code = result;
+
+    PT_END(pt);
+}
+
 union custom_uvc custom_uvc = {0};
 
 PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
@@ -635,6 +726,67 @@ PT_THREAD( lepton_attribute_xfer_task(struct pt *pt))
 				HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
 			}
 		}
+		continue;
+	}
+
+    if (req.entity_id == VC_CONTROL_XU_LEP_CPU_ID) {
+        if (req.type == UVC_REQUEST_TYPE_ATTR_GET)
+        {
+          // If reading from the OTP (serial number, part number, etc.), we
+          // sometimes get back a -16 or -17 (correctable bit errors), so just try
+          // one extra time regardless of what the problem was
+          retries = 1;
+
+          do {
+            PT_INIT(&lep_pt);
+
+            PT_WAIT_THREAD(pt, LEP_I2C_CPU_GetAttribute_PT(&lep_pt, &hport_desc,
+                                                       ( LEP_COMMAND_ID )(req.control_id>>2),
+                                                       ( LEP_ATTRIBUTE_T_PTR )req.buffer,
+                                                       req.length >> 1,
+                                                       &result));
+
+            PT_YIELD(pt);
+          } while (result != LEP_OK && retries--);
+
+          HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+          if (result == LEP_OK)
+            USBD_CtlSendData(hUsbDevice_0, req.buffer, req.length);
+          else
+            USBD_CtlError(hUsbDevice_0, 0);
+
+          HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+        }
+        else if (req.type == UVC_REQUEST_TYPE_ATTR_SET)
+        {
+          PT_INIT(&lep_pt);
+
+          if (req.length == 1)
+          {
+            PT_WAIT_THREAD(pt, LEP_I2C_CPU_RunCommand_PT(&lep_pt, &hport_desc,
+            										 ( LEP_COMMAND_ID )(req.control_id>>2),
+                                                     &result));
+          }
+          else
+          {
+            PT_WAIT_THREAD(pt, LEP_I2C_CPU_SetAttribute_PT(&lep_pt, &hport_desc,
+            										   ( LEP_COMMAND_ID )(req.control_id>>2),
+                                                       ( LEP_ATTRIBUTE_T_PTR )req.buffer,
+                                                       req.length >> 1,
+                                                       &result));
+          }
+
+          HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
+
+          if (result == LEP_OK)
+            USBD_CtlSendStatus(hUsbDevice_0);
+          else
+            USBD_CtlError(hUsbDevice_0, 0);
+
+          HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
+        }
+
 		continue;
 	}
 

@@ -142,6 +142,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 			}
 
 			g_format_y16 = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(Y16));
+			g_frame_index = videoCommitControl.bFrameIndex;
 
 			if (g_format_y16)
 			{

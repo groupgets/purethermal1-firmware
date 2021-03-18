@@ -11,6 +11,7 @@ HAL_StatusTypeDef read_data();
 HAL_StatusTypeDef lepton_read_data(uint8_t * data);
 
 HAL_StatusTypeDef init_lepton_command_interface(void);
+HAL_StatusTypeDef deinit_lepton_command_interface(void);
 HAL_StatusTypeDef disable_lepton_agc();
 HAL_StatusTypeDef enable_lepton_agc();
 HAL_StatusTypeDef disable_rgb888();
@@ -23,5 +24,6 @@ HAL_StatusTypeDef enable_raw14();
 HAL_StatusTypeDef lepton_low_power();
 HAL_StatusTypeDef lepton_power_on();
 
+LEP_UINT16 Get_lepton_type(void);
 #endif
 

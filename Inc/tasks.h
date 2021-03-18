@@ -32,6 +32,25 @@ PT_THREAD( LEP_I2C_SetAttribute_PT(struct pt *pt,
                                    LEP_ATTRIBUTE_T_PTR attributePtr,
                                    LEP_UINT16 attributeWordLength,
                                    LEP_RESULT *return_code));
+
+PT_THREAD( LEP_I2C_CPU_GetAttribute_PT(struct pt *pt, LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                   LEP_COMMAND_ID commandID,
+                                   LEP_ATTRIBUTE_T_PTR attributePtr,
+                                   LEP_UINT16 attributeWordLength,
+                                   LEP_RESULT *return_code));
+
+PT_THREAD( LEP_I2C_CPU_RunCommand_PT(struct pt *pt,
+                                 LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                 LEP_COMMAND_ID commandID,
+                                 LEP_RESULT *return_code));
+
+PT_THREAD( LEP_I2C_CPU_SetAttribute_PT(struct pt *pt,
+                                   LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
+                                   LEP_COMMAND_ID commandID,
+                                   LEP_ATTRIBUTE_T_PTR attributePtr,
+                                   LEP_UINT16 attributeWordLength,
+                                   LEP_RESULT *return_code));
+
 // Synchronization helpers
 lepton_buffer* dequeue_lepton_buffer(void);
 uint32_t get_lepton_buffer(lepton_buffer **buffer);
