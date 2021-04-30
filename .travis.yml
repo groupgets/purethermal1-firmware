@@ -8,6 +8,12 @@ dist: trusty
 compiler:
   - gcc
 
+addons:
+  apt:
+    packages:
+      - "python3"
+      - "python3-pip"
+
 env:
   matrix:
     - PPA=terry.guo/gcc-arm-embedded
@@ -17,7 +23,7 @@ before_install:
 
 install:
   - 'sudo apt-get -qy install gcc-arm-none-eabi'
-  - 'sudo pip install IntelHex'
+  - 'sudo pip3 install intelhex'
 
 script:
   - 'make'
