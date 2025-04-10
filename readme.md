@@ -51,7 +51,7 @@ Then you need to add this location to your path. Add to your .bashrc, or every t
     git clone https://github.com/groupgets/purethermal1-firmware
     cd purethermal1-firmware
 
-If you wish, you can modify `Src/project_config.h` to customize your build. Then you can simply build:
+If you wish, you can modify `Inc/project_config.h` to customize your build. Then you can simply build:
 
     make
 
