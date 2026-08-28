@@ -1,0 +1,33 @@
+Reset UVC stream state on VS alt-setting change
+
+Repeated single-frame grabs (open, STREAMON, DQBUF, STREAMOFF, close)
+stall after a handful of iterations, pin a host CPU core at 100%, and
+return scrambled images. Two pieces of state survive a mid-frame
+teardown, and a single-frame grab always tears down mid-frame.
+
+1. hcdc->TxState is set by USBD_UVC_TransmitPacket() and cleared only in
+   USBD_UVC_DataIn(). When the host selects alt setting 0 it stops
+   polling EP 0x81, so a transfer queued at that moment never completes
+   and TxState stays latched at 1. On the next streaming session every
+   UVC_Transmit_FS() returns USBD_BUSY, usb_task() burns its full retry
+   budget per packet, and the device transmits nothing while the host
+   spins waiting for a frame. SET_INTERFACE now flushes the isochronous
+   IN endpoint and clears TxState on every alt-setting change.
+
+2. uvc_xmit_seg is cleared only on a clean end-of-frame, so a mid-frame
+   teardown leaves it stale at 1..3. That defeats the segment-1 resync
+   guard in usb_task(), which only re-syncs when the count is zero: the
+   next session begins transmitting whatever segment arrives as though
+   it were segment 2, and the host reassembles a scrambled frame. This
+   affects 4-segment Lepton 3/3.5 parts. Lepton 2 clears the counter
+   every iteration and is unaffected, which makes the two sensors a
+   useful A/B test. usb_task() now discards segment and frame ID state
+   whenever the class driver's restart counter moves.
+
+The restart signal is a counter rather than a flag because it is written
+in USB interrupt context and read in thread context; a set/clear flag
+can be lost when the interrupt re-arms it between the task's read and
+its clear.
+
+Retry exhaustion now abandons the frame and resyncs from segment 1
+rather than resuming mid-frame under a stale frame ID.

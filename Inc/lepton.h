@@ -12,6 +12,7 @@
 
 extern volatile uint8_t g_uvc_stream_status;
 extern volatile uint16_t g_uvc_stream_packet_size;
+extern volatile uint32_t g_uvc_stream_restarts;
 extern volatile uint8_t g_lepton_type_3;
 extern volatile uint8_t g_telemetry_num_lines;
 extern volatile uint8_t g_format_y16;

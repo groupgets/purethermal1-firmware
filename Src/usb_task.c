@@ -31,6 +31,11 @@ void change_overlay_mode(void)
 static int last_frame_count;
 static lepton_buffer *last_buffer;
 
+// Diagnostic counters. Not used by the firmware itself; read them over SWD or
+// the debug UART to tell "the device went silent" apart from "the device is
+// sending malformed frames" without needing a USB capture.
+volatile uint32_t g_uvc_xmit_timeouts = 0;   // gave up on a packet (host not draining EP)
+
 #if defined(USART_DEBUG) || defined(GDB_SEMIHOSTING)
 #define DEBUG_PRINTF(...) printf( __VA_ARGS__);
 #else
@@ -151,6 +156,7 @@ PT_THREAD( usb_task(struct pt *pt))
 
 	static uint8_t uvc_header[2] = { 2, 0 };
 	static uint32_t uvc_xmit_row = 0, uvc_xmit_plane = 0, uvc_xmit_seg = 0;
+	static uint32_t seen_stream_restarts = 0;
 	static uint8_t packet[VIDEO_PACKET_SIZE_MAX];
 	static int image_num_segments;
 
@@ -166,6 +172,21 @@ PT_THREAD( usb_task(struct pt *pt))
 	while (1)
 	{
 		PT_WAIT_UNTIL(pt, (last_buffer = dequeue_lepton_buffer()) != NULL);
+
+		// The host changed the VS alt setting since we last looked, so any
+		// frame we were part-way through is abandoned. uvc_xmit_seg is only
+		// cleared on a clean end-of-frame, so a mid-frame teardown (exactly
+		// what a single-frame grab does) leaves it stale at 1..3. That
+		// defeats the segment-1 resync below: the next session starts
+		// transmitting whatever segment happens to arrive as though it were
+		// segment 2, and the host reassembles a scrambled frame.
+		if (g_uvc_stream_restarts != seen_stream_restarts)
+		{
+			seen_stream_restarts = g_uvc_stream_restarts;
+			uvc_xmit_seg = 0;
+			uvc_header[0] = 2;
+			uvc_header[1] = 0;
+		}
 
 		uvc_xmit_row = 0;
 		uvc_xmit_plane = 0;
@@ -351,14 +372,29 @@ PT_THREAD( usb_task(struct pt *pt))
       // fflush(stdout);
 
       static int retries;
+      static int xmit_failed;
       retries = 1000;
+      xmit_failed = 0;
       while (UVC_Transmit_FS(packet, count) == USBD_BUSY && g_uvc_stream_status == 2)
       {
         if (--retries == 0) {
 //          DEBUG_PRINTF("UVC_Transmit_FS() failed (no one is acking)\r\n");
+          g_uvc_xmit_timeouts++;
+          xmit_failed = 1;
           break;
         }
         PT_YIELD(pt);
+      }
+
+      // The host stopped draining the endpoint and we gave up on this packet.
+      // Resuming mid-frame would leave the host reassembling a partial frame
+      // under the wrong frame ID, so abandon the frame outright and resync
+      // from segment 1 on the next one.
+      if (xmit_failed)
+      {
+        uvc_xmit_seg = 0;
+        uvc_header[1] = 0;
+        break;
       }
 
       if (packet[1] & 0x2)
