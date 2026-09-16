@@ -20,11 +20,16 @@
 
 set -uo pipefail
 
-DEV=/dev/video0; N=200; TIMEOUT=10; MODES=ab; REPEATS=1; ABORT_AFTER=5
+trap 'echo; echo "aborted."; exit 130' INT TERM
 
-while getopts "d:n:t:m:r:k:h" o; do case $o in
+DEV=/dev/video0; N=200; TIMEOUT=10; MODES=ab; REPEATS=1; ABORT_AFTER=5
+DELAY=0        # -s: idle seconds between grabs (accepts fractions)
+SOFT_RESET=0   # -A: sysfs re-enumerate instead of asking for a replug
+
+while getopts "d:n:t:m:r:k:s:Ah" o; do case $o in
   d) DEV=$OPTARG ;; n) N=$OPTARG ;; t) TIMEOUT=$OPTARG ;; m) MODES=$OPTARG ;;
-  r) REPEATS=$OPTARG ;; k) ABORT_AFTER=$OPTARG ;;
+  r) REPEATS=$OPTARG ;; k) ABORT_AFTER=$OPTARG ;; A) SOFT_RESET=1 ;;
+  s) DELAY=$OPTARG ;;
   h) sed -n '2,26p' "$0"; exit 0 ;; *) exit 2 ;;
 esac; done
 
@@ -51,17 +56,24 @@ wait_for_dev() {
 
 reset_device() {
   local p
-  if p=$(usb_dev_path 2>/dev/null); then
-    if [ -w "$p/authorized" ]; then
-      echo 0 > "$p/authorized"; sleep 1; echo 1 > "$p/authorized"
-      echo "  [re-enumerated $(basename "$p")]"; wait_for_dev; return
-    elif sudo -n true 2>/dev/null; then
-      sudo sh -c "echo 0 > $p/authorized"; sleep 1; sudo sh -c "echo 1 > $p/authorized"
-      echo "  [re-enumerated $(basename "$p") via sudo]"; wait_for_dev; return
+  # A sysfs authorized 0/1 makes the HOST re-enumerate. The STM32 never
+  # reboots, so every firmware-side static - protothread state, the lepton
+  # buffer ring, VoSPI sync - survives it untouched. Measured: a wedged unit
+  # stays wedged across re-enumeration and fails on the very next grab. Only
+  # removing power actually resets the device, so that is the default here.
+  if [ "$SOFT_RESET" = "1" ]; then
+    if p=$(usb_dev_path 2>/dev/null); then
+      if [ -w "$p/authorized" ]; then
+        echo 0 > "$p/authorized"; sleep 1; echo 1 > "$p/authorized"
+      elif sudo -n true 2>/dev/null; then
+        sudo sh -c "echo 0 > $p/authorized"; sleep 1; sudo sh -c "echo 1 > $p/authorized"
+      fi
+      echo "  [re-enumerated $(basename "$p") - HOST ONLY, firmware state intact]"
+      wait_for_dev; return
     fi
   fi
-  echo "  cannot re-enumerate without root (try: sudo -v, then re-run)"
-  read -rp "  Unplug the camera, plug it back in, then press Enter: " _
+  echo "  >> Unplug the camera, wait 2s, plug it back in."
+  read -rp "  >> Press Enter once it is back: " _
   wait_for_dev
 }
 
@@ -92,6 +104,11 @@ mode_a() {
         slow=$((slow+1)); printf "  grab %-5d slow: %dms\n" "$i" "$ms"
       fi
     fi
+    # Idle gap between grabs. Each teardown calls lepton_low_power() and each
+    # restart calls lepton_power_on(), which issues LEP_RunOemPowerOn and
+    # returns immediately - no settle wait before VoSPI is clocked again. If
+    # the wedge is really about sensor settle time, it should move with this.
+    [ "$DELAY" != "0" ] && sleep "$DELAY"
   done
   printf "  %s: first_failure=%s  failures=%d  slow=%d  worst=%dms  elapsed=%ds\n" \
     "$tag" "$( [ $first -eq 0 ] && echo none || echo "$first" )" \
@@ -102,7 +119,7 @@ mode_a() {
 # ---------------------------------------------------------------- report
 echo "device : $DEV"
 v4l2-ctl -d "$DEV" --get-fmt-video 2>/dev/null | sed -n 's/^\s*/  /p' | head -3
-echo "config : n=$N timeout=${TIMEOUT}s abort_after=$ABORT_AFTER repeats=$REPEATS"
+echo "config : n=$N timeout=${TIMEOUT}s abort_after=$ABORT_AFTER repeats=$REPEATS delay=${DELAY}s"
 echo
 
 DMESG_MARK=$(dmesg 2>/dev/null | wc -l); DMESG_MARK=${DMESG_MARK:-0}
