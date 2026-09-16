@@ -119,6 +119,26 @@ void board_detect();
 extern void initialise_monitor_handles(void);
 #endif
 
+#if defined(USART_DEBUG)
+/* printf() retarget to USART2 (PA2 = TX, PA3 = RX).
+ *
+ * Without this the link uses -specs=nosys.specs, whose _write stub silently
+ * discards everything - so a USART_DEBUG build compiles, runs, and emits
+ * nothing at all. Every DEBUG_PRINTF in the tree depends on this function
+ * existing.
+ *
+ * The timeout is deliberately bounded rather than HAL_MAX_DELAY: this runs
+ * inside the Lepton acquisition path, and a transmit that blocks indefinitely
+ * would distort the very timing we are trying to observe. */
+int _write(int file, char *ptr, int len)
+{
+  (void)file;
+  if (HAL_UART_Transmit(&huart2, (uint8_t *)ptr, (uint16_t)len, 50) != HAL_OK)
+    return -1;
+  return len;
+}
+#endif
+
 /* USER CODE END 0 */
 
 int main(void)
@@ -166,6 +186,12 @@ int main(void)
   // reinitialize uart with speed from config
   huart2.Init.BaudRate = USART_DEBUG_SPEED;
   HAL_UART_Init(&huart2);
+
+#if defined(USART_DEBUG)
+  /* Unbuffered, so the last line before a hang actually reaches the wire
+     instead of sitting in a stdio buffer that never gets flushed. */
+  setvbuf(stdout, NULL, _IONBF, 0);
+#endif
 
   DEBUG_PRINTF("Hello, Lepton!\n\r");
   fflush(stdout);

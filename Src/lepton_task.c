@@ -11,12 +11,15 @@
 #include "usbd_uvc.h"
 #include "usbd_uvc_if.h"
 #include "circ_buf.h"
+#include "dbg_counters.h"
 
 #include "tasks.h"
 #include "project_config.h"
 
 extern volatile uint8_t g_lepton_type_3;
 extern struct uvc_streaming_control videoCommitControl;
+
+volatile struct dbg_counters g_dbg = { .magic = 0xDBC0FFEE };
 
 lepton_buffer *completed_buffer;
 uint32_t completed_frame_count;
@@ -89,6 +92,7 @@ static lepton_buffer *current_buffer = NULL;
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	static int current_buffer_index = 0;
+	g_dbg.vsync_irqs++;
 	lepton_buffer *buffer = &lepton_buffers[current_buffer_index];
 	current_buffer = buffer;
 	current_buffer_index = ((current_buffer_index + 1) % RING_SIZE);
@@ -164,7 +168,11 @@ PT_THREAD( lepton_task(struct pt *pt))
 			while (dequeue_lepton_buffer() != NULL) {}
 
 			// Make sure we're not about to service an old irq when the interrupts are re-enabled
-			__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+			// EXTI->PR takes a PIN MASK, not an IRQ number. Passing EXTI15_10_IRQn
+			// (40 = 0x28) cleared lines 3 and 5 and left the Lepton's line 13 pending,
+			// so the stale edge fired the instant the IRQ was re-enabled.
+			__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
+			HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 
 			lepton_power_on();
 		}
@@ -181,11 +189,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		if (complete_lepton_transfer(current_buffer) != LEPTON_STATUS_OK)
 		{
+			g_dbg.transfer_fails++;
 			DEBUG_PRINTF("Lepton transfer failed: %d\r\n", current_buffer->status);
 			current_buffer = NULL;
 			continue;
 		}
 
+		g_dbg.transfers_done++;
 		current_frame_count++;
 
 		if (g_format_y16)
@@ -203,11 +213,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		if (last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
 		{
+			g_dbg.desync_events++;
 			// flush out any old data since it's no good
 			while (dequeue_lepton_buffer() != NULL) {}
 
 			if (current_frame_count > 2)
 			{
+				g_dbg.resync_entries++;
 				uint16_t last_header;
 
 				DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
@@ -218,6 +230,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 				// transfer packets until we've actually re-synchronized
 				do {
+					g_dbg.resync_packets++;
 					lepton_transfer(current_buffer, 1);
 
 					transferring_timer = HAL_GetTick();
@@ -236,7 +249,11 @@ PT_THREAD( lepton_task(struct pt *pt))
 				PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
 
 				// Make sure we're not about to service an old irq when the interrupts are re-enabled
-				__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+				// EXTI->PR takes a PIN MASK, not an IRQ number. Passing EXTI15_10_IRQn
+				// (40 = 0x28) cleared lines 3 and 5 and left the Lepton's line 13 pending,
+				// so the stale edge fired the instant the IRQ was re-enabled.
+				__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
+				HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 
 				current_frame_count = 0;
 			}
@@ -298,7 +315,14 @@ PT_THREAD( lepton_task(struct pt *pt))
 			}
 
 			if (!full(CIRC_BUF_HANDLE(completed_frames_buf)))
+			{
 				push(CIRC_BUF_HANDLE(completed_frames_buf), completed_buffer);
+				g_dbg.frames_completed++;
+			}
+			else
+			{
+				g_dbg.frames_dropped++;
+			}
 		}
 
 		current_buffer = NULL;
