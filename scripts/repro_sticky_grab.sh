@@ -1,130 +1,151 @@
 #!/usr/bin/env bash
-# repro_sticky_grab.sh - A/B test for the PureThermal "sticky frame grab" bug.
+# repro_sticky_grab.sh v2 - A/B test for the PureThermal "sticky frame grab" bug.
 #
-# The two modes differ in exactly one way: whether the UVC stream is torn down
-# between frames.
-#
-#   Mode A  N independent single-frame grabs. Each one does
+#   Mode A  N independent single-frame grabs. Each does
 #           open -> SET_INTERFACE(alt=N) -> DQBUF -> SET_INTERFACE(alt=0) -> close.
-#           This is what ffmpeg -frames:v 1, OpenCV, and most capture scripts do.
+#   Mode B  N frames in ONE continuous stream. One setup, one teardown.
 #
-#   Mode B  One continuous stream of N frames. One setup, one teardown.
+# v2 changes, all of which mattered:
+#   - The device is re-enumerated between modes. In v1 mode B inherited a
+#     device that mode A had already wedged, which made its result meaningless.
+#   - Mode A stops after -k consecutive failures instead of grinding through
+#     hundreds of 10s timeouts.
+#   - -r repeats mode A several times, resetting in between, and reports the
+#     first-failure iteration of each run. Scatter in that number is the test
+#     that separates a race from resource exhaustion.
+#   - Fixed a DMESG_MARK bug that produced "syntax error in expression" when
+#     dmesg is restricted (kernel.dmesg_restrict=1, the Ubuntu default).
 #
-# If A degrades and B runs clean, the bug is in the stream *restart* path and
-# not in steady-state streaming. That is the whole point of this script: it
-# tells you which half of the firmware to stop looking at.
-#
-# Usage:  ./repro_sticky_grab.sh [-d /dev/video0] [-n 200] [-t 10] [-m ab]
-#
-# Requires v4l-utils (v4l2-ctl). Linux only - the teardown path is what matters
-# and uvcvideo is the reference implementation of it.
+# Usage: ./repro_sticky_grab.sh [-d /dev/video0] [-n 200] [-t 10] [-m ab] [-r 1] [-k 5]
 
 set -uo pipefail
 
-DEV=/dev/video0
-N=200
-TIMEOUT=10
-MODES=ab
+DEV=/dev/video0; N=200; TIMEOUT=10; MODES=ab; REPEATS=1; ABORT_AFTER=5
 
-while getopts "d:n:t:m:h" opt; do
-  case $opt in
-    d) DEV=$OPTARG ;;
-    n) N=$OPTARG ;;
-    t) TIMEOUT=$OPTARG ;;
-    m) MODES=$OPTARG ;;
-    h) sed -n '2,25p' "$0"; exit 0 ;;
-    *) exit 2 ;;
-  esac
-done
+while getopts "d:n:t:m:r:k:h" o; do case $o in
+  d) DEV=$OPTARG ;; n) N=$OPTARG ;; t) TIMEOUT=$OPTARG ;; m) MODES=$OPTARG ;;
+  r) REPEATS=$OPTARG ;; k) ABORT_AFTER=$OPTARG ;;
+  h) sed -n '2,26p' "$0"; exit 0 ;; *) exit 2 ;;
+esac; done
 
 command -v v4l2-ctl >/dev/null || { echo "need v4l-utils: sudo apt install v4l-utils"; exit 1; }
 [ -e "$DEV" ] || { echo "no such device: $DEV"; exit 1; }
 
-echo "device : $DEV"
-v4l2-ctl -d "$DEV" --info 2>/dev/null | sed -n 's/^\t*/  /p' | head -4
-echo "frames : $N     per-grab timeout: ${TIMEOUT}s"
-echo
+# ---------------------------------------------------------------- device reset
+usb_dev_path() {
+  local link="/sys/class/video4linux/$(basename "$DEV")/device"
+  [ -e "$link" ] || return 1
+  local p; p=$(dirname "$(readlink -f "$link")")
+  while [ "$p" != "/" ]; do
+    [ -f "$p/authorized" ] && { echo "$p"; return 0; }
+    p=$(dirname "$p")
+  done
+  return 1
+}
 
-DMESG_MARK=$(dmesg 2>/dev/null | wc -l || echo 0)
+wait_for_dev() {
+  local i
+  for ((i=0;i<30;i++)); do [ -e "$DEV" ] && { sleep 1; return 0; }; sleep 1; done
+  echo "  !! $DEV never came back"; return 1
+}
+
+reset_device() {
+  local p
+  if p=$(usb_dev_path 2>/dev/null); then
+    if [ -w "$p/authorized" ]; then
+      echo 0 > "$p/authorized"; sleep 1; echo 1 > "$p/authorized"
+      echo "  [re-enumerated $(basename "$p")]"; wait_for_dev; return
+    elif sudo -n true 2>/dev/null; then
+      sudo sh -c "echo 0 > $p/authorized"; sleep 1; sudo sh -c "echo 1 > $p/authorized"
+      echo "  [re-enumerated $(basename "$p") via sudo]"; wait_for_dev; return
+    fi
+  fi
+  echo "  cannot re-enumerate without root (try: sudo -v, then re-run)"
+  read -rp "  Unplug the camera, plug it back in, then press Enter: " _
+  wait_for_dev
+}
 
 # ---------------------------------------------------------------- mode A
-if [[ $MODES == *a* ]]; then
-  echo "=== Mode A: $N independent single-frame grabs (teardown between each) ==="
-  fails=0
-  first_fail=0
-  slow=0
-  worst=0
-  t_start=$(date +%s%N)
-
-  for ((i=1; i<=N; i++)); do
+mode_a() {
+  local tag="$1" fails=0 first=0 slow=0 worst=0 consec=0 done_n=0 i ms rc g0
+  local t0; t0=$(date +%s%N)
+  for ((i=1;i<=N;i++)); do
     g0=$(date +%s%N)
-    timeout "$TIMEOUT" v4l2-ctl -d "$DEV" \
-        --stream-mmap --stream-count=1 --stream-to=/dev/null >/dev/null 2>&1
+    timeout "$TIMEOUT" v4l2-ctl -d "$DEV" --stream-mmap --stream-count=1 \
+        --stream-to=/dev/null >/dev/null 2>&1
     rc=$?
     ms=$(( ($(date +%s%N) - g0) / 1000000 ))
     (( ms > worst )) && worst=$ms
-
     if [ $rc -ne 0 ]; then
-      fails=$((fails+1))
-      [ $first_fail -eq 0 ] && first_fail=$i
-      if [ $rc -eq 124 ]; then
-        printf "  grab %-5d HUNG (killed after %ss)\n" "$i" "$TIMEOUT"
-      else
-        printf "  grab %-5d FAILED (rc=%d, %dms)\n" "$i" "$rc" "$ms"
+      fails=$((fails+1)); consec=$((consec+1))
+      if [ $first -eq 0 ]; then
+        first=$i
+        printf "  >>> FIRST FAILURE at grab %d  (rc=%d, %dms)\n" "$i" "$rc" "$ms"
       fi
-    elif [ $ms -gt 1000 ]; then
-      slow=$((slow+1))
-      printf "  grab %-5d slow: %dms\n" "$i" "$ms"
+      if [ $consec -ge $ABORT_AFTER ]; then
+        printf "  >>> %d consecutive failures - wedged, stopping early\n" "$consec"
+        done_n=$i; break
+      fi
+    else
+      consec=0; done_n=$i
+      if [ $ms -gt 1000 ]; then
+        slow=$((slow+1)); printf "  grab %-5d slow: %dms\n" "$i" "$ms"
+      fi
     fi
   done
+  printf "  %s: first_failure=%s  failures=%d  slow=%d  worst=%dms  elapsed=%ds\n" \
+    "$tag" "$( [ $first -eq 0 ] && echo none || echo "$first" )" \
+    "$fails" "$slow" "$worst" "$(( ($(date +%s%N) - t0)/1000000000 ))"
+  FIRST_FAILS+=("$( [ $first -eq 0 ] && echo none || echo "$first" )")
+}
 
-  total=$(( ($(date +%s%N) - t_start) / 1000000 ))
-  echo
-  echo "  completed : $((N-fails))/$N"
-  echo "  failures  : $fails${first_fail:+   (first at iteration $first_fail)}"
-  echo "  slow (>1s): $slow"
-  echo "  worst grab: ${worst}ms"
-  echo "  wall clock: $((total/1000))s"
-  echo
+# ---------------------------------------------------------------- report
+echo "device : $DEV"
+v4l2-ctl -d "$DEV" --get-fmt-video 2>/dev/null | sed -n 's/^\s*/  /p' | head -3
+echo "config : n=$N timeout=${TIMEOUT}s abort_after=$ABORT_AFTER repeats=$REPEATS"
+echo
+
+DMESG_MARK=$(dmesg 2>/dev/null | wc -l); DMESG_MARK=${DMESG_MARK:-0}
+[ "$DMESG_MARK" -eq 0 ] && echo "(dmesg unreadable - run with sudo for kernel messages)" && echo
+
+FIRST_FAILS=()
+
+if [[ $MODES == *a* ]]; then
+  for ((r=1;r<=REPEATS;r++)); do
+    echo "=== Mode A run $r/$REPEATS: up to $N single-frame grabs, teardown between each ==="
+    reset_device
+    mode_a "run$r"
+    echo
+  done
 fi
 
-# ---------------------------------------------------------------- mode B
 if [[ $MODES == *b* ]]; then
-  echo "=== Mode B: $N frames in one continuous stream (single teardown) ==="
+  echo "=== Mode B: $N frames in one continuous stream (FRESH device) ==="
+  reset_device
   b0=$(date +%s%N)
-  timeout $((TIMEOUT * 10)) v4l2-ctl -d "$DEV" \
-      --stream-mmap --stream-count="$N" --stream-to=/dev/null 2>&1 | tail -3
+  timeout $((TIMEOUT * 10)) v4l2-ctl -d "$DEV" --stream-mmap \
+      --stream-count="$N" --stream-to=/dev/null 2>&1 | tail -2
   rc=${PIPESTATUS[0]}
-  ms=$(( ($(date +%s%N) - b0) / 1000000 ))
-
-  if [ $rc -eq 124 ]; then
-    echo "  HUNG (killed after $((TIMEOUT*10))s)"
-  elif [ $rc -ne 0 ]; then
-    echo "  FAILED rc=$rc after ${ms}ms"
-  else
-    echo "  OK - $N frames in $((ms/1000))s ($(( N * 1000 / (ms>0?ms:1) )) fps)"
-  fi
+  ms=$(( ($(date +%s%N) - b0) / 1000000 )); [ "$ms" -lt 1 ] && ms=1
+  case $rc in
+    124) echo "  HUNG (killed after $((TIMEOUT*10))s)" ;;
+      0) echo "  OK - $N frames in $((ms/1000))s (~$(( N * 1000 / ms )) fps)" ;;
+      *) echo "  FAILED rc=$rc after ${ms}ms" ;;
+  esac
   echo
 fi
 
-# ---------------------------------------------------------------- kernel side
 NEW=$(dmesg 2>/dev/null | tail -n +$((DMESG_MARK+1)) | grep -iE "uvc|usb" | tail -20)
-if [ -n "$NEW" ]; then
-  echo "=== new kernel messages ==="
-  echo "$NEW"
-  echo
+[ -n "$NEW" ] && { echo "=== new kernel messages ==="; echo "$NEW"; echo; }
+
+if [ ${#FIRST_FAILS[@]} -gt 1 ]; then
+  echo "=== first-failure iteration across runs: ${FIRST_FAILS[*]} ==="
+  cat <<'VAR'
+  Clustered (all within ~20% of each other) -> something COUNTS UP and runs out:
+    a leak, a FIFO filling, a buffer index. Deterministic, so bisectable by
+    instrumenting the counter.
+  Scattered (e.g. 40, 190, 95)              -> a RACE that latches once hit.
+    The TxState theory predicts this shape: teardown has to land during an
+    in-flight transfer, which is chance, but once latched it never recovers.
+VAR
 fi
-
-cat <<'INTERP'
-=== how to read this ===
-  A degrades, B clean    -> stream restart path. TxState latch and/or stale
-                            uvc_xmit_seg. This is the expected signature.
-  A and B both degrade   -> steady-state streaming or VoSPI sync, not restart.
-  Both clean             -> raise -n, or the host stack is masking it. Try a
-                            different host controller before trusting this.
-
-For frame-level detail on a failing run:
-  sudo sh -c 'echo 0xffff > /sys/module/uvcvideo/parameters/trace'
-  sudo dmesg -w
-  # then re-run mode A. Look for bad FID/EOF and dropped-payload complaints.
-INTERP
