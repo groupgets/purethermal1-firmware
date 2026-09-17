@@ -47,6 +47,7 @@ DMA_HandleTypeDef hdma_memtomem_dma2_stream0;
 
 #include "tasks.h"
 #include "project_config.h"
+#include "dbg_counters.h"
 
 typedef enum {
 	PT_BOARD_PT1,
@@ -228,6 +229,10 @@ int main(void)
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
+
+	  /* Heartbeat for stall_watchdog_tick(). A blocking call inside any task
+	     stops this advancing, which is how the SysTick ISR spots a wedge. */
+	  g_dbg.main_loop_ticks++;
 
 	  PT_SCHEDULE(lepton_task(&lepton_task_pt));
 #ifndef THERMAL_DATA_UART

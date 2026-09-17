@@ -123,6 +123,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 #ifndef THERMAL_DATA_UART
 		if (g_uvc_stream_status == 0)
 		{
+			DBG_PHASE(PHASE_LOW_POWER);
 			lepton_low_power();
 			if (has_started_a_stream)
 			{
@@ -132,11 +133,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 				}
 				else
 				{
+					DBG_PHASE(PHASE_DISABLE_RGB888);
 					disable_rgb888();
 				}
 			}
 
 			// Start slow blink (1 Hz)
+			DBG_PHASE(PHASE_IDLE_BLINK);
 			while (g_uvc_stream_status == 0)
 			{
 				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
@@ -147,19 +150,24 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			g_format_y16 = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(Y16));
 
+			DBG_PHASE(PHASE_TELEMETRY);
 			if (g_format_y16)
 			{
 				if (videoCommitControl.bFrameIndex == VS_FRAME_INDEX_TELEMETRIC)
 					enable_telemetry();
 				else
 					disable_telemetry();
+				DBG_PHASE(PHASE_AGC);
 				disable_lepton_agc();
+				DBG_PHASE(PHASE_RAW14);
 				enable_raw14();
 			}
 			else
 			{
 				disable_telemetry();
+				DBG_PHASE(PHASE_AGC);
 				enable_lepton_agc();
+				DBG_PHASE(PHASE_ENABLE_RGB888);
 				enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 means attempt to continue using the current palette (PcolorLUT)
 			}
 			has_started_a_stream = 1;
@@ -174,14 +182,17 @@ PT_THREAD( lepton_task(struct pt *pt))
 			__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
 			HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 
+			DBG_PHASE(PHASE_POWER_ON);
 			lepton_power_on();
 		}
 #endif
 
 		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
+		DBG_PHASE(PHASE_WAIT_BUFFER);
 		PT_WAIT_UNTIL(pt, current_buffer != NULL);
 
+		DBG_PHASE(PHASE_TRANSFER);
 		lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines);
 
 		transferring_timer = HAL_GetTick();
@@ -220,6 +231,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 			if (current_frame_count > 2)
 			{
 				g_dbg.resync_entries++;
+				DBG_PHASE(PHASE_RESYNC);
 				uint16_t last_header;
 
 				DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
@@ -295,6 +307,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 		{
 			static int row;
 
+			DBG_PHASE(PHASE_PUBLISH);
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
 
