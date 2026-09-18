@@ -26,6 +26,11 @@ uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
 
+// Upper bound on packets consumed by one resync attempt. Normal resyncs
+// settle in well under a hundred; this only stops a pathological sensor from
+// pinning the task here.
+#define RESYNC_MAX_PACKETS (2000)
+
 #define RING_SIZE (4)
 lepton_buffer lepton_buffers[RING_SIZE];
 
@@ -109,7 +114,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t current_frame_count = 0;
 	static int transferring_timer = 0;
 	static uint8_t current_segment = 0;
+	static uint8_t first_packet = 0;
 	static uint8_t last_end_line = 0;
+	static int resync_tries = 0;
 	static uint8_t has_started_a_stream = 0;
 	curtick = last_tick = HAL_GetTick();
 
@@ -212,18 +219,27 @@ PT_THREAD( lepton_task(struct pt *pt))
 		if (g_format_y16)
 		{
 			current_segment = ((current_buffer->lines.y16[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+			first_packet = (current_buffer->lines.y16[IMAGE_OFFSET_LINES].header[0] & 0x00ff);
 			last_end_line = (current_buffer->lines.y16[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 		else
 		{
 			current_segment = ((current_buffer->lines.rgb[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+			first_packet = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES].header[0] & 0x00ff);
 			last_end_line = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 
 		current_buffer->segment = current_segment;
 
-		if (last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
+		// Check both ends of the frame. A read that began mid-segment yields
+		// plausible-looking early lines and an 0xFF tail, so testing only the
+		// last line let a misaligned frame get 59 lines further than it should
+		// before anything noticed.
+		if (first_packet != 0 ||
+		    last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
 		{
+			if (first_packet != 0)
+				g_dbg.first_line_bad++;
 			g_dbg.desync_events++;
 			// flush out any old data since it's no good
 			while (dequeue_lepton_buffer() != NULL) {}
@@ -240,7 +256,19 @@ PT_THREAD( lepton_task(struct pt *pt))
 				transferring_timer = HAL_GetTick();
 				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 185);
 
-				// transfer packets until we've actually re-synchronized
+				// Discard packets until the START of a segment.
+				//
+				// This previously stopped at the first non-discard packet, which
+				// is not the same thing. VoSPI only guarantees alignment from
+				// packet 0; stopping at, say, packet 30 meant the bulk read that
+				// follows ran off the end of the segment into the inter-segment
+				// gap, where MISO idles high and the buffer tail fills with 0xFF.
+				// That is exactly the last_end_line == 255 seen on a wedged unit,
+				// with a valid segment number still readable at line 20. The
+				// frame then failed validation, triggered another resync, and the
+				// cycle repeated forever - 1170 rejected frames out of 1170, and
+				// no recovery short of a power cycle.
+				resync_tries = 0;
 				do {
 					g_dbg.resync_packets++;
 					lepton_transfer(current_buffer, 1);
@@ -252,7 +280,17 @@ PT_THREAD( lepton_task(struct pt *pt))
 							current_buffer->lines.y16[0].header[0] :
 							current_buffer->lines.rgb[0].header[0]);
 
-				} while (current_buffer->status == LEPTON_STATUS_OK && (last_header & 0x0f00) == 0x0f00);
+					// Bounded: requiring packet 0 means we could otherwise spin
+					// here indefinitely if the sensor never presents one.
+					if (++resync_tries > RESYNC_MAX_PACKETS)
+					{
+						g_dbg.resync_giveups++;
+						break;
+					}
+
+				} while (current_buffer->status == LEPTON_STATUS_OK &&
+				         (((last_header & 0x0f00) == 0x0f00) ||   /* discard packet */
+				          ((last_header & 0x00ff) != 0x0000)));   /* not packet 0 */
 
 				// we picked up the start of a new packet, so read the rest of it in
 				lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines - 1);

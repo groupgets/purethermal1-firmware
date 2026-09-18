@@ -73,6 +73,10 @@ struct dbg_counters {
    * thousand ms is the hang. */
   uint32_t phase_max_ms[DBG_PHASE_COUNT];  /* +0x3C */
   uint32_t phase_count[DBG_PHASE_COUNT];   /* +0x7C */
+
+  /* --- segment alignment, added with the packet-0 resync fix --- */
+  uint32_t first_line_bad;   /* +0xBC  frames whose FIRST packet was not #0 */
+  uint32_t resync_giveups;   /* +0xC0  resyncs that hit the packet cap */
 };
 
 extern volatile struct dbg_counters g_dbg;
