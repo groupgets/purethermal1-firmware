@@ -37,6 +37,7 @@ enum dbg_phase {
   PHASE_RESYNC         = 11,  /* VoSPI resync sequence           (yields) */
   PHASE_PUBLISH        = 12,  /* byte-swap and push to the ring  (yields) */
   PHASE_VSYNC_CFG      = 13,  /* restoring VSYNC config          BLOCKING */
+  PHASE_RECOVER        = 14,  /* escape hatch re-initialising    BLOCKING */
 };
 
 #define DBG_PHASE_COUNT (16u)   /* array size; 13 phases in use */
@@ -79,6 +80,8 @@ struct dbg_counters {
   uint32_t first_line_bad;   /* +0xBC  frames whose FIRST packet was not #0 */
   uint32_t resync_giveups;   /* +0xC0  resyncs that hit the packet cap */
   uint32_t vsync_cfg_fails;  /* +0xC4  lepton_restore_vsync_config() errors */
+  uint32_t hard_recoveries;  /* +0xC8  escape hatch fired this many times */
+  uint32_t worst_desync_run; /* +0xCC  longest run of consecutive rejects seen */
 };
 
 extern volatile struct dbg_counters g_dbg;

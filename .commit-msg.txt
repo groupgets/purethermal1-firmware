@@ -1,48 +1,41 @@
-Restore the Lepton VSYNC phase delay after every power cycle
+Re-initialise the sensor after a bounded run of rejected frames
 
-VSYNC is how the firmware learns a VoSPI segment is ready, and
-LEP_OEM_VSYNC_DELAY_PLUS_2 is what aligns that pulse with packet 0 of the
-segment. Both were set exactly once, from set_lepton_type(), reached only
-through init_lepton_command_interface() at main.c:177 during boot.
+Losing VoSPI alignment is recoverable. Staying lost was not, and nothing in
+the firmware bounded how long it would keep trying: a wedged unit sat in the
+resync path rejecting 1170 frames out of 1170 and needed the user to
+physically unplug the camera.
 
-But lepton_task() OEM power-cycles the sensor on every stream teardown and
-restart: lepton_low_power() on the way down, lepton_power_on() on the way
-back up, once per frame grab. OEM GPIO configuration does not reliably
-survive that, and nothing ever put it back.
+This adds the missing bound. Consecutive rejected frames are counted, and past
+LEPTON_MAX_CONSECUTIVE_DESYNCS the firmware stops re-reading the stream and
+re-initialises the sensor instead: OEM power down, settle, power up, restore
+the VSYNC configuration, re-apply the format configuration, clear any stale
+EXTI state, and resume. Roughly half a second, against a failure that
+previously lasted until someone walked over to the hardware.
 
-When the phase delay reverts, the failure is quiet. VSYNC still fires, so the
-interrupt still arrives, transfers still complete, and the sensor looks
-entirely healthy from every angle we had been measuring. What changes is that
-the pulse no longer coincides with packet 0, so every VSYNC-triggered read
-starts somewhere in the middle of a segment, runs off the end into the
-inter-segment gap, and fills the tail of the buffer with 0xFF.
+The threshold is 60. One rejected frame per stream restart is normal - the
+sensor has just been power-cycled and the first VSYNC-triggered read lands
+wherever it lands, which is why first_line_bad tracks the grab count almost
+exactly during healthy operation. 60 sits an order of magnitude above that and
+is reached in two to five seconds when something is genuinely stuck.
+g_dbg.worst_desync_run now records the longest run actually observed, so the
+threshold can be tuned from measurement rather than from my guess.
 
-The measurement that isolated it, taken on a wedged unit with the fault held
-open by a hanging ffmpeg grab:
+Deliberately indifferent to root cause. Two real defects have been found and
+fixed so far - an EXTI pending-bit clear that passed an IRQ number where a pin
+mask belonged, and a VSYNC phase delay that was only ever set at boot despite
+the sensor being power-cycled on every grab - and either could have been the
+whole story, or neither. This commit does not care. Whatever leaves the
+pipeline unable to produce a frame, recovering in half a second beats
+requiring a human with a USB cable.
 
-    resync_giveups      3        static
-    first_line_bad   1817        climbing
+The format configuration is factored into apply_format_config() and called
+from both the stream-restart path and the recovery path, so the two cannot
+drift apart. The recovery waits use PT_WAIT_UNTIL rather than HAL_Delay, so
+usb_task keeps running and the device stays enumerated throughout.
 
-The resync loop walks the stream packet by packet and never consults VSYNC.
-It found packet 0 every time - giveups stayed flat. The VSYNC-triggered bulk
-read never did. Alignment was recoverable by reading, and un-recoverable by
-waiting for VSYNC, which puts the fault squarely in the VSYNC-to-packet-0
-relationship. The phase delay is the only thing that governs it, and it was
-last written at boot.
-
-That also accounts for the symptoms that defeated the earlier attempts. It
-survives a USB re-enumeration, because re-enumeration does not reset the
-STM32 and the STM32 is not what lost the setting. Only removing power fixes
-it, because only a reboot runs set_lepton_type() again. It fires
-probabilistically per teardown, because whether a given OEM power cycle
-clobbers the register is not deterministic. And it is invisible to every
-health check we ran, because nothing downstream of VSYNC is broken.
-
-lepton_restore_vsync_config() is now called after each lepton_power_on() in
-the stream restart path, and set_lepton_type() calls the same function so
-there is one place that knows what the correct configuration is. Failures are
-counted in g_dbg.vsync_cfg_fails rather than discarded, since a silent
-failure here is precisely how this went unnoticed.
+Two new counters: hard_recoveries counts how often this fires, which should be
+zero in normal use and is the number to watch in a soak; worst_desync_run
+gives the headroom between normal operation and the threshold.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01X3RLCkoUJFbMCX3UDKA2gh
