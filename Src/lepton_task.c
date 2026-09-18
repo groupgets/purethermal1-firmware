@@ -191,6 +191,14 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			DBG_PHASE(PHASE_POWER_ON);
 			lepton_power_on();
+
+			// The OEM power cycle above can clear the sensor's VSYNC phase
+			// delay, which is what keeps the VSYNC pulse aligned with packet 0.
+			// It was only ever set at boot, so once it reverted nothing put it
+			// back and every subsequent read started mid-segment.
+			DBG_PHASE(PHASE_VSYNC_CFG);
+			if (lepton_restore_vsync_config() != HAL_OK)
+				g_dbg.vsync_cfg_fails++;
 		}
 #endif
 

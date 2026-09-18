@@ -36,6 +36,7 @@ enum dbg_phase {
   PHASE_TRANSFER       = 10,  /* VoSPI transfer + completion     (yields) */
   PHASE_RESYNC         = 11,  /* VoSPI resync sequence           (yields) */
   PHASE_PUBLISH        = 12,  /* byte-swap and push to the ring  (yields) */
+  PHASE_VSYNC_CFG      = 13,  /* restoring VSYNC config          BLOCKING */
 };
 
 #define DBG_PHASE_COUNT (16u)   /* array size; 13 phases in use */
@@ -77,6 +78,7 @@ struct dbg_counters {
   /* --- segment alignment, added with the packet-0 resync fix --- */
   uint32_t first_line_bad;   /* +0xBC  frames whose FIRST packet was not #0 */
   uint32_t resync_giveups;   /* +0xC0  resyncs that hit the packet cap */
+  uint32_t vsync_cfg_fails;  /* +0xC4  lepton_restore_vsync_config() errors */
 };
 
 extern volatile struct dbg_counters g_dbg;

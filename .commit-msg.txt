@@ -1,60 +1,48 @@
-Resync to the start of a VoSPI segment, not just any valid packet
+Restore the Lepton VSYNC phase delay after every power cycle
 
-A wedged unit was rejecting every frame it received. Instrumented counters
-read over SWD while the fault was held open with a hanging ffmpeg grab:
+VSYNC is how the firmware learns a VoSPI segment is ready, and
+LEP_OEM_VSYNC_DELAY_PLUS_2 is what aligns that pulse with packet 0 of the
+segment. Both were set exactly once, from set_lepton_type(), reached only
+through init_lepton_command_interface() at main.c:177 during boot.
 
-    vsync_irqs        +1170     sensor alive, data arriving
-    transfers_done    +1170     every transfer completed
-    transfer_fails        0     none reported an error
-    desync_events     +1170     every single frame rejected
-    resync_entries     +390     exactly 1170/3, matching the gate
-    resync_packets   +27290     70.0 discard packets per resync, every time
-    frames_completed      0     nothing published in 89 seconds
+But lepton_task() OEM power-cycles the sensor on every stream teardown and
+restart: lepton_low_power() on the way down, lepton_power_on() on the way
+back up, once per frame grab. OEM GPIO configuration does not reliably
+survive that, and nothing ever put it back.
 
-So the sensor was healthy and the firmware was refusing all of its output.
-The rejecting comparison is:
+When the phase delay reverts, the failure is quiet. VSYNC still fires, so the
+interrupt still arrives, transfers still complete, and the sensor looks
+entirely healthy from every angle we had been measuring. What changes is that
+the pulse no longer coincides with packet 0, so every VSYNC-triggered read
+starts somewhere in the middle of a segment, runs off the end into the
+inter-segment gap, and fills the tail of the buffer with 0xFF.
 
-    last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1)
+The measurement that isolated it, taken on a wedged unit with the fault held
+open by a hanging ffmpeg grab:
 
-On the wedged unit last_end_line read 0xFF, with g_telemetry_num_lines at 0,
-so it expected 59 and saw 255. 0xFF is not an off-by-one - it is an idle SPI
-bus, MISO floating high. Meanwhile current_segment, read from line 20 of the
-same buffer, was a perfectly valid 1. Real packets at the front of the
-buffer, nothing at the back: the read was running off the end of the data.
+    resync_giveups      3        static
+    first_line_bad   1817        climbing
 
-The cause is in the resync loop. It discarded packets until the first
-non-discard one and then read the remainder of the frame. But VoSPI only
-guarantees alignment from packet 0, and "not a discard packet" is a much
-weaker condition than "packet 0". Stopping mid-segment left the following
-bulk read to run past the segment end into the inter-segment gap, filling the
-tail of the buffer with 0xFF. That frame then failed validation and triggered
-another resync, which made the same mistake. Nothing short of a power cycle
-broke the cycle, because nothing in the loop ever re-established where a
-segment actually starts.
+The resync loop walks the stream packet by packet and never consults VSYNC.
+It found packet 0 every time - giveups stayed flat. The VSYNC-triggered bulk
+read never did. Alignment was recoverable by reading, and un-recoverable by
+waiting for VSYNC, which puts the fault squarely in the VSYNC-to-packet-0
+relationship. The phase delay is the only thing that governs it, and it was
+last written at boot.
 
-Three changes:
+That also accounts for the symptoms that defeated the earlier attempts. It
+survives a USB re-enumeration, because re-enumeration does not reset the
+STM32 and the STM32 is not what lost the setting. Only removing power fixes
+it, because only a reboot runs set_lepton_type() again. It fires
+probabilistically per teardown, because whether a given OEM power cycle
+clobbers the register is not deterministic. And it is invisible to every
+health check we ran, because nothing downstream of VSYNC is broken.
 
-- The resync loop now discards until it sees packet 0 of a segment, testing
-  the packet number as well as the discard bits.
-
-- That loop is bounded. Requiring packet 0 is a stricter condition than
-  before, so it could otherwise spin indefinitely against a sensor that never
-  presents one. Hitting the cap counts a giveup and returns to the outer loop
-  to retry.
-
-- Frame validation now checks the first packet as well as the last. A
-  misaligned read produces plausible early lines and a bad tail, so testing
-  only the last line let it get 59 lines further than it should before
-  anything noticed. The new check reuses the existing desync path rather than
-  failing the transfer outright, so recovery goes through machinery that is
-  already known to work.
-
-complete_lepton_transfer() is deliberately left alone. It still returns its
-argument's status with a TODO where validation belongs, which is why
-transfer_fails stayed at zero across 47,000 transfers, but making it fail
-here would route misaligned frames down a path that drops them without ever
-incrementing current_frame_count - and the resync gate depends on that
-counter, so the firmware would never resync at all. Worth fixing separately.
+lepton_restore_vsync_config() is now called after each lepton_power_on() in
+the stream restart path, and set_lepton_type() calls the same function so
+there is one place that knows what the correct configuration is. Failures are
+counted in g_dbg.vsync_cfg_fails rather than discarded, since a silent
+failure here is precisely how this went unnoticed.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01X3RLCkoUJFbMCX3UDKA2gh
