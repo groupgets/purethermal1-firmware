@@ -75,6 +75,18 @@
 
 volatile uint8_t g_uvc_stream_status = 0;
 volatile uint16_t g_uvc_stream_packet_size = 0;
+/* Incremented on every VS interface alt-setting change. usb_task() watches
+   this for movement and discards all per-frame state (segment index, frame ID
+   toggle) when it moves, so a stream torn down mid-frame cannot leak state
+   into the next streaming session.
+
+   A counter rather than a set/clear flag on purpose: it is written only here,
+   in USB interrupt context, and read only by usb_task() in thread context. A
+   flag can be lost when the interrupt re-arms it between the task's read and
+   its clear; a 32-bit aligned counter with one writer cannot miss an event.
+   It doubles as a diagnostic - read it over SWD to confirm the host really is
+   tearing the stream down between grabs. */
+volatile uint32_t g_uvc_stream_restarts = 0;
 volatile uint8_t g_lepton_type_3 = 0;
 volatile uint8_t g_telemetry_num_lines = 0;
 volatile uint8_t g_format_y16 = 0;
@@ -420,6 +432,25 @@ static uint8_t  USBD_UVC_Setup (USBD_HandleTypeDef *pdev,
           g_uvc_stream_status = 0;
           g_uvc_stream_packet_size = 0;
         }
+
+        /* The host has just stopped or restarted streaming. Anything still
+           queued on the isochronous IN endpoint will never complete: the host
+           has stopped polling EP 0x81, so USBD_UVC_DataIn() will not fire and
+           hcdc->TxState stays latched at 1 forever. Every subsequent
+           UVC_Transmit_FS() then returns USBD_BUSY, usb_task() burns its
+           retry budget on every packet, and the device goes silent while the
+           host spins waiting for a frame that never arrives.
+
+           Flush the endpoint and clear the transfer state so the next
+           streaming session starts from a known-good state. */
+        USBD_LL_FlushEP(pdev, UVC_IN_EP);
+
+        if (pdev->pClassData != NULL)
+        {
+          ((USBD_UVC_HandleTypeDef *)pdev->pClassData)->TxState = 0;
+        }
+
+        g_uvc_stream_restarts++;
       }
       else
       {

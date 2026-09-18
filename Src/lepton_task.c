@@ -11,6 +11,7 @@
 #include "usbd_uvc.h"
 #include "usbd_uvc_if.h"
 #include "circ_buf.h"
+#include "dbg_counters.h"
 
 #include "tasks.h"
 #include "project_config.h"
@@ -18,10 +19,27 @@
 extern volatile uint8_t g_lepton_type_3;
 extern struct uvc_streaming_control videoCommitControl;
 
+volatile struct dbg_counters g_dbg = { .magic = 0xDBC0FFEE };
+
 lepton_buffer *completed_buffer;
 uint32_t completed_frame_count;
 
 uint8_t lepton_i2c_buffer[36];
+
+// Upper bound on packets consumed by one resync attempt. Normal resyncs
+// settle in well under a hundred; this only stops a pathological sensor from
+// pinning the task here.
+#define RESYNC_MAX_PACKETS (2000)
+
+// Escape hatch. Losing VoSPI alignment is recoverable; staying lost is not,
+// and until now nothing bounded how long the firmware would keep trying. One
+// rejected frame per stream restart is normal - the sensor has just been
+// power-cycled and the first read lands wherever it lands - so this threshold
+// sits well above that and well below forever. g_dbg.worst_desync_run records
+// how close normal operation actually gets, so it can be tuned from data.
+#define LEPTON_MAX_CONSECUTIVE_DESYNCS (60)
+#define LEPTON_RECOVER_POWER_OFF_MS    (250)
+#define LEPTON_RECOVER_SETTLE_MS       (250)
 
 #define RING_SIZE (4)
 lepton_buffer lepton_buffers[RING_SIZE];
@@ -89,10 +107,39 @@ static lepton_buffer *current_buffer = NULL;
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	static int current_buffer_index = 0;
+	g_dbg.vsync_irqs++;
 	lepton_buffer *buffer = &lepton_buffers[current_buffer_index];
 	current_buffer = buffer;
 	current_buffer_index = ((current_buffer_index + 1) % RING_SIZE);
 	HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+}
+
+// Apply the Lepton configuration for the stream format currently negotiated.
+// Called both when a stream starts and when the escape hatch re-initialises
+// the sensor, so the two paths cannot drift apart.
+static void apply_format_config(void)
+{
+	if (g_format_y16)
+	{
+		DBG_PHASE(PHASE_TELEMETRY);
+		if (videoCommitControl.bFrameIndex == VS_FRAME_INDEX_TELEMETRIC)
+			enable_telemetry();
+		else
+			disable_telemetry();
+		DBG_PHASE(PHASE_AGC);
+		disable_lepton_agc();
+		DBG_PHASE(PHASE_RAW14);
+		enable_raw14();
+	}
+	else
+	{
+		DBG_PHASE(PHASE_TELEMETRY);
+		disable_telemetry();
+		DBG_PHASE(PHASE_AGC);
+		enable_lepton_agc();
+		DBG_PHASE(PHASE_ENABLE_RGB888);
+		enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 keeps the current palette
+	}
 }
 
 PT_THREAD( lepton_task(struct pt *pt))
@@ -105,7 +152,10 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint32_t current_frame_count = 0;
 	static int transferring_timer = 0;
 	static uint8_t current_segment = 0;
+	static uint8_t first_packet = 0;
 	static uint8_t last_end_line = 0;
+	static int resync_tries = 0;
+	static uint32_t consecutive_desyncs = 0;
 	static uint8_t has_started_a_stream = 0;
 	curtick = last_tick = HAL_GetTick();
 
@@ -119,6 +169,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 #ifndef THERMAL_DATA_UART
 		if (g_uvc_stream_status == 0)
 		{
+			DBG_PHASE(PHASE_LOW_POWER);
 			lepton_low_power();
 			if (has_started_a_stream)
 			{
@@ -128,11 +179,13 @@ PT_THREAD( lepton_task(struct pt *pt))
 				}
 				else
 				{
+					DBG_PHASE(PHASE_DISABLE_RGB888);
 					disable_rgb888();
 				}
 			}
 
 			// Start slow blink (1 Hz)
+			DBG_PHASE(PHASE_IDLE_BLINK);
 			while (g_uvc_stream_status == 0)
 			{
 				HAL_GPIO_TogglePin(SYSTEM_LED_GPIO_Port, SYSTEM_LED_Pin);
@@ -143,37 +196,38 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			g_format_y16 = (videoCommitControl.bFormatIndex == VS_FMT_INDEX(Y16));
 
-			if (g_format_y16)
-			{
-				if (videoCommitControl.bFrameIndex == VS_FRAME_INDEX_TELEMETRIC)
-					enable_telemetry();
-				else
-					disable_telemetry();
-				disable_lepton_agc();
-				enable_raw14();
-			}
-			else
-			{
-				disable_telemetry();
-				enable_lepton_agc();
-				enable_rgb888((LEP_PCOLOR_LUT_E)-1); // -1 means attempt to continue using the current palette (PcolorLUT)
-			}
+			apply_format_config();
 			has_started_a_stream = 1;
 
 			// flush out any old data
 			while (dequeue_lepton_buffer() != NULL) {}
 
 			// Make sure we're not about to service an old irq when the interrupts are re-enabled
-			__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+			// EXTI->PR takes a PIN MASK, not an IRQ number. Passing EXTI15_10_IRQn
+			// (40 = 0x28) cleared lines 3 and 5 and left the Lepton's line 13 pending,
+			// so the stale edge fired the instant the IRQ was re-enabled.
+			__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
+			HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 
+			DBG_PHASE(PHASE_POWER_ON);
 			lepton_power_on();
+
+			// The OEM power cycle above can clear the sensor's VSYNC phase
+			// delay, which is what keeps the VSYNC pulse aligned with packet 0.
+			// It was only ever set at boot, so once it reverted nothing put it
+			// back and every subsequent read started mid-segment.
+			DBG_PHASE(PHASE_VSYNC_CFG);
+			if (lepton_restore_vsync_config() != HAL_OK)
+				g_dbg.vsync_cfg_fails++;
 		}
 #endif
 
 		HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
+		DBG_PHASE(PHASE_WAIT_BUFFER);
 		PT_WAIT_UNTIL(pt, current_buffer != NULL);
 
+		DBG_PHASE(PHASE_TRANSFER);
 		lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines);
 
 		transferring_timer = HAL_GetTick();
@@ -181,33 +235,92 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		if (complete_lepton_transfer(current_buffer) != LEPTON_STATUS_OK)
 		{
+			g_dbg.transfer_fails++;
 			DEBUG_PRINTF("Lepton transfer failed: %d\r\n", current_buffer->status);
 			current_buffer = NULL;
 			continue;
 		}
 
+		g_dbg.transfers_done++;
 		current_frame_count++;
 
 		if (g_format_y16)
 		{
 			current_segment = ((current_buffer->lines.y16[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+			first_packet = (current_buffer->lines.y16[IMAGE_OFFSET_LINES].header[0] & 0x00ff);
 			last_end_line = (current_buffer->lines.y16[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 		else
 		{
 			current_segment = ((current_buffer->lines.rgb[IMAGE_OFFSET_LINES + 20].header[0] & 0x7000) >> 12);
+			first_packet = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES].header[0] & 0x00ff);
 			last_end_line = (current_buffer->lines.rgb[IMAGE_OFFSET_LINES + IMAGE_NUM_LINES + g_telemetry_num_lines - 1].header[0] & 0x00ff);
 		}
 
 		current_buffer->segment = current_segment;
 
-		if (last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
+		// Check both ends of the frame. A read that began mid-segment yields
+		// plausible-looking early lines and an 0xFF tail, so testing only the
+		// last line let a misaligned frame get 59 lines further than it should
+		// before anything noticed.
+		if (first_packet != 0 ||
+		    last_end_line != (IMAGE_NUM_LINES + g_telemetry_num_lines - 1))
 		{
+			if (first_packet != 0)
+				g_dbg.first_line_bad++;
+			g_dbg.desync_events++;
+
+			if (++consecutive_desyncs > g_dbg.worst_desync_run)
+				g_dbg.worst_desync_run = consecutive_desyncs;
+
 			// flush out any old data since it's no good
 			while (dequeue_lepton_buffer() != NULL) {}
 
+			// Nothing has validated for a long time, so resyncing again is not
+			// going to help - every previous attempt has already failed. Stop
+			// re-reading the stream and re-initialise the sensor instead.
+			//
+			// This is deliberately indifferent to root cause. Whatever leaves
+			// the pipeline unable to produce a frame, a wedge that needs the
+			// user to physically unplug the camera is a far worse failure than
+			// a half-second interruption.
+			if (consecutive_desyncs >= LEPTON_MAX_CONSECUTIVE_DESYNCS)
+			{
+				g_dbg.hard_recoveries++;
+				DBG_PHASE(PHASE_RECOVER);
+				DEBUG_PRINTF("Unrecoverable desync, re-initialising sensor\r\n");
+
+				HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+
+				lepton_low_power();
+				transferring_timer = HAL_GetTick();
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_RECOVER_POWER_OFF_MS);
+
+				lepton_power_on();
+				transferring_timer = HAL_GetTick();
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_RECOVER_SETTLE_MS);
+
+				DBG_PHASE(PHASE_VSYNC_CFG);
+				if (lepton_restore_vsync_config() != HAL_OK)
+					g_dbg.vsync_cfg_fails++;
+
+				apply_format_config();
+
+				while (dequeue_lepton_buffer() != NULL) {}
+
+				__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
+				HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
+
+				current_frame_count = 0;
+				consecutive_desyncs = 0;
+				current_buffer = NULL;
+				continue;
+			}
+
 			if (current_frame_count > 2)
 			{
+				g_dbg.resync_entries++;
+				DBG_PHASE(PHASE_RESYNC);
 				uint16_t last_header;
 
 				DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
@@ -216,8 +329,21 @@ PT_THREAD( lepton_task(struct pt *pt))
 				transferring_timer = HAL_GetTick();
 				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 185);
 
-				// transfer packets until we've actually re-synchronized
+				// Discard packets until the START of a segment.
+				//
+				// This previously stopped at the first non-discard packet, which
+				// is not the same thing. VoSPI only guarantees alignment from
+				// packet 0; stopping at, say, packet 30 meant the bulk read that
+				// follows ran off the end of the segment into the inter-segment
+				// gap, where MISO idles high and the buffer tail fills with 0xFF.
+				// That is exactly the last_end_line == 255 seen on a wedged unit,
+				// with a valid segment number still readable at line 20. The
+				// frame then failed validation, triggered another resync, and the
+				// cycle repeated forever - 1170 rejected frames out of 1170, and
+				// no recovery short of a power cycle.
+				resync_tries = 0;
 				do {
+					g_dbg.resync_packets++;
 					lepton_transfer(current_buffer, 1);
 
 					transferring_timer = HAL_GetTick();
@@ -227,7 +353,17 @@ PT_THREAD( lepton_task(struct pt *pt))
 							current_buffer->lines.y16[0].header[0] :
 							current_buffer->lines.rgb[0].header[0]);
 
-				} while (current_buffer->status == LEPTON_STATUS_OK && (last_header & 0x0f00) == 0x0f00);
+					// Bounded: requiring packet 0 means we could otherwise spin
+					// here indefinitely if the sensor never presents one.
+					if (++resync_tries > RESYNC_MAX_PACKETS)
+					{
+						g_dbg.resync_giveups++;
+						break;
+					}
+
+				} while (current_buffer->status == LEPTON_STATUS_OK &&
+				         (((last_header & 0x0f00) == 0x0f00) ||   /* discard packet */
+				          ((last_header & 0x00ff) != 0x0000)));   /* not packet 0 */
 
 				// we picked up the start of a new packet, so read the rest of it in
 				lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines - 1);
@@ -236,7 +372,11 @@ PT_THREAD( lepton_task(struct pt *pt))
 				PT_YIELD_UNTIL(pt, current_buffer->status != LEPTON_STATUS_TRANSFERRING || ((HAL_GetTick() - transferring_timer) > 200));
 
 				// Make sure we're not about to service an old irq when the interrupts are re-enabled
-				__HAL_GPIO_EXTI_CLEAR_IT(EXTI15_10_IRQn);
+				// EXTI->PR takes a PIN MASK, not an IRQ number. Passing EXTI15_10_IRQn
+				// (40 = 0x28) cleared lines 3 and 5 and left the Lepton's line 13 pending,
+				// so the stale edge fired the instant the IRQ was re-enabled.
+				__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
+				HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
 
 				current_frame_count = 0;
 			}
@@ -245,6 +385,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			continue;
 		}
+
+		// This frame validated, so whatever went wrong has cleared.
+		consecutive_desyncs = 0;
 
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
@@ -278,6 +421,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 		{
 			static int row;
 
+			DBG_PHASE(PHASE_PUBLISH);
 			completed_buffer = current_buffer;
 			completed_frame_count = current_frame_count;
 
@@ -298,7 +442,14 @@ PT_THREAD( lepton_task(struct pt *pt))
 			}
 
 			if (!full(CIRC_BUF_HANDLE(completed_frames_buf)))
+			{
 				push(CIRC_BUF_HANDLE(completed_frames_buf), completed_buffer);
+				g_dbg.frames_completed++;
+			}
+			else
+			{
+				g_dbg.frames_dropped++;
+			}
 		}
 
 		current_buffer = NULL;

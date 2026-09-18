@@ -120,7 +120,7 @@ $(BIN): main.out
 Inc/version.h: .git/HEAD .git/index
 	echo "#ifndef VERSION_H" > $@
 	echo "#define VERSION_H" >> $@
-	echo "#define BUILD_GIT_SHA \"$(shell git describe --tags)\"" >> $@
+	echo "#define BUILD_GIT_SHA \"$(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)\"" >> $@
 	echo "#define BUILD_DATE \"$(shell date "+%Y-%m-%d %H:%M:%S")\"" >> $@
 	echo "#endif" >> $@
 

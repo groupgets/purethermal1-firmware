@@ -29,6 +29,45 @@ LEP_CAMERA_PORT_DESC_T hport_desc;
 
 extern volatile uint8_t g_lepton_type_3;
 
+/* Re-apply the Lepton's VSYNC output configuration.
+ *
+ * VSYNC is what tells the firmware a segment is ready, and
+ * LEP_OEM_VSYNC_DELAY_PLUS_2 is what aligns that pulse with packet 0 of the
+ * segment. Both used to be set exactly once, from set_lepton_type(), at boot.
+ *
+ * lepton_task() OEM power-cycles the sensor on every stream teardown and
+ * restart - lepton_low_power() followed by lepton_power_on() - and OEM GPIO
+ * settings do not reliably survive that. When the phase delay reverts, VSYNC
+ * still fires, so the interrupt still arrives and the sensor still looks
+ * healthy, but the pulse no longer coincides with packet 0 and every
+ * VSYNC-triggered read starts mid-segment.
+ *
+ * Measured on a wedged unit: resync_giveups static at 3 while first_line_bad
+ * climbed past 1800. The resync loop walks the stream packet by packet and
+ * does not consult VSYNC at all - it found packet 0 every time. The
+ * VSYNC-triggered bulk read never did. That isolates the fault to the
+ * VSYNC-to-packet-0 relationship, and the phase delay is the only thing that
+ * governs it.
+ */
+HAL_StatusTypeDef lepton_restore_vsync_config(void)
+{
+  LEP_RESULT result;
+
+  result = LEP_SetOemGpioVsyncPhaseDelay(&hport_desc, LEP_OEM_VSYNC_DELAY_PLUS_2);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set VSYNC phase delay: %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  result = LEP_SetOemGpioMode(&hport_desc, LEP_OEM_GPIO_MODE_VSYNC);
+  if (result != LEP_OK) {
+    DEBUG_PRINTF("Could not set VSYNC GPIO mode: %d\r\n", result);
+    return HAL_ERROR;
+  }
+
+  return HAL_OK;
+}
+
 static void set_lepton_type()
 {
   LEP_RESULT result;
@@ -53,8 +92,7 @@ static void set_lepton_type()
     g_lepton_type_3 = 1;
   }
 
-  LEP_SetOemGpioVsyncPhaseDelay(&hport_desc,LEP_OEM_VSYNC_DELAY_PLUS_2);
-  LEP_SetOemGpioMode(&hport_desc, LEP_OEM_GPIO_MODE_VSYNC);
+  lepton_restore_vsync_config();
 }
 
 static void set_startup_defaults()
