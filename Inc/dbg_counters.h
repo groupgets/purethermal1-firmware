@@ -87,6 +87,14 @@ struct dbg_counters {
   uint32_t cs_stuck_low;     /* +0xD0  PB12 driven high but read back low: /CS
                                        is held down by something outside the
                                        MCU, so a VoSPI resync cannot work */
+
+  /* --- wedge recovery --- */
+  uint32_t wedge_recoveries;      /* +0xD4  frames validated after at least one
+                                            escape-hatch firing, same stream:
+                                            a wedge that the hatch cleared */
+  uint32_t last_recovery_firings; /* +0xD8  hardware resets the most recent
+                                            recovery needed. Above 1 means one
+                                            reset was not enough. */
 };
 
 extern volatile struct dbg_counters g_dbg;

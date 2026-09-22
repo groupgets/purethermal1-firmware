@@ -38,8 +38,6 @@ uint8_t lepton_i2c_buffer[36];
 // sits well above that and well below forever. g_dbg.worst_desync_run records
 // how close normal operation actually gets, so it can be tuned from data.
 #define LEPTON_MAX_CONSECUTIVE_DESYNCS (60)
-#define LEPTON_RECOVER_POWER_OFF_MS    (250)
-#define LEPTON_RECOVER_SETTLE_MS       (250)
 
 #define RING_SIZE (4)
 lepton_buffer lepton_buffers[RING_SIZE];
@@ -156,6 +154,7 @@ PT_THREAD( lepton_task(struct pt *pt))
 	static uint8_t last_end_line = 0;
 	static int resync_tries = 0;
 	static uint32_t consecutive_desyncs = 0;
+	static uint32_t escape_firings = 0;     // since the last validated frame
 	static uint8_t has_started_a_stream = 0;
 	curtick = last_tick = HAL_GetTick();
 
@@ -198,6 +197,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 			apply_format_config();
 			has_started_a_stream = 1;
+
+			// A recovery in a new stream can't be credited to the last one.
+			escape_firings = 0;
 
 			// flush out any old data
 			while (dequeue_lepton_buffer() != NULL) {}
@@ -283,38 +285,63 @@ PT_THREAD( lepton_task(struct pt *pt))
 			// This is deliberately indifferent to root cause. Whatever leaves
 			// the pipeline unable to produce a frame, a wedge that needs the
 			// user to physically unplug the camera is a far worse failure than
-			// a half-second interruption.
+			// a two-second interruption.
+			//
+			// A wedged unit's bitstream is runs of discard packets separated by
+			// stretches where the sensor drives nothing at all: its VoSPI
+			// transmitter has stopped and does not restart on its own. VSYNC
+			// keeps firing throughout, so the sensor is alive and still framing
+			// - only its serial output is dead.
+			//
+			// Every cheaper remedy was fired at a held wedge and measured: /CS
+			// high for 250 ms with the pin readback proving it went high, a
+			// long SCK idle, a CCI power cycle (what this hatch used to do, 95+
+			// firings without a single recovery), an SPI2/DMA reset. None
+			// recovered. Pulsing RESET_L / PWR_DWN_L - the same sequence
+			// lepton_init() runs at boot - recovers every time, which is also
+			// why an MCU reset has always appeared to fix this.
 			if (consecutive_desyncs >= LEPTON_MAX_CONSECUTIVE_DESYNCS)
 			{
 				g_dbg.hard_recoveries++;
+				escape_firings++;
 				DBG_PHASE(PHASE_RECOVER);
-				DEBUG_PRINTF("Unrecoverable desync, re-initialising sensor\r\n");
+				DEBUG_PRINTF("Unrecoverable desync, sensor hardware reset #%lu\r\n", escape_firings);
 
 				HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
 
-				lepton_low_power();
+				// /CS stays high across the reset, the boot wait and the CCI
+				// reconfiguration, so the sensor comes up with /CS deasserted
+				// and SCK idle, exactly as it does at MCU power-up.
+				lepton_cs_release();
+				lepton_hw_reset_assert();
 				transferring_timer = HAL_GetTick();
-				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_RECOVER_POWER_OFF_MS);
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_HW_RESET_STEP_MS);
 
-				lepton_power_on();
+				lepton_hw_pwdn_release();
 				transferring_timer = HAL_GetTick();
-				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_RECOVER_SETTLE_MS);
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_HW_RESET_STEP_MS);
+
+				lepton_hw_reset_release();
+				transferring_timer = HAL_GetTick();
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_HW_BOOT_MS);
 
 				DBG_PHASE(PHASE_VSYNC_CFG);
-				if (lepton_restore_vsync_config() != HAL_OK)
+				if (lepton_reinit_after_reset() != HAL_OK)
 					g_dbg.vsync_cfg_fails++;
 
 				apply_format_config();
 
+				// Hold /CS high a little longer with SCK still idle, then hand
+				// PB12 back to the SPI: the tail of the datasheet's (re)sync
+				// procedure, which the sensor has just booted into.
+				transferring_timer = HAL_GetTick();
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > LEPTON_VOSPI_RESYNC_MS);
+				lepton_cs_restore();
+
 				while (dequeue_lepton_buffer() != NULL) {}
 
-				__HAL_GPIO_EXTI_CLEAR_IT(LEPTON_GPIO3_Pin);
-				HAL_NVIC_ClearPendingIRQ(EXTI15_10_IRQn);
-
-				current_frame_count = 0;
 				consecutive_desyncs = 0;
-				current_buffer = NULL;
-				continue;
+				current_frame_count = 3;   // fall through into the resync below
 			}
 
 			if (current_frame_count > 2)
@@ -404,6 +431,12 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 		// This frame validated, so whatever went wrong has cleared.
 		consecutive_desyncs = 0;
+		if (escape_firings)
+		{
+			g_dbg.wedge_recoveries++;
+			g_dbg.last_recovery_firings = escape_firings;
+			escape_firings = 0;
+		}
 
 		if (((curtick = HAL_GetTick()) - last_tick) > 3000)
 		{
