@@ -322,12 +322,15 @@ PT_THREAD( lepton_task(struct pt *pt))
 				g_dbg.resync_entries++;
 				DBG_PHASE(PHASE_RESYNC);
 				uint16_t last_header;
+				uint16_t last_crc = 0;
 
 				DEBUG_PRINTF("Synchronization lost, status: %d, last end line %d\r\n",
 					current_buffer->status, last_end_line);
 
+				// Idle SCK for more than 5 frame periods. 185 ms was slightly
+				// under that: 5 periods is ~189 ms at 26.4 Hz.
 				transferring_timer = HAL_GetTick();
-				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 185);
+				PT_WAIT_UNTIL(pt, (HAL_GetTick() - transferring_timer) > 190);
 
 				// Discard packets until the START of a segment.
 				//
@@ -341,6 +344,15 @@ PT_THREAD( lepton_task(struct pt *pt))
 				// frame then failed validation, triggered another resync, and the
 				// cycle repeated forever - 1170 rejected frames out of 1170, and
 				// no recovery short of a power cycle.
+				//
+				// The header alone is not enough to say "packet 0", because a
+				// sensor that has stopped driving MISO reads back as 0x0000,
+				// which passes the packet-0 test. Measured on a wedged unit:
+				// the walk consumed ~220 discard packets, hit a silent stretch,
+				// declared sync on 0x0000, read 59 more packets of nothing and
+				// failed validation - 180 times in one 543-read window, never
+				// once seeing a real packet. Requiring a non-zero CRC word
+				// rejects silence without rejecting anything the sensor sends.
 				resync_tries = 0;
 				do {
 					g_dbg.resync_packets++;
@@ -352,6 +364,9 @@ PT_THREAD( lepton_task(struct pt *pt))
 					last_header = (g_format_y16 ?
 							current_buffer->lines.y16[0].header[0] :
 							current_buffer->lines.rgb[0].header[0]);
+					last_crc    = (g_format_y16 ?
+							current_buffer->lines.y16[0].header[1] :
+							current_buffer->lines.rgb[0].header[1]);
 
 					// Bounded: requiring packet 0 means we could otherwise spin
 					// here indefinitely if the sensor never presents one.
@@ -363,7 +378,8 @@ PT_THREAD( lepton_task(struct pt *pt))
 
 				} while (current_buffer->status == LEPTON_STATUS_OK &&
 				         (((last_header & 0x0f00) == 0x0f00) ||   /* discard packet */
-				          ((last_header & 0x00ff) != 0x0000)));   /* not packet 0 */
+				          ((last_header & 0x00ff) != 0x0000) ||   /* not packet 0 */
+				          (last_crc == 0x0000)));                 /* nothing on the wire */
 
 				// we picked up the start of a new packet, so read the rest of it in
 				lepton_transfer(current_buffer, IMAGE_NUM_LINES + g_telemetry_num_lines - 1);
