@@ -117,9 +117,19 @@ $(BIN): main.out
 	$(SIZE) main.out
 	@echo Make finished
 
-Inc/version.h: .git/HEAD .git/index
+# The released firmware version. This is the number the device reports over
+# USB, so it lives in the source rather than being inferred from whatever tag
+# happens to be reachable: an untagged or shallow clone used to produce an
+# empty version string, and the device then enumerated as "PureThermal (fw:v)".
+# Bump it here when cutting a release, and tag the release commit to match.
+FW_VERSION := 1.3.1
+
+# Rebuilt when the version changes or the checkout moves. BUILD_GIT_SHA is
+# provenance, not identity - it carries -dirty for uncommitted trees.
+Inc/version.h: Makefile .git/HEAD .git/index
 	echo "#ifndef VERSION_H" > $@
 	echo "#define VERSION_H" >> $@
+	echo "#define FW_VERSION \"$(FW_VERSION)\"" >> $@
 	echo "#define BUILD_GIT_SHA \"$(shell git describe --tags --always --dirty 2>/dev/null || echo unknown)\"" >> $@
 	echo "#define BUILD_DATE \"$(shell date "+%Y-%m-%d %H:%M:%S")\"" >> $@
 	echo "#endif" >> $@

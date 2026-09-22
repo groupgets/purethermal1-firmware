@@ -74,7 +74,10 @@
 
 #ifdef GIT_VERSION
 #include "version.h"
-#define USBD_SERIALNUMBER_STRING_FS "v" BUILD_GIT_SHA
+/* The host shows this as the serial number and it ends up in the product
+   string, so it is the release version, not the build hash. BUILD_GIT_SHA
+   is still in version.h for anyone who needs to identify an exact build. */
+#define USBD_SERIALNUMBER_STRING_FS "v" FW_VERSION
 #else
 #define USBD_SERIALNUMBER_STRING_FS "v1.0.0"
 #endif
