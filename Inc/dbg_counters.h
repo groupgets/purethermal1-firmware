@@ -82,6 +82,19 @@ struct dbg_counters {
   uint32_t vsync_cfg_fails;  /* +0xC4  lepton_restore_vsync_config() errors */
   uint32_t hard_recoveries;  /* +0xC8  escape hatch fired this many times */
   uint32_t worst_desync_run; /* +0xCC  longest run of consecutive rejects seen */
+
+  /* --- /CS control --- */
+  uint32_t cs_stuck_low;     /* +0xD0  PB12 driven high but read back low: /CS
+                                       is held down by something outside the
+                                       MCU, so a VoSPI resync cannot work */
+
+  /* --- wedge recovery --- */
+  uint32_t wedge_recoveries;      /* +0xD4  frames validated after at least one
+                                            escape-hatch firing, same stream:
+                                            a wedge that the hatch cleared */
+  uint32_t last_recovery_firings; /* +0xD8  hardware resets the most recent
+                                            recovery needed. Above 1 means one
+                                            reset was not enough. */
 };
 
 extern volatile struct dbg_counters g_dbg;
