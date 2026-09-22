@@ -422,6 +422,18 @@ HAL_StatusTypeDef enable_raw14()
 //  HAL_ERROR    = 0x01,
 //  HAL_BUSY     = 0x02,
 //  HAL_TIMEOUT  = 0x03
+/* After a hardware reset the sensor is back at its power-on defaults. Redo the
+ * boot-time configuration that init_lepton_command_interface() does (type
+ * detection, VSYNC output, default pseudocolor LUT); the caller then applies
+ * the stream format with apply_format_config(). A palette chosen by the host
+ * through the UVC extension unit is lost. */
+HAL_StatusTypeDef lepton_reinit_after_reset(void)
+{
+  set_lepton_type();
+  set_startup_defaults();
+  return lepton_restore_vsync_config();
+}
+
 HAL_StatusTypeDef init_lepton_command_interface(void)
 {
   LEP_RESULT result;

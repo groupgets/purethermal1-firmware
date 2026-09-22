@@ -23,6 +23,7 @@ HAL_StatusTypeDef enable_raw14();
 HAL_StatusTypeDef lepton_low_power();
 HAL_StatusTypeDef lepton_power_on();
 HAL_StatusTypeDef lepton_restore_vsync_config(void);
+HAL_StatusTypeDef lepton_reinit_after_reset(void);
 
 #endif
 
