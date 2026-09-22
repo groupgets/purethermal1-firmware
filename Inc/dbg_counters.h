@@ -58,12 +58,6 @@ struct dbg_counters {
   uint32_t phase;            /* +0x24  enum dbg_phase, where lepton_task is */
   uint32_t phase_entry_ms;   /* +0x28  HAL_GetTick() when that phase started */
 
-  /* --- stall detector --- */
-  uint32_t main_loop_ticks;  /* +0x2C  bumped every pass of main()'s while(1) */
-  uint32_t stall_detected;   /* +0x30  1 once the main loop stopped advancing */
-  uint32_t stall_phase;      /* +0x34  the phase it was in when that happened */
-  uint32_t stall_ms;         /* +0x38  ms spent in that phase at detection */
-
   /* --- per-phase residence, latched ---------------------------------------
    * The failure lives inside a ~10s window and then clears itself, so reading
    * `phase` after the fact only ever shows idle. These record the WORST time
@@ -110,8 +104,5 @@ extern volatile struct dbg_counters g_dbg;
     g_dbg.phase = (uint32_t)(p); \
     g_dbg.phase_entry_ms = _dbg_now; \
   } while (0)
-
-/* Called from SysTick_Handler. See stall_watchdog.c. */
-void stall_watchdog_tick(void);
 
 #endif /* DBG_COUNTERS_H_ */
