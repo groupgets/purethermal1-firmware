@@ -34,7 +34,6 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx.h"
 #include "stm32f4xx_it.h"
-#include "dbg_counters.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -75,9 +74,6 @@ void SysTick_Handler(void)
   HAL_IncTick();
   HAL_SYSTICK_IRQHandler();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  /* Runs even when the cooperative scheduler is blocked, which is the whole
-     point - see stall_watchdog.c */
-  stall_watchdog_tick();
 
   /* USER CODE END SysTick_IRQn 1 */
 }
