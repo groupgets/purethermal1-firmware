@@ -45,6 +45,10 @@ TrueSTUDIO/
 
 # Generated files
 Inc/version.h
+plan.md
 
 # OpenOCD config is checked in, but we don't want more modifications accidentally
 PureThermal1.cfg
+
+# Host-side test build output
+test/build/

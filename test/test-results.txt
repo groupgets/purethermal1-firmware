@@ -1,0 +1,60 @@
+PureThermal firmware - host-side test results
+Generated: 2026-10-06 15:11:27 PDT
+Branch:    spi-desync-experiment @ 308175d (uncommitted changes: 3 files)
+Compiler:  gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Under test: Src/lepton_task.c (unmodified)
+
+== Test suite (make test) ==
+  ok    bad_first_packet_is_caught_by_first_line_check
+  ok    dbg_counters_layout_matches_documented_offsets
+  ok    dma_timeout_counts_failure_and_recovers
+  ok    escape_hatch_follows_datasheet_reset_sequence
+  ok    escape_hatch_reapplies_rgb_config
+  ok    exti_clear_uses_pin_mask_not_irq_number
+  ok    full_ring_drops_frames_instead_of_overwriting
+  ok    gap_inside_segment_is_caught_by_last_line_check
+  ok    l2_rgb_streams_intact_byte_swapped_frames
+  ok    l2_y16_streams_intact_frames
+  ok    l2_y16_telemetry_frames_carry_telemetry_lines
+  ok    l3_segment_zero_is_never_forwarded
+  ok    l3_y16_streams_all_four_segments
+  ok    misaligned_first_read_is_dropped_without_resync
+  ok    misaligned_read_mid_stream_resyncs_and_recovers
+  ok    new_stream_does_not_credit_previous_streams_wedge
+  ok    no_frames_while_stream_stopped
+  ok    permanent_wedge_keeps_retrying_without_hanging
+  ok    reinit_failure_after_reset_is_counted
+  ok    repeated_stream_restarts_stay_in_sync
+  ok    resync_idles_sck_for_more_than_five_frame_periods
+  ok    resync_rejects_silent_bus_as_packet_zero
+  ok    resync_walk_is_bounded
+  ok    resync_walks_to_packet_zero_not_first_non_discard
+  ok    rgb2yuv_reference_values
+  ok    rgb_stream_start_enables_agc_and_rgb888
+  ok    rgb_stream_stop_powers_down_and_disables_rgb888
+  ok    short_desync_burst_does_not_fire_escape_hatch
+  ok    stale_vsync_from_idle_is_not_serviced_on_start
+  ok    stream_start_powers_on_then_restores_vsync_config
+  ok    vospi_packet_sizes_match_dma_length
+  ok    vsync_config_failure_is_counted_and_stream_continues
+  ok    wedge_is_cleared_by_hardware_reset
+  ok    wedge_needing_two_resets_records_both
+  ok    y16_stream_stop_leaves_rgb888_alone
+
+35 tests, 35 passed, 0 failed
+
+== Bug-catching check (make -C test mutants) ==
+Each past bug is put back into a scratch copy of lepton_task.c; 'caught' means at least one test failed.
+  caught  exti_irq_number_bug  (1 failing, e.g. exti_clear_uses_pin_mask_not_irq_number)
+  caught  only_last_line_checked  (1 failing, e.g. bad_first_packet_is_caught_by_first_line_check)
+  caught  walk_stops_at_first_non_discard  (1 failing, e.g. resync_walks_to_packet_zero_not_first_non_discard)
+  caught  walk_accepts_silence  (2 failing, e.g. resync_rejects_silent_bus_as_packet_zero)
+  caught  walk_unbounded  (9 failing, e.g. escape_hatch_follows_datasheet_reset_sequence)
+  caught  sck_idle_too_short  (1 failing, e.g. resync_idles_sck_for_more_than_five_frame_periods)
+  caught  no_vsync_restore  (2 failing, e.g. stream_start_powers_on_then_restores_vsync_config)
+  caught  no_escape_hatch  (7 failing, e.g. escape_hatch_follows_datasheet_reset_sequence)
+  caught  hatch_threshold_changed  (1 failing, e.g. wedge_is_cleared_by_hardware_reset)
+  caught  hatch_skips_format_config  (2 failing, e.g. escape_hatch_follows_datasheet_reset_sequence)
+  caught  reset_boot_wait_too_short  (1 failing, e.g. escape_hatch_follows_datasheet_reset_sequence)
+  caught  escape_firings_not_reset_per_stream  (1 failing, e.g. new_stream_does_not_credit_previous_streams_wedge)
+12 caught, 0 missed, 0 stale

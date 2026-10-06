@@ -76,7 +76,7 @@ OBJDUMPFLAGS = -S
 STARTUP_OBJ = $(CMSIS_DEVSUP)/Source/Templates/gcc/startup_$(STARTUP_FILE).o
 SYSTEM_OBJ = $(CMSIS_DEVSUP)/Source/Templates/system_$(SYSTEM_FILE).o
 
-.PHONY: print_vars
+.PHONY: print_vars test
 
 BIN = main.bin
 
@@ -150,6 +150,10 @@ libs:
 	@$(MAKE) -C $(LIBDIR)
 	@$(MAKE) -C $(MDLDIR)
 
+# Host-side tests; no ARM toolchain needed. See test/README.md.
+test:
+	@$(MAKE) -C test
+
 libclean: clean
 	@$(MAKE) -C $(LIBDIR) clean
 	@$(MAKE) -C $(MDLDIR) clean
@@ -163,7 +167,10 @@ clean:
 
 depend dep: .depend
 
+# `make test` builds on the host; don't generate ARM dependency info for it.
+ifneq ($(MAKECMDGOALS),test)
 include .depend
+endif
 
 .depend: Src/*.c | Inc/version.h
 	$(CCDEP) $(CFLAGS) -MM $^ | sed -e 's@.*.o:@Src/&@' > .depend 
